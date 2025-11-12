@@ -36,18 +36,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_booking'])) {
         $appointDate = sanitize($_POST['date']) . ' ' . sanitize($_POST['time']) . ':00';
         $successCount = 0;
         
+        // Handle missing fields properly
+        $notes = isset($_POST['notes']) ? sanitize($_POST['notes']) : '';
+        $employId = isset($_POST['employ_id']) && !empty($_POST['employ_id']) ? sanitize($_POST['employ_id']) : null;
+        
+        // FIX: Create separate appointments for each service
         foreach ($serviceIds as $serviceId) {
+            // Validate that service_id exists in database
+            $service = getServiceById($serviceId);
+            if (!$service) {
+                error_log("Invalid service_id: " . $serviceId);
+                continue; // Skip invalid services
+            }
+            
             $appointmentData = [
                 'customer_id' => $user['customer_id'],
-                'service_id' => sanitize($serviceId),
-                'employ_id' => sanitize($_POST['employ_id']) ?: null,
+                'service_id' => intval($serviceId), // Ensure it's an integer
+                'employ_id' => $employId,
                 'appoint_date' => $appointDate,
                 'appoint_status' => 'pending',
-                'appoint_desc' => sanitize($_POST['appoint_desc'])
+                'appoint_desc' => $notes
             ];
             
             if (createAppointment($appointmentData)) {
                 $successCount++;
+            } else {
+                error_log("Failed to create appointment for service_id: " . $serviceId);
             }
         }
         
@@ -55,7 +69,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_booking'])) {
             $_SESSION['success'] = 'Appointment' . ($successCount > 1 ? 's' : '') . ' submitted successfully! Waiting for confirmation.';
             header('Location: my-bookings.php');
         } else {
-            $_SESSION['error'] = 'Booking failed. Please try again.';
+            $_SESSION['error'] = 'Booking failed. Please try again or contact support.';
         }
         exit;
     }

@@ -1,5 +1,5 @@
 <?php
-// Utility functions for BeautyGo - MySQL Version (CORRECTED)
+// Utility functions for BeautyGo - MySQL Version with Business Notifications
 
 // ============================================================
 // CUSTOMER FUNCTIONS (formerly users)
@@ -36,12 +36,12 @@ function getCustomerByEmail($email) {
     return $data;
 }
 
-// Create new customer - FIXED
+// Create new customer
 function createCustomer($data) {
     $conn = getDbConnection();
     $hashedPassword = password_hash($data['password'], PASSWORD_DEFAULT);
 
-    // Handle profile picture from BOTH sources (FIXED)
+    // Handle profile picture from BOTH sources
     $profilePic = null;
     $hasProfilePic = false;
     
@@ -117,8 +117,7 @@ function createCustomer($data) {
     return false;
 }
 
-
-// Update customer and profile - FIXED
+// Update customer and profile
 function updateCustomer($id, $data) {
     $conn = getDbConnection();
 
@@ -143,7 +142,7 @@ function updateCustomer($id, $data) {
         ");
         
         $null = null;
-        $stmt1->bind_param("ssssssi",
+        $stmt1->bind_param("sssssssi",
             $data['fname'],
             $data['mname'] ?? '',
             $data['surname'] ?? '',
@@ -199,7 +198,6 @@ function updateCustomer($id, $data) {
 
     return $success1 && $success2;
 }
-
 
 // ============================================================
 // BUSINESS FUNCTIONS
@@ -288,7 +286,6 @@ function createBusiness($data) {
     return false;
 }
 
-
 // Update business
 function updateBusiness($id, $data) {
     $conn = getDbConnection();
@@ -354,6 +351,104 @@ function getBusinessAlbum($businessId) {
     return $data;
 }
 
+// Get existing album or create a new one if none exists 
+function getOrCreateBusinessAlbum($businessId) {
+    $conn = getDbConnection();
+
+    // Try to fetch an existing album
+    $stmt = $conn->prepare("SELECT * FROM albums WHERE business_id = ?");
+    $stmt->bind_param("i", $businessId); 
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $album = $result->fetch_assoc();
+    $stmt->close();
+
+    // If no album exists, create one
+    if (!$album) {
+        $stmt = $conn->prepare("INSERT INTO albums (business_id) VALUES (?)");
+        $stmt->bind_param("i", $businessId);
+
+        if ($stmt->execute()) {
+            // Retrieve the newly created album record
+            $newId = $conn->insert_id;
+            $stmt->close();
+            
+            $stmt = $conn->prepare("SELECT * FROM albums WHERE album_id = ?");
+            $stmt->bind_param("i", $newId);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            $album = $result->fetch_assoc();
+            $stmt->close();
+        }
+    }
+
+    return $album;
+}
+
+// Update album images (logo + up to 10 images)
+function updateAlbumImages($businessId, $images) {
+    $conn = getDbConnection();
+
+    $stmt = $conn->prepare("
+        UPDATE albums 
+        SET logo = ?, image1 = ?, image2 = ?, image3 = ?, image4 = ?, 
+            image5 = ?, image6 = ?, image7 = ?, image8 = ?, image9 = ?, image10 = ?
+        WHERE business_id = ?
+    ");
+
+    $null = null;
+    $stmt->bind_param(
+        "sssssssssssi",
+        $null, $null, $null, $null, $null,
+        $null, $null, $null, $null, $null, $null,
+        $businessId
+    );
+
+    // Send binary data for each non-empty image
+    $imageSlots = [
+        'logo' => 0,
+        0 => 1, 1 => 2, 2 => 3, 3 => 4, 4 => 5,
+        5 => 6, 6 => 7, 7 => 8, 8 => 9, 9 => 10
+    ];
+
+    foreach ($imageSlots as $key => $index) {
+        if (isset($images[$key]) && !empty($images[$key])) {
+            $stmt->send_long_data($index, $images[$key]);
+        }
+    }
+
+    $success = $stmt->execute();
+    $stmt->close();
+    return $success;
+}
+
+// Get all album images (logo + 10 gallery images)
+function getAlbumImagesArray($businessId, $asBase64 = true) {
+    $album = getOrCreateBusinessAlbum($businessId);
+    $images = [];
+
+    if ($album) {
+        // Include logo if available
+        if (!empty($album['logo'])) {
+            $images['logo'] = $asBase64
+                ? 'data:image/jpeg;base64,' . base64_encode($album['logo'])
+                : $album['logo'];
+        }
+
+        // Include images 1-10
+        for ($i = 1; $i <= 10; $i++) {
+            $key = 'image' . $i;
+            if (!empty($album[$key])) {
+                $images[$key] = $asBase64
+                    ? 'data:image/jpeg;base64,' . base64_encode($album[$key])
+                    : $album[$key];
+            }
+        }
+    }
+
+    return $images;
+}
+
 // ============================================================
 // SERVICE FUNCTIONS
 // ============================================================
@@ -389,11 +484,11 @@ function getServiceById($id) {
     return $data;
 }
 
-// Create service - FIXED
+// Create service
 function createService($data) {
     $conn = getDbConnection();
 
-    // Duration stored as INTEGER (minutes) - FIXED
+    // Duration stored as INTEGER (minutes)
     $duration = is_numeric($data['duration']) ? intval($data['duration']) : 0;
 
     $stmt = $conn->prepare("
@@ -421,12 +516,11 @@ function createService($data) {
     return false;
 }
 
-
-// Update service - FIXED
+// Update service
 function updateService($id, $data) {
     $conn = getDbConnection();
     
-    // Duration stored as INTEGER (minutes) - FIXED
+    // Duration stored as INTEGER (minutes)
     $duration = is_numeric($data['duration']) ? intval($data['duration']) : 0;
     
     $stmt = $conn->prepare("UPDATE services SET service_name = ?, service_type = ?, service_desc = ?, cost = ?, duration = ? WHERE service_id = ?");
@@ -481,11 +575,11 @@ function getEmployeeById($id) {
     return $data;
 }
 
-// Create employee - FIXED
+// Create employee
 function createEmployee($data) {
     $conn = getDbConnection();
 
-    // Handle image from both sources - FIXED
+    // Handle image from both sources
     $photo = null;
     $hasPhoto = false;
     
@@ -507,7 +601,7 @@ function createEmployee($data) {
     $serviceId = $data['service_id'] ?? null;
     $status = $data['employ_status'] ?? 'available';
     
-    $stmt->bind_param("iissssss s",
+    $stmt->bind_param("iisssssss",
         $serviceId,
         $data['business_id'],
         $data['employ_fname'] ?? '',
@@ -534,12 +628,11 @@ function createEmployee($data) {
     return false;
 }
 
-
-// Update employee - FIXED
+// Update employee
 function updateEmployee($id, $data) {
     $conn = getDbConnection();
 
-    // Handle image update - FIXED
+    // Handle image update
     $photo = null;
     $hasNewPhoto = false;
     
@@ -602,7 +695,6 @@ function updateEmployee($id, $data) {
     return $success;
 }
 
-
 // Delete employee
 function deleteEmployee($id) {
     $conn = getDbConnection();
@@ -612,7 +704,6 @@ function deleteEmployee($id) {
     $stmt->close();
     return $success;
 }
-
 
 // ============================================================
 // REVIEW FUNCTIONS
@@ -668,7 +759,6 @@ function getBusinessReviews($businessId) {
     return $reviews;
 }
 
-
 // Create review (with up to 5 images)
 function createReview($data) {
     $conn = getDbConnection();
@@ -717,7 +807,6 @@ function createReview($data) {
     return false;
 }
 
-
 // Calculate average rating from reviews table
 function calculateAverageRating($businessId) {
     $conn = getDbConnection();
@@ -753,8 +842,8 @@ function getCustomerAppointments($customerId) {
             b.business_address
         FROM appointments a
         LEFT JOIN employees e ON a.employ_id = e.employ_id
-        LEFT JOIN services s ON e.service_id = s.service_id
-        LEFT JOIN businesses b ON e.business_id = b.business_id
+        LEFT JOIN services s ON a.service_id = s.service_id
+        LEFT JOIN businesses b ON s.business_id = b.business_id
         WHERE a.customer_id = ?
         ORDER BY a.appoint_date DESC
     ");
@@ -765,7 +854,6 @@ function getCustomerAppointments($customerId) {
     $stmt->close();
     return $data;
 }
-
 
 // Get appointments for a business
 function getBusinessAppointments($businessId) {
@@ -785,7 +873,7 @@ function getBusinessAppointments($businessId) {
         FROM appointments a
         LEFT JOIN customers c ON a.customer_id = c.customer_id
         LEFT JOIN employees e ON a.employ_id = e.employ_id
-        LEFT JOIN services s ON e.service_id = s.service_id
+        LEFT JOIN services s ON a.service_id = s.service_id
         WHERE e.business_id = ?
         ORDER BY a.appoint_date DESC
     ");
@@ -797,8 +885,21 @@ function getBusinessAppointments($businessId) {
     return $data;
 }
 
+// Get appointment by ID
+function getAppointmentById($appointmentId) {
+    $conn = getDbConnection();
+    
+    $stmt = $conn->prepare("SELECT * FROM appointments WHERE appointment_id = ?");
+    $stmt->bind_param("i", $appointmentId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $data = $result->fetch_assoc();
+    $stmt->close();
+    
+    return $data;
+}
 
-// Create a new appointment
+// Create a new appointment - WITH BUSINESS NOTIFICATION
 function createAppointment($data) {
     $conn = getDbConnection();
 
@@ -809,12 +910,30 @@ function createAppointment($data) {
         return false;
     }
     
-    // Validate employee exists (if provided)
+    // Validate employee exists (if provided) and get business_id
+    $employeeId = null;
+    $businessId = null;
+    
     if (!empty($data['employ_id'])) {
         $employee = getEmployeeById($data['employ_id']);
         if (!$employee) {
             error_log("Invalid employ_id: " . $data['employ_id']);
             return false;
+        }
+        $employeeId = $data['employ_id'];
+        $businessId = $employee['business_id']; // Get business ID from employee
+    }
+
+    // Validate service_id exists and get business_id if not already set
+    if (!empty($data['service_id'])) {
+        $service = getServiceById($data['service_id']);
+        if (!$service) {
+            error_log("Invalid service_id: " . $data['service_id']);
+            return false;
+        }
+        // Get business ID from service if not already set
+        if (!$businessId) {
+            $businessId = $service['business_id'];
         }
     }
 
@@ -823,18 +942,20 @@ function createAppointment($data) {
         ?? (($data['booking_date'] ?? '') . ' ' . ($data['booking_time'] ?? ''));
 
     $customerId = $data['customer_id'];
-    $employeeId = $data['employ_id'] ?? null;
+    $serviceId = !empty($data['service_id']) ? $data['service_id'] : null;
     $status = $data['appoint_status'] ?? 'pending';
     $notes = $data['appoint_desc'] ?? '';
 
+    // Insert appointment
     $stmt = $conn->prepare("
         INSERT INTO appointments 
-        (customer_id, employ_id, appoint_date, appoint_status, appoint_desc)
-        VALUES (?, ?, ?, ?, ?)
+        (customer_id, employ_id, service_id, appoint_date, appoint_status, appoint_desc)
+        VALUES (?, ?, ?, ?, ?, ?)
     ");
-    $stmt->bind_param("iisss",
+    $stmt->bind_param("iiisss",
         $customerId,
         $employeeId,
+        $serviceId,
         $appointDate,
         $status,
         $notes
@@ -843,6 +964,12 @@ function createAppointment($data) {
     if ($stmt->execute()) {
         $appointmentId = $conn->insert_id;
         $stmt->close();
+        
+        // ✅ NOTIFY BUSINESS about new booking
+        if ($businessId) {
+            createBusinessBookingNotification($businessId, $customerId, $appointmentId);
+        }
+        
         return $appointmentId;
     }
 
@@ -850,7 +977,6 @@ function createAppointment($data) {
     $stmt->close();
     return false;
 }
-
 
 // Update appointment status
 function updateAppointmentStatus($id, $status) {
@@ -862,7 +988,6 @@ function updateAppointmentStatus($id, $status) {
     return $success;
 }
 
-
 // Delete appointment
 function deleteAppointment($id) {
     $conn = getDbConnection();
@@ -873,6 +998,265 @@ function deleteAppointment($id) {
     return $success;
 }
 
+// Cancel appointment with business notification
+function cancelAppointment($appointmentId) {
+    $conn = getDbConnection();
+    
+    // Get appointment details before canceling
+    $appointment = getAppointmentById($appointmentId);
+    if (!$appointment) {
+        return false;
+    }
+    
+    // Get business ID from employee
+    $employee = getEmployeeById($appointment['employ_id']);
+    $businessId = $employee ? $employee['business_id'] : null;
+    
+    // Update appointment status to cancelled
+    $stmt = $conn->prepare("UPDATE appointments SET appoint_status = 'cancelled' WHERE appointment_id = ?");
+    $stmt->bind_param("i", $appointmentId);
+    
+    if ($stmt->execute()) {
+        $stmt->close();
+        
+        // Notify business about cancellation
+        if ($businessId) {
+            createBusinessCancellationNotification($businessId, $appointment['customer_id'], $appointmentId);
+        }
+        
+        // Also notify customer
+        createAppointmentNotification(
+            $appointment['customer_id'],
+            $businessId,
+            $appointmentId,
+            'cancelled'
+        );
+        
+        return true;
+    }
+    
+    $stmt->close();
+    return false;
+}
+
+// ============================================================
+// NOTIFICATION FUNCTIONS
+// ============================================================
+
+// Get customer notifications (ONLY customer-related, NOT business bookings)
+function getCustomerNotifications($customerId, $limit = null) {
+    $conn = getDbConnection();
+    
+    // Exclude "New Booking Request" and "Booking Cancelled by Customer" - those are for business only
+    $sql = "SELECT * FROM notifications 
+            WHERE customer_id = ? 
+            AND notif_title NOT LIKE '%New Booking%' 
+            AND notif_title NOT LIKE '%Cancelled by Customer%'
+            ORDER BY notif_creation DESC";
+    if ($limit) {
+        $sql .= " LIMIT ?";
+    }
+    
+    $stmt = $conn->prepare($sql);
+    
+    if ($limit) {
+        $stmt->bind_param("ii", $customerId, $limit);
+    } else {
+        $stmt->bind_param("i", $customerId);
+    }
+    
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $data = $result->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+    return $data;
+}
+
+// Count unread notifications (last 24 hours) - ONLY customer notifications
+function countUnreadNotifications($customerId) {
+    $conn = getDbConnection();
+    
+    // Exclude business-only notifications
+    $stmt = $conn->prepare("
+        SELECT COUNT(*) as count 
+        FROM notifications 
+        WHERE customer_id = ? 
+        AND notif_creation >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
+        AND notif_title NOT LIKE '%New Booking%'
+        AND notif_title NOT LIKE '%Cancelled by Customer%'
+    ");
+    $stmt->bind_param("i", $customerId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $row = $result->fetch_assoc();
+    $stmt->close();
+    
+    return $row['count'] ?? 0;
+}
+
+// Create notification for appointment status change
+function createAppointmentNotification($customerId, $businessId, $appointmentId, $status) {
+    $conn = getDbConnection();
+    
+    // Get appointment details
+    $appointment = getAppointmentById($appointmentId);
+    if (!$appointment) return false;
+    
+    // Create notification title and text based on status
+    $titles = [
+        'confirmed' => 'Appointment Confirmed',
+        'cancelled' => 'Appointment Cancelled',
+        'completed' => 'Appointment Completed'
+    ];
+    
+    $texts = [
+        'confirmed' => 'Your appointment has been confirmed! We look forward to seeing you.',
+        'cancelled' => 'Your appointment has been cancelled. Please contact us if you have any questions.',
+        'completed' => 'Thank you for visiting us! We hope you enjoyed your service.'
+    ];
+    
+    $title = $titles[$status] ?? 'Appointment Update';
+    $text = $texts[$status] ?? 'Your appointment status has been updated.';
+    
+    $stmt = $conn->prepare("
+        INSERT INTO notifications 
+        (business_id, customer_id, notif_title, notif_text)
+        VALUES (?, ?, ?, ?)
+    ");
+    
+    $stmt->bind_param("iiss", $businessId, $customerId, $title, $text);
+    $success = $stmt->execute();
+    $stmt->close();
+    
+    return $success;
+}
+
+// Get business notifications (reusing notifications table)
+function getBusinessNotifications($businessId, $limit = null) {
+    $conn = getDbConnection();
+    
+    $sql = "SELECT n.*, c.fname, c.surname 
+            FROM notifications n
+            LEFT JOIN customers c ON n.customer_id = c.customer_id
+            WHERE n.business_id = ? 
+            ORDER BY n.notif_creation DESC";
+    
+    if ($limit) {
+        $sql .= " LIMIT ?";
+    }
+    
+    $stmt = $conn->prepare($sql);
+    
+    if ($limit) {
+        $stmt->bind_param("ii", $businessId, $limit);
+    } else {
+        $stmt->bind_param("i", $businessId);
+    }
+    
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $data = $result->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+    return $data;
+}
+
+// Count recent business notifications (last 24 hours with "New Booking")
+function countRecentBusinessNotifications($businessId) {
+    $conn = getDbConnection();
+    
+    $stmt = $conn->prepare("
+        SELECT COUNT(*) as count 
+        FROM notifications 
+        WHERE business_id = ? 
+        AND notif_creation >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
+        AND notif_title LIKE '%New Booking%'
+    ");
+    $stmt->bind_param("i", $businessId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $row = $result->fetch_assoc();
+    $stmt->close();
+    
+    return $row['count'] ?? 0;
+}
+
+// Create notification when customer books appointment
+function createBusinessBookingNotification($businessId, $customerId, $appointmentId) {
+    $conn = getDbConnection();
+    
+    // Get customer and appointment details
+    $customer = getCustomerById($customerId);
+    $appointment = getAppointmentById($appointmentId);
+    
+    if (!$customer || !$appointment) return false;
+    
+    $customerName = trim($customer['fname'] . ' ' . ($customer['surname'] ?? ''));
+    $appointDate = date('F j, Y g:i A', strtotime($appointment['appoint_date']));
+    
+    $title = 'New Booking Request';
+    $text = "{$customerName} has booked an appointment for {$appointDate}. Please review and confirm.";
+    
+    $stmt = $conn->prepare("
+        INSERT INTO notifications 
+        (business_id, customer_id, notif_title, notif_text)
+        VALUES (?, ?, ?, ?)
+    ");
+    
+    $stmt->bind_param("iiss", $businessId, $customerId, $title, $text);
+    $success = $stmt->execute();
+    $stmt->close();
+    
+    return $success;
+}
+
+// Create notification when customer cancels appointment
+function createBusinessCancellationNotification($businessId, $customerId, $appointmentId) {
+    $conn = getDbConnection();
+    
+    $customer = getCustomerById($customerId);
+    $appointment = getAppointmentById($appointmentId);
+    
+    if (!$customer || !$appointment) return false;
+    
+    $customerName = trim($customer['fname'] . ' ' . ($customer['surname'] ?? ''));
+    $appointDate = date('F j, Y g:i A', strtotime($appointment['appoint_date']));
+    
+    $title = 'Booking Cancelled by Customer';
+    $text = "{$customerName} has cancelled their appointment scheduled for {$appointDate}.";
+    
+    $stmt = $conn->prepare("
+        INSERT INTO notifications 
+        (business_id, customer_id, notif_title, notif_text)
+        VALUES (?, ?, ?, ?)
+    ");
+    
+    $stmt->bind_param("iiss", $businessId, $customerId, $title, $text);
+    $success = $stmt->execute();
+    $stmt->close();
+    
+    return $success;
+}
+
+// Time ago function for notifications
+function timeAgo($datetime) {
+    $timestamp = strtotime($datetime);
+    $difference = time() - $timestamp;
+    
+    if ($difference < 60) {
+        return 'Just now';
+    } elseif ($difference < 3600) {
+        $mins = floor($difference / 60);
+        return $mins . ' minute' . ($mins > 1 ? 's' : '') . ' ago';
+    } elseif ($difference < 86400) {
+        $hours = floor($difference / 3600);
+        return $hours . ' hour' . ($hours > 1 ? 's' : '') . ' ago';
+    } elseif ($difference < 604800) {
+        $days = floor($difference / 86400);
+        return $days . ' day' . ($days > 1 ? 's' : '') . ' ago';
+    } else {
+        return date('M j, Y', $timestamp);
+    }
+}
 
 // ============================================================
 // LOCATION & DISTANCE FUNCTIONS
@@ -913,7 +1297,7 @@ function getBusinessesWithDistance($userLat = null, $userLon = null) {
     return $businesses;
 }
 
-// Calculate distance between two coordinates (Haversine formula) - LEGACY
+// Calculate distance between two coordinates (Haversine formula)
 function calculateDistance($lat1, $lon1, $lat2, $lon2) {
     $earthRadius = 6371; // km
     
@@ -930,134 +1314,24 @@ function calculateDistance($lat1, $lon1, $lat2, $lon2) {
     return round($distance, 1);
 }
 
-// Get existing album or create a new one if none exists 
-function getOrCreateBusinessAlbum($businessId) {
-    $conn = getDbConnection();
-
-    // Try to fetch an existing album
-    $stmt = $conn->prepare("SELECT * FROM albums WHERE business_id = ?");
-    $stmt->bind_param("i", $businessId); 
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $album = $result->fetch_assoc();
-    $stmt->close();
-
-    // If no album exists, create one
-    if (!$album) {
-        $stmt = $conn->prepare("INSERT INTO albums (business_id) VALUES (?)");
-        $stmt->bind_param("i", $businessId);
-
-        if ($stmt->execute()) {
-            // Retrieve the newly created album record
-            $newId = $conn->insert_id;
-            $stmt->close();
-            
-            $stmt = $conn->prepare("SELECT * FROM albums WHERE album_id = ?");
-            $stmt->bind_param("i", $newId);
-            $stmt->execute();
-            $result = $stmt->get_result();
-            $album = $result->fetch_assoc();
-            $stmt->close();
-        }
-    }
-
-    return $album;
-}
-
-
-// Update album images (logo + up to 10 images) - FIXED
-function updateAlbumImages($businessId, $images) {
-    $conn = getDbConnection();
-
-    $stmt = $conn->prepare("
-        UPDATE albums 
-        SET logo = ?, image1 = ?, image2 = ?, image3 = ?, image4 = ?, 
-            image5 = ?, image6 = ?, image7 = ?, image8 = ?, image9 = ?, image10 = ?
-        WHERE business_id = ?
-    ");
-
-    $null = null;
-    // Use 's' for string/blob, not 'b' - FIXED
-    $stmt->bind_param(
-        "sssssssssssi",
-        $null, $null, $null, $null, $null,
-        $null, $null, $null, $null, $null, $null,
-        $businessId
-    );
-
-    // Send binary data for each non-empty image
-    $imageSlots = [
-        'logo' => 0,
-        0 => 1, 1 => 2, 2 => 3, 3 => 4, 4 => 5,
-        5 => 6, 6 => 7, 7 => 8, 8 => 9, 9 => 10
-    ];
-
-    foreach ($imageSlots as $key => $index) {
-        if (isset($images[$key]) && !empty($images[$key])) {
-            $stmt->send_long_data($index, $images[$key]);
-        }
-    }
-
-    $success = $stmt->execute();
-    $stmt->close();
-    return $success;
-}
-
-
-// Get all album images (logo + 10 gallery images)
-function getAlbumImagesArray($businessId, $asBase64 = true) {
-    $album = getOrCreateBusinessAlbum($businessId);
-    $images = [];
-
-    if ($album) {
-        // Include logo if available
-        if (!empty($album['logo'])) {
-            $images['logo'] = $asBase64
-                ? 'data:image/jpeg;base64,' . base64_encode($album['logo'])
-                : $album['logo'];
-        }
-
-        // Include images 1-10
-        for ($i = 1; $i <= 10; $i++) {
-            $key = 'image' . $i;
-            if (!empty($album[$key])) {
-                $images[$key] = $asBase64
-                    ? 'data:image/jpeg;base64,' . base64_encode($album[$key])
-                    : $album[$key];
-            }
-        }
-    }
-
-    return $images;
-}
-
-
 // ============================================================
 // UTILITY FUNCTIONS
 // ============================================================
 
-// ---------------------------
-// SESSION HELPERS
-// ---------------------------
-
-// Check if *any* user (customer or business) is logged in
-function isLoggedIn(): bool {
+// Check if any user (customer or business) is logged in
+function isLoggedIn() {
     return isset($_SESSION['customer_id']) || isset($_SESSION['business_id']);
 }
 
 // Check if a business is logged in
-function isBusinessLoggedIn(): bool {
+function isBusinessLoggedIn() {
     return isset($_SESSION['business_id']);
 }
 
 // Check if a customer is logged in
-function isCustomerLoggedIn(): bool {
+function isCustomerLoggedIn() {
     return isset($_SESSION['customer_id']);
 }
-
-// ---------------------------
-// GET CURRENT USER/BUSINESS
-// ---------------------------
 
 // Get the current logged-in customer (if any)
 function getCurrentCustomer() {
@@ -1075,38 +1349,40 @@ function getCurrentBusiness() {
     return null;
 }
 
-// ---------------------------
-// DATA VALIDATION + SANITIZATION
-// ---------------------------
-
-// Sanitize input (remove HTML, JS, and trim spaces)
-function sanitize(string $data): string {
+// Sanitize data
+function sanitize($data) {
+    // Handle null or non-string values
+    if ($data === null || $data === '') {
+        return '';
+    }
+    
+    // Convert to string if not already
+    if (!is_string($data)) {
+        $data = (string)$data;
+    }
+    
     return htmlspecialchars(strip_tags(trim($data)), ENT_QUOTES, 'UTF-8');
 }
 
 // Validate email format
-function isValidEmail(string $email): bool {
+function isValidEmail($email) {
     return filter_var($email, FILTER_VALIDATE_EMAIL) !== false;
 }
 
-// ---------------------------
-// DATE/TIME FORMATTERS
-// ---------------------------
-
 // Format date (e.g., October 28, 2025)
-function formatDate(?string $date): string {
+function formatDate($date) {
     if (empty($date)) return '';
     return date('F j, Y', strtotime($date));
 }
 
 // Format time (e.g., 3:45 PM)
-function formatTime(?string $time): string {
+function formatTime($time) {
     if (empty($time)) return '';
     return date('g:i A', strtotime($time));
 }
 
 // Format datetime (e.g., October 28, 2025 3:45 PM)
-function formatDateTime(?string $datetime): string {
+function formatDateTime($datetime) {
     if (empty($datetime)) return '';
     return date('F j, Y g:i A', strtotime($datetime));
 }

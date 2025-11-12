@@ -13,6 +13,96 @@
     
     <!-- Custom CSS -->
     <link rel="stylesheet" href="styles.css?v=<?php echo time(); ?>">
+    
+    <style>
+        /* Notification bell styling */
+        .notification-bell {
+            position: relative;
+            font-size: 1.3rem;
+            color: var(--color-burgundy);
+            transition: all 0.3s ease;
+        }
+        
+        .notification-bell:hover {
+            color: var(--color-rose);
+            transform: scale(1.1);
+        }
+        
+        .notification-badge {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background-color: #dc3545;
+            color: white;
+            border-radius: 50%;
+            padding: 2px 6px;
+            font-size: 0.7rem;
+            font-weight: bold;
+            min-width: 18px;
+            text-align: center;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        
+        .notification-dropdown {
+            width: 350px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .notification-item {
+            padding: 12px;
+            border-bottom: 1px solid #e0e0e0;
+            transition: background-color 0.2s;
+        }
+        
+        .notification-item:hover {
+            background-color: var(--color-cream);
+        }
+        
+        .notification-item.unread {
+            background-color: #fff5f5;
+        }
+        
+        .notification-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+        
+        .notification-icon.confirmed {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        
+        .notification-icon.cancelled {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        
+        .notification-icon.completed {
+            background-color: #d1ecf1;
+            color: #0c5460;
+        }
+        
+        .notification-icon.new-booking {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        
+        .notification-time {
+            font-size: 0.75rem;
+            color: #6c757d;
+        }
+    </style>
 </head>
 <body>
     <!-- Navigation -->
@@ -56,6 +146,122 @@
                             $displayName = $currentUser['fname'] ?? 'User';
                         }
                         ?>
+                        
+                        <!-- Notification Bell for BOTH Customer and Business -->
+                        <?php if (isCustomerLoggedIn()): ?>
+                            <!-- CUSTOMER NOTIFICATIONS -->
+                            <?php 
+                            $notifications = getCustomerNotifications($currentUser['customer_id']);
+                            $unreadCount = countUnreadNotifications($currentUser['customer_id']);
+                            ?>
+                            <li class="nav-item dropdown me-3">
+                                <a class="nav-link position-relative" href="#" id="notificationDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="bi bi-bell-fill notification-bell"></i>
+                                    <?php if ($unreadCount > 0): ?>
+                                        <span class="notification-badge"><?php echo $unreadCount; ?></span>
+                                    <?php endif; ?>
+                                </a>
+                                <ul class="dropdown-menu dropdown-menu-end notification-dropdown" aria-labelledby="notificationDropdown">
+                                    <li class="px-3 py-2 border-bottom">
+                                        <strong>Notifications</strong>
+                                        <?php if ($unreadCount > 0): ?>
+                                            <span class="badge bg-danger float-end"><?php echo $unreadCount; ?> new</span>
+                                        <?php endif; ?>
+                                    </li>
+                                    
+                                    <?php if (empty($notifications)): ?>
+                                        <li class="px-3 py-4 text-center text-muted">
+                                            <i class="bi bi-inbox" style="font-size: 2rem;"></i>
+                                            <p class="mb-0 mt-2">No notifications yet</p>
+                                        </li>
+                                    <?php else: ?>
+                                        <?php foreach (array_slice($notifications, 0, 5) as $notif): ?>
+                                            <li>
+                                                <a href="notifications.php" class="notification-item d-flex text-decoration-none text-dark">
+                                                    <div class="notification-icon <?php echo strpos(strtolower($notif['notif_title']), 'confirmed') !== false ? 'confirmed' : (strpos(strtolower($notif['notif_title']), 'completed') !== false ? 'completed' : 'cancelled'); ?> flex-shrink-0">
+                                                        <i class="bi <?php 
+                                                            if (strpos(strtolower($notif['notif_title']), 'confirmed') !== false) {
+                                                                echo 'bi-check-circle-fill';
+                                                            } elseif (strpos(strtolower($notif['notif_title']), 'completed') !== false) {
+                                                                echo 'bi-star-fill';
+                                                            } else {
+                                                                echo 'bi-x-circle-fill';
+                                                            }
+                                                        ?>"></i>
+                                                    </div>
+                                                    <div class="ms-3 flex-grow-1">
+                                                        <div class="fw-semibold"><?php echo htmlspecialchars($notif['notif_title']); ?></div>
+                                                        <div class="small text-muted"><?php echo htmlspecialchars($notif['notif_text']); ?></div>
+                                                        <div class="notification-time mt-1">
+                                                            <i class="bi bi-clock"></i> <?php echo timeAgo($notif['notif_creation']); ?>
+                                                        </div>
+                                                    </div>
+                                                </a>
+                                            </li>
+                                        <?php endforeach; ?>
+                                        
+                                        <li class="px-3 py-2 border-top text-center">
+                                            <a href="notifications.php" class="text-decoration-none">
+                                                View all notifications <i class="bi bi-arrow-right"></i>
+                                            </a>
+                                        </li>
+                                    <?php endif; ?>
+                                </ul>
+                            </li>
+                        <?php elseif (isBusinessLoggedIn()): ?>
+                            <!-- BUSINESS NOTIFICATIONS -->
+                            <?php 
+                            $businessNotifications = getBusinessNotifications($currentUser['business_id'], 10);
+                            $businessUnreadCount = countRecentBusinessNotifications($currentUser['business_id']);
+                            ?>
+                            <li class="nav-item dropdown me-3">
+                                <a class="nav-link position-relative" href="#" id="businessNotificationDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="bi bi-bell-fill notification-bell"></i>
+                                    <?php if ($businessUnreadCount > 0): ?>
+                                        <span class="notification-badge"><?php echo $businessUnreadCount; ?></span>
+                                    <?php endif; ?>
+                                </a>
+                                <ul class="dropdown-menu dropdown-menu-end notification-dropdown" aria-labelledby="businessNotificationDropdown">
+                                    <li class="px-3 py-2 border-bottom">
+                                        <strong>Recent Bookings</strong>
+                                        <?php if ($businessUnreadCount > 0): ?>
+                                            <span class="badge bg-danger float-end"><?php echo $businessUnreadCount; ?> new</span>
+                                        <?php endif; ?>
+                                    </li>
+                                    
+                                    <?php if (empty($businessNotifications)): ?>
+                                        <li class="px-3 py-4 text-center text-muted">
+                                            <i class="bi bi-inbox" style="font-size: 2rem;"></i>
+                                            <p class="mb-0 mt-2">No notifications yet</p>
+                                        </li>
+                                    <?php else: ?>
+                                        <?php foreach ($businessNotifications as $notif): ?>
+                                            <li>
+                                                <a href="business-dashboard.php" class="notification-item d-flex text-decoration-none text-dark">
+                                                    <div class="notification-icon <?php echo strpos($notif['notif_title'], 'New Booking') !== false ? 'new-booking' : 'cancelled'; ?> flex-shrink-0">
+                                                        <i class="bi <?php echo strpos($notif['notif_title'], 'New Booking') !== false ? 'bi-calendar-plus-fill' : 'bi-x-circle-fill'; ?>"></i>
+                                                    </div>
+                                                    <div class="ms-3 flex-grow-1">
+                                                        <div class="fw-semibold"><?php echo htmlspecialchars($notif['notif_title']); ?></div>
+                                                        <div class="small text-muted"><?php echo htmlspecialchars($notif['notif_text']); ?></div>
+                                                        <div class="notification-time mt-1">
+                                                            <i class="bi bi-clock"></i> <?php echo timeAgo($notif['notif_creation']); ?>
+                                                        </div>
+                                                    </div>
+                                                </a>
+                                            </li>
+                                        <?php endforeach; ?>
+                                        
+                                        <li class="px-3 py-2 border-top text-center">
+                                            <a href="business-dashboard.php" class="text-decoration-none">
+                                                View dashboard <i class="bi bi-arrow-right"></i>
+                                            </a>
+                                        </li>
+                                    <?php endif; ?>
+                                </ul>
+                            </li>
+                        <?php endif; ?>
+                        
                         <?php if (isBusinessLoggedIn()): ?>
                             <li class="nav-item dropdown">
                                 <a class="nav-link dropdown-toggle" href="#" id="businessDropdown" role="button" data-bs-toggle="dropdown">

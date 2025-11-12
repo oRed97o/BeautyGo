@@ -10,12 +10,83 @@ if (!isBusinessLoggedIn()) {
 
 $business = getCurrentBusiness();
 $businessId = $business['business_id'] ?? $business['id'];
+
+// Handle appointment status update with notification
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
+    $appointmentId = intval($_POST['appointment_id']);
+    $newStatus = sanitize($_POST['status']);
+    
+    // Get appointment details before updating
+    $appointment = getAppointmentById($appointmentId);
+    
+    if ($appointment && updateAppointmentStatus($appointmentId, $newStatus)) {
+        // Send notification to customer
+        createAppointmentNotification(
+            $appointment['customer_id'],
+            $businessId,
+            $appointmentId,
+            $newStatus
+        );
+        
+        $statusText = ucfirst($newStatus);
+        $_SESSION['success'] = "Appointment {$statusText} successfully! Customer has been notified.";
+    } else {
+        $_SESSION['error'] = 'Failed to update appointment status';
+    }
+    
+    header('Location: business-dashboard.php');
+    exit;
+}
+
+// Handle service management
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_service'])) {
+    $serviceData = [
+        'business_id' => $businessId,
+        'service_name' => sanitize($_POST['service_name']),
+        'service_type' => sanitize($_POST['service_type'] ?? ''),
+        'service_desc' => sanitize($_POST['service_desc']),
+        'cost' => floatval($_POST['cost']),
+        'duration' => intval($_POST['duration'])
+    ];
+    
+    if (createService($serviceData)) {
+        $_SESSION['success'] = 'Service added successfully!';
+    } else {
+        $_SESSION['error'] = 'Failed to add service';
+    }
+    
+    header('Location: business-dashboard.php#services');
+    exit;
+}
+
+// Handle staff management
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_staff'])) {
+    $staffData = [
+        'business_id' => $businessId,
+        'employ_fname' => sanitize($_POST['employ_fname']),
+        'employ_lname' => sanitize($_POST['employ_lname']),
+        'specialization' => sanitize($_POST['specialization']),
+        'skills' => sanitize($_POST['skills'] ?? ''),
+        'employ_bio' => sanitize($_POST['employ_bio'] ?? ''),
+        'employ_status' => 'available'
+    ];
+    
+    if (createEmployee($staffData)) {
+        $_SESSION['success'] = 'Staff member added successfully!';
+    } else {
+        $_SESSION['error'] = 'Failed to add staff member';
+    }
+    
+    header('Location: business-dashboard.php#staff');
+    exit;
+}
+
 $bookings = getBusinessAppointments($businessId);
 $services = getBusinessServices($businessId);
 $staff = getBusinessEmployees($businessId);
 $reviews = getBusinessReviews($businessId);
 
-// Calculate stats - Updated for new schema
+// Calculate stats
 $todayBookings = array_filter($bookings, function($b) {
     return date('Y-m-d', strtotime($b['appoint_date'])) == date('Y-m-d');
 });
@@ -24,7 +95,7 @@ $pendingBookings = array_filter($bookings, function($b) {
     return $b['appoint_status'] == 'pending';
 });
 
-$totalRevenue = array_sum(array_column($bookings, 'cost')); //check again ------------------------------------------------------
+$totalRevenue = array_sum(array_column($bookings, 'cost'));
 
 $pageTitle = 'Business Dashboard - BeautyGo';
 include 'includes/header.php';
@@ -54,6 +125,36 @@ include 'includes/header.php';
 .back-button i {
     font-size: 1.2rem;
 }
+
+/* Status action buttons */
+.status-actions {
+    display: flex;
+    gap: 5px;
+}
+
+.status-actions form {
+    margin: 0;
+}
+
+.notification-alert {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    min-width: 300px;
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(400px);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
 </style>
 
 <main>
@@ -65,7 +166,7 @@ include 'includes/header.php';
         </a>
 
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2>Business Dashboard</h2>
+            <h2><i class="bi bi-speedometer2"></i> Business Dashboard</h2>
             <a href="business-profile.php" class="btn btn-outline-primary">
                 <i class="bi bi-gear"></i> Manage Profile
             </a>
@@ -76,32 +177,52 @@ include 'includes/header.php';
             <div class="col-md-3">
                 <div class="card stat-card">
                     <div class="card-body">
-                        <h6 class="text-muted mb-2">Today's Bookings</h6>
-                        <h3 class="mb-0"><?php echo count($todayBookings); ?></h3>
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-calendar-day" style="font-size: 2rem; color: var(--color-burgundy);"></i>
+                            <div class="ms-3">
+                                <h6 class="text-muted mb-0">Today's Bookings</h6>
+                                <h3 class="mb-0"><?php echo count($todayBookings); ?></h3>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
             <div class="col-md-3">
                 <div class="card stat-card burgundy">
                     <div class="card-body">
-                        <h6 class="text-muted mb-2">Pending Bookings</h6>
-                        <h3 class="mb-0"><?php echo count($pendingBookings); ?></h3>
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-hourglass-split" style="font-size: 2rem; color: var(--color-burgundy);"></i>
+                            <div class="ms-3">
+                                <h6 class="text-muted mb-0">Pending Bookings</h6>
+                                <h3 class="mb-0"><?php echo count($pendingBookings); ?></h3>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
             <div class="col-md-3">
                 <div class="card stat-card pink">
                     <div class="card-body">
-                        <h6 class="text-muted mb-2">Total Services</h6>
-                        <h3 class="mb-0"><?php echo count($services); ?></h3>
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-scissors" style="font-size: 2rem; color: var(--color-burgundy);"></i>
+                            <div class="ms-3">
+                                <h6 class="text-muted mb-0">Total Services</h6>
+                                <h3 class="mb-0"><?php echo count($services); ?></h3>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
             <div class="col-md-3">
                 <div class="card stat-card">
                     <div class="card-body">
-                        <h6 class="text-muted mb-2">Total Revenue</h6>
-                        <h3 class="mb-0">₱<?php echo number_format($totalRevenue, 2); ?></h3>
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-cash-stack" style="font-size: 2rem; color: var(--color-burgundy);"></i>
+                            <div class="ms-3">
+                                <h6 class="text-muted mb-0">Total Revenue</h6>
+                                <h3 class="mb-0">₱<?php echo number_format($totalRevenue, 2); ?></h3>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -112,6 +233,9 @@ include 'includes/header.php';
             <li class="nav-item" role="presentation">
                 <button class="nav-link active" id="bookings-tab" data-bs-toggle="tab" data-bs-target="#bookings" type="button">
                     <i class="bi bi-calendar-check"></i> Bookings
+                    <?php if (count($pendingBookings) > 0): ?>
+                        <span class="badge bg-danger ms-1"><?php echo count($pendingBookings); ?></span>
+                    <?php endif; ?>
                 </button>
             </li>
             <li class="nav-item" role="presentation">
@@ -136,17 +260,21 @@ include 'includes/header.php';
             <div class="tab-pane fade show active" id="bookings" role="tabpanel">
                 <div class="card">
                     <div class="card-body">
-                        <h4 class="mb-3">Manage Bookings</h4>
+                        <h4 class="mb-3">
+                            <i class="bi bi-calendar-check"></i> Manage Bookings
+                            <small class="text-muted">(Customer will be notified automatically)</small>
+                        </h4>
                         <?php if (empty($bookings)): ?>
-                            <div class="empty-state">
-                                <i class="bi bi-calendar-x"></i>
-                                <p>No bookings yet</p>
+                            <div class="empty-state text-center py-5">
+                                <i class="bi bi-calendar-x" style="font-size: 4rem; color: #ccc;"></i>
+                                <p class="text-muted mt-3">No bookings yet</p>
                             </div>
                         <?php else: ?>
                             <div class="table-responsive">
                                 <table class="table table-hover">
                                     <thead>
                                         <tr>
+                                            <th>ID</th>
                                             <th>Date & Time</th>
                                             <th>Customer</th>
                                             <th>Phone</th>
@@ -160,30 +288,54 @@ include 'includes/header.php';
                                     <tbody>
                                         <?php foreach ($bookings as $booking): ?>
                                             <tr>
-                                                <td><?php echo formatDateTime($booking['appoint_date']); ?></td>
-                                                    <td><?php echo htmlspecialchars($booking['customer_fname'] . ' ' . $booking['customer_lname']); ?></td>
-                                                    <td><?php echo htmlspecialchars($booking['customer_phone'] ?? 'N/A'); ?></td>
-                                                    <td><?php echo htmlspecialchars($booking['service_name']); ?></td>
-                                                    <td><?php echo htmlspecialchars(($booking['staff_fname'] ?? '') . ' ' . ($booking['staff_lname'] ?? '') ?: 'Any Available'); ?></td>
-                                                    <td>₱<?php echo number_format($booking['cost'] ?? 0, 2); ?></td>
-                                                    <td>
-                                                        <span class="badge status-<?php echo $booking['appoint_status']; ?>">
-                                                            <?php echo ucfirst($booking['appoint_status']); ?>
-                                                        </span>
-                                                    </td>
+                                                <td>#<?php echo $booking['appointment_id']; ?></td>
                                                 <td>
-                                                    <?php if ($booking['appoint_status'] == 'pending'): ?>
-                                                        <button class="btn btn-sm btn-success" onclick="updateBookingStatus('<?php echo $booking['appointment_id']; ?>', 'confirmed')">
-                                                            Confirm
-                                                        </button>
-                                                        <button class="btn btn-sm btn-danger" onclick="updateBookingStatus('<?php echo $booking['appointment_id']; ?>', 'cancelled')">
-                                                            Cancel
-                                                        </button>
-                                                    <?php elseif ($booking['appoint_status'] == 'confirmed'): ?>
-                                                        <button class="btn btn-sm btn-info" onclick="updateBookingStatus('<?php echo $booking['appointment_id']; ?>', 'completed')">
-                                                            Complete
-                                                        </button>
-                                                    <?php endif; ?>
+                                                    <strong><?php echo date('M j, Y', strtotime($booking['appoint_date'])); ?></strong><br>
+                                                    <small class="text-muted"><?php echo date('g:i A', strtotime($booking['appoint_date'])); ?></small>
+                                                </td>
+                                                <td><?php echo htmlspecialchars($booking['customer_fname'] . ' ' . $booking['customer_lname']); ?></td>
+                                                <td><?php echo htmlspecialchars($booking['customer_phone'] ?? 'N/A'); ?></td>
+                                                <td><?php echo htmlspecialchars($booking['service_name']); ?></td>
+                                                <td><?php echo htmlspecialchars(($booking['staff_fname'] ?? '') . ' ' . ($booking['staff_lname'] ?? '') ?: 'Any Available'); ?></td>
+                                                <td><strong>₱<?php echo number_format($booking['cost'] ?? 0, 2); ?></strong></td>
+                                                <td>
+                                                    <span class="badge status-<?php echo $booking['appoint_status']; ?> bg-<?php 
+                                                        echo $booking['appoint_status'] === 'confirmed' ? 'success' : 
+                                                             ($booking['appoint_status'] === 'cancelled' ? 'danger' : 
+                                                             ($booking['appoint_status'] === 'completed' ? 'info' : 'warning')); 
+                                                    ?>">
+                                                        <?php echo ucfirst($booking['appoint_status']); ?>
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <div class="status-actions">
+                                                        <?php if ($booking['appoint_status'] == 'pending'): ?>
+                                                            <form method="POST" class="d-inline">
+                                                                <input type="hidden" name="appointment_id" value="<?php echo $booking['appointment_id']; ?>">
+                                                                <input type="hidden" name="status" value="confirmed">
+                                                                <button type="submit" name="update_status" class="btn btn-sm btn-success" title="Confirm & Notify Customer">
+                                                                    <i class="bi bi-check-circle"></i>
+                                                                </button>
+                                                            </form>
+                                                            <form method="POST" class="d-inline">
+                                                                <input type="hidden" name="appointment_id" value="<?php echo $booking['appointment_id']; ?>">
+                                                                <input type="hidden" name="status" value="cancelled">
+                                                                <button type="submit" name="update_status" class="btn btn-sm btn-danger" title="Cancel & Notify Customer" onclick="return confirm('Cancel this appointment? Customer will be notified.')">
+                                                                    <i class="bi bi-x-circle"></i>
+                                                                </button>
+                                                            </form>
+                                                        <?php elseif ($booking['appoint_status'] == 'confirmed'): ?>
+                                                            <form method="POST" class="d-inline">
+                                                                <input type="hidden" name="appointment_id" value="<?php echo $booking['appointment_id']; ?>">
+                                                                <input type="hidden" name="status" value="completed">
+                                                                <button type="submit" name="update_status" class="btn btn-sm btn-info" title="Mark as Completed">
+                                                                    <i class="bi bi-check-all"></i> Complete
+                                                                </button>
+                                                            </form>
+                                                        <?php else: ?>
+                                                            <span class="text-muted">-</span>
+                                                        <?php endif; ?>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         <?php endforeach; ?>
@@ -200,15 +352,15 @@ include 'includes/header.php';
                 <div class="card">
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-center mb-3">
-                            <h4 class="mb-0">Manage Services</h4>
+                            <h4 class="mb-0"><i class="bi bi-scissors"></i> Manage Services</h4>
                             <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addServiceModal">
                                 <i class="bi bi-plus-circle"></i> Add Service
                             </button>
                         </div>
                         <?php if (empty($services)): ?>
-                            <div class="empty-state">
-                                <i class="bi bi-clipboard-x"></i>
-                                <p>No services added yet</p>
+                            <div class="empty-state text-center py-5">
+                                <i class="bi bi-clipboard-x" style="font-size: 4rem; color: #ccc;"></i>
+                                <p class="text-muted mt-3">No services added yet</p>
                             </div>
                         <?php else: ?>
                             <div class="table-responsive">
@@ -216,6 +368,7 @@ include 'includes/header.php';
                                     <thead>
                                         <tr>
                                             <th>Service Name</th>
+                                            <th>Type</th>
                                             <th>Description</th>
                                             <th>Duration</th>
                                             <th>Price</th>
@@ -225,13 +378,18 @@ include 'includes/header.php';
                                     <tbody>
                                         <?php foreach ($services as $service): ?>
                                             <tr>
-                                                <td><?php echo htmlspecialchars($service['service_name']); ?></td>
+                                                <td><strong><?php echo htmlspecialchars($service['service_name']); ?></strong></td>
+                                                <td><?php echo htmlspecialchars($service['service_type'] ?? 'General'); ?></td>
                                                 <td><?php echo htmlspecialchars(substr($service['service_desc'] ?? '', 0, 50)); ?><?php echo strlen($service['service_desc'] ?? '') > 50 ? '...' : ''; ?></td>
-                                                <td><?php echo htmlspecialchars($service['duration']); ?></td>
-                                                <td>₱<?php echo number_format($service['cost'], 2); ?></td>
+                                                <td><?php echo htmlspecialchars($service['duration']); ?> min</td>
+                                                <td><strong>₱<?php echo number_format($service['cost'], 2); ?></strong></td>
                                                 <td>
-                                                    <button class="btn btn-sm btn-outline-primary">Edit</button>
-                                                    <button class="btn btn-sm btn-outline-danger" onclick="return confirmDelete('Delete this service?')">Delete</button>
+                                                    <button class="btn btn-sm btn-outline-primary" title="Edit Service">
+                                                        <i class="bi bi-pencil"></i>
+                                                    </button>
+                                                    <button class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete this service?')" title="Delete Service">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
                                                 </td>
                                             </tr>
                                         <?php endforeach; ?>
@@ -248,15 +406,15 @@ include 'includes/header.php';
                 <div class="card">
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-center mb-3">
-                            <h4 class="mb-0">Manage Staff</h4>
+                            <h4 class="mb-0"><i class="bi bi-people"></i> Manage Staff</h4>
                             <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addStaffModal">
                                 <i class="bi bi-person-plus"></i> Add Staff
                             </button>
                         </div>
                         <?php if (empty($staff)): ?>
-                            <div class="empty-state">
-                                <i class="bi bi-people"></i>
-                                <p>No staff members added yet</p>
+                            <div class="empty-state text-center py-5">
+                                <i class="bi bi-people" style="font-size: 4rem; color: #ccc;"></i>
+                                <p class="text-muted mt-3">No staff members added yet</p>
                             </div>
                         <?php else: ?>
                             <div class="row">
@@ -266,10 +424,10 @@ include 'includes/header.php';
                                         $specialty = $member['specialization'] ?? 'General Services';
                                     ?>
                                     <div class="col-md-6 col-lg-4 mb-3">
-                                        <div class="card">
+                                        <div class="card h-100">
                                             <div class="card-body text-center">
-                                                <?php if (isset($member['photo']) && !empty($member['photo'])): ?>
-                                                    <img src="<?php echo htmlspecialchars($member['photo']); ?>" alt="<?php echo htmlspecialchars($employeeName); ?>" class="rounded-circle mb-2" style="width: 80px; height: 80px; object-fit: cover;">
+                                                <?php if (isset($member['employ_img']) && !empty($member['employ_img'])): ?>
+                                                    <img src="data:image/jpeg;base64,<?php echo base64_encode($member['employ_img']); ?>" alt="<?php echo htmlspecialchars($employeeName); ?>" class="rounded-circle mb-2" style="width: 80px; height: 80px; object-fit: cover;">
                                                 <?php else: ?>
                                                     <div class="bg-secondary rounded-circle d-inline-flex align-items-center justify-content-center mb-2" style="width: 80px; height: 80px;">
                                                         <i class="bi bi-person-fill text-white" style="font-size: 2rem;"></i>
@@ -277,9 +435,12 @@ include 'includes/header.php';
                                                 <?php endif; ?>
                                                 <h6><?php echo htmlspecialchars($employeeName); ?></h6>
                                                 <p class="text-muted small mb-2"><?php echo htmlspecialchars($specialty); ?></p>
-                                                <div class="btn-group btn-group-sm">
-                                                    <button class="btn btn-outline-primary">Edit</button>
-                                                    <button class="btn btn-outline-danger" onclick="return confirmDelete('Remove this staff member?')">Remove</button>
+                                                <span class="badge bg-<?php echo $member['employ_status'] === 'available' ? 'success' : 'secondary'; ?> mb-2">
+                                                    <?php echo ucfirst($member['employ_status'] ?? 'available'); ?>
+                                                </span>
+                                                <div class="btn-group btn-group-sm d-block">
+                                                    <button class="btn btn-outline-primary"><i class="bi bi-pencil"></i> Edit</button>
+                                                    <button class="btn btn-outline-danger" onclick="return confirm('Remove this staff member?')"><i class="bi bi-trash"></i></button>
                                                 </div>
                                             </div>
                                         </div>
@@ -295,18 +456,21 @@ include 'includes/header.php';
             <div class="tab-pane fade" id="reviews" role="tabpanel">
                 <div class="card">
                     <div class="card-body">
-                        <h4 class="mb-3">Customer Reviews</h4>
+                        <h4 class="mb-3"><i class="bi bi-star-fill"></i> Customer Reviews</h4>
                         <?php if (empty($reviews)): ?>
-                            <div class="empty-state">
-                                <i class="bi bi-chat-square-text"></i>
-                                <p>No reviews yet</p>
+                            <div class="empty-state text-center py-5">
+                                <i class="bi bi-chat-square-text" style="font-size: 4rem; color: #ccc;"></i>
+                                <p class="text-muted mt-3">No reviews yet</p>
                             </div>
                         <?php else: ?>
                             <?php foreach ($reviews as $review): ?>
-                                <div class="review-item">
-                                    <div class="d-flex justify-content-between align-items-start mb-1">
-                                        <strong><?php echo htmlspecialchars($review['customer_fname'] . ' ' . $review['customer_lname']); ?></strong>
-                                        <div class="rating">
+                                <div class="review-item border-bottom pb-3 mb-3">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <div>
+                                            <strong><?php echo htmlspecialchars($review['customer_fname'] . ' ' . $review['customer_lname']); ?></strong>
+                                            <br><small class="text-muted"><?php echo formatDate($review['review_date']); ?></small>
+                                        </div>
+                                        <div class="rating" style="color: #ffc107;">
                                             <?php
                                             $rating = $review['rating'] ?? 0;
                                             for ($i = 1; $i <= 5; $i++) {
@@ -319,8 +483,7 @@ include 'includes/header.php';
                                             ?>
                                         </div>
                                     </div>
-                                    <p class="text-muted mb-1"><?php echo htmlspecialchars($review['review_text']); ?></p>
-                                    <small class="text-muted"><?php echo formatDate($review['review_date']); ?></small>
+                                    <p class="mb-0"><?php echo htmlspecialchars($review['review_text']); ?></p>
                                 </div>
                             <?php endforeach; ?>
                         <?php endif; ?>
@@ -336,36 +499,31 @@ include 'includes/header.php';
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Add New Service</h5>
+                <h5 class="modal-title"><i class="bi bi-plus-circle"></i> Add New Service</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <form action="manage-service.php" method="POST">
+            <form method="POST">
                 <div class="modal-body">
-                    <input type="hidden" name="action" value="add">
-                    <input type="hidden" name="business_id" value="<?php echo $businessId; ?>">
-                    
                     <div class="mb-3">
-                        <label for="service_name" class="form-label">Service Name</label>
-                        <input type="text" class="form-control" id="service_name" name="service_name" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="service_description" class="form-label">Description</label>
-                        <textarea class="form-control" id="service_description" name="description" rows="2" required></textarea>
+                        <label for="service_desc" class="form-label">Description *</label>
+                        <textarea class="form-control" id="service_desc" name="service_desc" rows="3" required></textarea>
                     </div>
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label for="service_duration" class="form-label">Duration (minutes)</label>
-                            <input type="number" class="form-control" id="service_duration" name="duration" required>
+                            <label for="duration" class="form-label">Duration (minutes) *</label>
+                            <input type="number" class="form-control" id="duration" name="duration" min="15" step="15" required>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label for="service_price" class="form-label">Price (₱)</label>
-                            <input type="number" step="0.01" class="form-control" id="service_price" name="price" required>
+                            <label for="cost" class="form-label">Price (₱) *</label>
+                            <input type="number" step="0.01" class="form-control" id="cost" name="cost" min="0" required>
                         </div>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Add Service</button>
+                    <button type="submit" name="add_service" class="btn btn-primary">
+                        <i class="bi bi-plus-circle"></i> Add Service
+                    </button>
                 </div>
             </form>
         </div>
@@ -377,30 +535,39 @@ include 'includes/header.php';
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Add Staff Member</h5>
+                <h5 class="modal-title"><i class="bi bi-person-plus"></i> Add Staff Member</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <form action="manage-staff.php" method="POST">
+            <form method="POST">
                 <div class="modal-body">
-                    <input type="hidden" name="action" value="add">
-                    <input type="hidden" name="business_id" value="<?php echo $businessId; ?>">
-                    
-                    <div class="mb-3">
-                        <label for="staff_name" class="form-label">Full Name</label>
-                        <input type="text" class="form-control" id="staff_name" name="employee_name" required>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="employ_fname" class="form-label">First Name *</label>
+                            <input type="text" class="form-control" id="employ_fname" name="employ_fname" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="employ_lname" class="form-label">Last Name *</label>
+                            <input type="text" class="form-control" id="employ_lname" name="employ_lname" required>
+                        </div>
                     </div>
                     <div class="mb-3">
-                        <label for="staff_specialty" class="form-label">Specialty</label>
-                        <input type="text" class="form-control" id="staff_specialty" name="specialization" required>
+                        <label for="specialization" class="form-label">Specialization *</label>
+                        <input type="text" class="form-control" id="specialization" name="specialization" placeholder="e.g., Hair Colorist, Massage Therapist" required>
                     </div>
                     <div class="mb-3">
-                        <label for="staff_photo" class="form-label">Photo URL</label>
-                        <input type="url" class="form-control" id="staff_photo" name="photo">
+                        <label for="skills" class="form-label">Skills</label>
+                        <input type="text" class="form-control" id="skills" name="skills" placeholder="e.g., Balayage, Deep Tissue Massage">
+                    </div>
+                    <div class="mb-3">
+                        <label for="employ_bio" class="form-label">Bio</label>
+                        <textarea class="form-control" id="employ_bio" name="employ_bio" rows="2" placeholder="Brief description about the staff member"></textarea>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Add Staff</button>
+                    <button type="submit" name="add_staff" class="btn btn-primary">
+                        <i class="bi bi-person-plus"></i> Add Staff
+                    </button>
                 </div>
             </form>
         </div>
@@ -408,27 +575,16 @@ include 'includes/header.php';
 </div>
 
 <script>
-function updateBookingStatus(appointmentId, status) {
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = 'update-booking.php';
-    
-    const idInput = document.createElement('input');
-    idInput.type = 'hidden';
-    idInput.name = 'appointment_id';
-    idInput.value = appointmentId;
-    
-    const statusInput = document.createElement('input');
-    statusInput.type = 'hidden';
-    statusInput.name = 'status';
-    statusInput.value = status;
-    
-    form.appendChild(idInput);
-    form.appendChild(statusInput);
-    document.body.appendChild(form);
-    form.submit();
-}
+// Auto-dismiss alerts after 5 seconds
+setTimeout(function() {
+    const alerts = document.querySelectorAll('.alert');
+    alerts.forEach(function(alert) {
+        const bsAlert = new bootstrap.Alert(alert);
+        bsAlert.close();
+    });
+}, 5000);
 
+// Confirm delete action
 function confirmDelete(message) {
     return confirm(message);
 }
