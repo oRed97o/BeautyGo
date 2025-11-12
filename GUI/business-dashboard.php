@@ -12,19 +12,19 @@ $business = getCurrentBusiness();
 $businessId = $business['business_id'] ?? $business['id'];
 $bookings = getBusinessAppointments($businessId);
 $services = getBusinessServices($businessId);
-$staff = getBusinessStaff($businessId);
+$staff = getBusinessEmployees($businessId);
 $reviews = getBusinessReviews($businessId);
 
 // Calculate stats - Updated for new schema
 $todayBookings = array_filter($bookings, function($b) {
-    return date('Y-m-d', strtotime($b['appointment_datetime'])) == date('Y-m-d');
+    return date('Y-m-d', strtotime($b['appoint_date'])) == date('Y-m-d');
 });
 
 $pendingBookings = array_filter($bookings, function($b) {
-    return $b['status'] == 'pending';
+    return $b['appoint_status'] == 'pending';
 });
 
-$totalRevenue = array_sum(array_column($bookings, 'cost'));
+$totalRevenue = array_sum(array_column($bookings, 'cost')); //check again ------------------------------------------------------
 
 $pageTitle = 'Business Dashboard - BeautyGo';
 include 'includes/header.php';
@@ -160,26 +160,26 @@ include 'includes/header.php';
                                     <tbody>
                                         <?php foreach ($bookings as $booking): ?>
                                             <tr>
-                                                <td><?php echo formatDateTime($booking['appointment_datetime']); ?></td>
-                                                <td><?php echo htmlspecialchars($booking['customer_name']); ?></td>
-                                                <td><?php echo htmlspecialchars($booking['customer_phone'] ?? 'N/A'); ?></td>
-                                                <td><?php echo htmlspecialchars($booking['service_name']); ?></td>
-                                                <td><?php echo htmlspecialchars($booking['staff_name'] ?? 'Any Available'); ?></td>
-                                                <td>₱<?php echo number_format($booking['cost'], 2); ?></td>
+                                                <td><?php echo formatDateTime($booking['appoint_date']); ?></td>
+                                                    <td><?php echo htmlspecialchars($booking['customer_fname'] . ' ' . $booking['customer_lname']); ?></td>
+                                                    <td><?php echo htmlspecialchars($booking['customer_phone'] ?? 'N/A'); ?></td>
+                                                    <td><?php echo htmlspecialchars($booking['service_name']); ?></td>
+                                                    <td><?php echo htmlspecialchars(($booking['staff_fname'] ?? '') . ' ' . ($booking['staff_lname'] ?? '') ?: 'Any Available'); ?></td>
+                                                    <td>₱<?php echo number_format($booking['cost'] ?? 0, 2); ?></td>
+                                                    <td>
+                                                        <span class="badge status-<?php echo $booking['appoint_status']; ?>">
+                                                            <?php echo ucfirst($booking['appoint_status']); ?>
+                                                        </span>
+                                                    </td>
                                                 <td>
-                                                    <span class="badge status-<?php echo $booking['status']; ?>">
-                                                        <?php echo ucfirst($booking['status']); ?>
-                                                    </span>
-                                                </td>
-                                                <td>
-                                                    <?php if ($booking['status'] == 'pending'): ?>
+                                                    <?php if ($booking['appoint_status'] == 'pending'): ?>
                                                         <button class="btn btn-sm btn-success" onclick="updateBookingStatus('<?php echo $booking['appointment_id']; ?>', 'confirmed')">
                                                             Confirm
                                                         </button>
                                                         <button class="btn btn-sm btn-danger" onclick="updateBookingStatus('<?php echo $booking['appointment_id']; ?>', 'cancelled')">
                                                             Cancel
                                                         </button>
-                                                    <?php elseif ($booking['status'] == 'confirmed'): ?>
+                                                    <?php elseif ($booking['appoint_status'] == 'confirmed'): ?>
                                                         <button class="btn btn-sm btn-info" onclick="updateBookingStatus('<?php echo $booking['appointment_id']; ?>', 'completed')">
                                                             Complete
                                                         </button>
@@ -262,8 +262,8 @@ include 'includes/header.php';
                             <div class="row">
                                 <?php foreach ($staff as $member): ?>
                                     <?php 
-                                        $employeeName = $member['employee_name'] ?? $member['name'] ?? 'Staff Member';
-                                        $specialty = $member['specialization'] ?? $member['specialty'] ?? 'General Services';
+                                        $employeeName = trim(($member['employ_fname'] ?? '') . ' ' . ($member['employ_lname'] ?? '')) ?: 'Staff Member';
+                                        $specialty = $member['specialization'] ?? 'General Services';
                                     ?>
                                     <div class="col-md-6 col-lg-4 mb-3">
                                         <div class="card">
@@ -305,7 +305,7 @@ include 'includes/header.php';
                             <?php foreach ($reviews as $review): ?>
                                 <div class="review-item">
                                     <div class="d-flex justify-content-between align-items-start mb-1">
-                                        <strong><?php echo htmlspecialchars($review['customer_name']); ?></strong>
+                                        <strong><?php echo htmlspecialchars($review['customer_fname'] . ' ' . $review['customer_lname']); ?></strong>
                                         <div class="rating">
                                             <?php
                                             $rating = $review['rating'] ?? 0;
@@ -319,8 +319,8 @@ include 'includes/header.php';
                                             ?>
                                         </div>
                                     </div>
-                                    <p class="text-muted mb-1"><?php echo htmlspecialchars($review['comment']); ?></p>
-                                    <small class="text-muted"><?php echo formatDate($review['created_at']); ?></small>
+                                    <p class="text-muted mb-1"><?php echo htmlspecialchars($review['review_text']); ?></p>
+                                    <small class="text-muted"><?php echo formatDate($review['review_date']); ?></small>
                                 </div>
                             <?php endforeach; ?>
                         <?php endif; ?>
@@ -372,7 +372,7 @@ include 'includes/header.php';
     </div>
 </div>
 
-<!-- Add Staff Modal with File Upload -->
+<!-- Add Staff Modal -->
 <div class="modal fade" id="addStaffModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -380,7 +380,7 @@ include 'includes/header.php';
                 <h5 class="modal-title">Add Staff Member</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <form action="manage-staff.php" method="POST" enctype="multipart/form-data">
+            <form action="manage-staff.php" method="POST">
                 <div class="modal-body">
                     <input type="hidden" name="action" value="add">
                     <input type="hidden" name="business_id" value="<?php echo $businessId; ?>">
@@ -389,24 +389,13 @@ include 'includes/header.php';
                         <label for="staff_name" class="form-label">Full Name</label>
                         <input type="text" class="form-control" id="staff_name" name="employee_name" required>
                     </div>
-                    
                     <div class="mb-3">
                         <label for="staff_specialty" class="form-label">Specialty</label>
                         <input type="text" class="form-control" id="staff_specialty" name="specialization" required>
                     </div>
-                    
                     <div class="mb-3">
-                        <label for="staff_photo" class="form-label">Photo</label>
-                        <input type="file" class="form-control" id="staff_photo" name="photo" accept="image/*">
-                        
-                    </div>
-                    
-                    <!-- Photo Preview -->
-                    <div class="mb-3" id="photoPreviewContainer" style="display: none;">
-                        <label class="form-label">Preview</label>
-                        <div class="text-center">
-                            <img id="photoPreview" src="" alt="Preview" class="rounded-circle" style="width: 100px; height: 100px; object-fit: cover;">
-                        </div>
+                        <label for="staff_photo" class="form-label">Photo URL</label>
+                        <input type="url" class="form-control" id="staff_photo" name="photo">
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -417,40 +406,6 @@ include 'includes/header.php';
         </div>
     </div>
 </div>
-
-<script>
-// Photo preview functionality
-document.getElementById('staff_photo').addEventListener('change', function(e) {
-    const file = e.target.files[0];
-    if (file) {
-        // Validate file size (5MB)
-        if (file.size > 5 * 1024 * 1024) {
-            alert('File size must be less than 5MB');
-            e.target.value = '';
-            document.getElementById('photoPreviewContainer').style.display = 'none';
-            return;
-        }
-        
-        // Validate file type
-        if (!file.type.match('image.*')) {
-            alert('Please select an image file');
-            e.target.value = '';
-            document.getElementById('photoPreviewContainer').style.display = 'none';
-            return;
-        }
-        
-        // Show preview
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            document.getElementById('photoPreview').src = e.target.result;
-            document.getElementById('photoPreviewContainer').style.display = 'block';
-        };
-        reader.readAsDataURL(file);
-    } else {
-        document.getElementById('photoPreviewContainer').style.display = 'none';
-    }
-});
-</script>
 
 <script>
 function updateBookingStatus(appointmentId, status) {

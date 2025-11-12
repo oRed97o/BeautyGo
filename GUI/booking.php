@@ -1,4 +1,4 @@
-<?php
+<?php //servce id------------------------------------------------------
 require_once 'config.php';
 require_once 'functions.php';
 
@@ -23,8 +23,8 @@ if (!$business) {
 }
 
 $services = getBusinessServices($businessId);
-$staff = getBusinessStaff($businessId);
-$user = getCurrentUser();
+$staff = getBusinessEmployees($businessId);
+$user = getCurrentCustomer();
 
 // Handle booking submission with multiple services
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_booking'])) {
@@ -38,13 +38,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_booking'])) {
         
         foreach ($serviceIds as $serviceId) {
             $appointmentData = [
-                'customer_id' => $user['customer_id'] ?? $user['id'],
-                'business_id' => $businessId,
+                'customer_id' => $user['customer_id'],
                 'service_id' => sanitize($serviceId),
-                'staff_id' => sanitize($_POST['staff_id']) ?: null,
+                'employ_id' => sanitize($_POST['employ_id']) ?: null,
                 'appoint_date' => $appointDate,
                 'appoint_status' => 'pending',
-                'appoint_desc' => sanitize($_POST['notes'])
+                'appoint_desc' => sanitize($_POST['appoint_desc'])
             ];
             
             if (createAppointment($appointmentData)) {
@@ -280,7 +279,7 @@ textarea.form-control:hover {
                             <?php if (!empty($staff)): ?>
                                 <div class="mb-4">
                                     <label class="form-label">Select Staff (Optional)</label>
-                                    <select class="form-select" name="staff_id" id="staff_id" onchange="selectStaff()">
+                                    <select class="form-select" name="employ_id" id="employ_id" onchange="selectStaff()">
                                         <option value="">Any Available Staff</option>
                                         <?php foreach ($staff as $member): ?>
                                             <?php 
@@ -288,8 +287,8 @@ textarea.form-control:hover {
                                                 $employeeName = $member['employee_name'] ?? 
                                                               trim(($member['employ_fname'] ?? '') . ' ' . ($member['employ_lname'] ?? '')) ?? 
                                                               'Staff Member';
-                                                $employeeId = $member['employee_id'] ?? $member['employ_id'] ?? '';
-                                                $specialty = $member['specialization'] ?? $member['skills'] ?? 'General Services';
+                                                $employeeId = $member['employ_id'] ?? '';
+                                                $specialty = $member['specialization'] ?? 'General Services';
                                             ?>
                                             <option value="<?php echo htmlspecialchars($employeeId); ?>" data-name="<?php echo htmlspecialchars($employeeName); ?>">
                                                 <?php echo htmlspecialchars($employeeName); ?> - <?php echo htmlspecialchars($specialty); ?>
@@ -373,11 +372,11 @@ textarea.form-control:hover {
                             <div class="col-md-6">
                                 <div class="mb-2">
                                     <strong style="color: var(--color-burgundy);">Your Name:</strong><br>
-                                    <span><?php echo htmlspecialchars($user['name']); ?></span>
+                                    <span><?php echo htmlspecialchars($user['fname']); ?></span>
                                 </div>
                                 <div class="mb-2">
                                     <strong style="color: var(--color-burgundy);">Contact:</strong><br>
-                                    <span><?php echo htmlspecialchars($user['celler_num'] ?? $user['phone'] ?? 'N/A'); ?></span>
+                                    <span><?php echo htmlspecialchars($user['cstmr_num'] ?? 'N/A'); ?></span>
                                 </div>
                             </div>
                         </div>
@@ -400,15 +399,15 @@ textarea.form-control:hover {
                         </h6>
                         <div class="mb-2">
                             <i class="bi bi-person"></i> <strong>Name:</strong><br>
-                            <span class="ms-4"><?php echo htmlspecialchars($user['name']); ?></span>
+                            <span class="ms-4"><?php echo htmlspecialchars($user['fname']); ?></span>
                         </div>
                         <div class="mb-2">
                             <i class="bi bi-telephone"></i> <strong>Phone:</strong><br>
-                            <span class="ms-4"><?php echo htmlspecialchars($user['celler_num'] ?? $user['phone'] ?? 'N/A'); ?></span>
+                            <span class="ms-4"><?php echo htmlspecialchars($user['cstmr_num'] ?? 'N/A'); ?></span>
                         </div>
                         <div>
                             <i class="bi bi-envelope"></i> <strong>Email:</strong><br>
-                            <span class="ms-4"><?php echo htmlspecialchars($user['email']); ?></span>
+                            <span class="ms-4"><?php echo htmlspecialchars($user['cstmr_email']); ?></span>
                         </div>
                     </div>
                 </div>
@@ -475,7 +474,7 @@ function updateServiceSelection() {
 }
 
 function selectStaff() {
-    const select = document.getElementById('staff_id');
+    const select = document.getElementById('employ_id');
     const selectedOption = select.options[select.selectedIndex];
     const staffName = selectedOption.getAttribute('data-name') || 'Any Available';
     document.getElementById('staff_name').value = staffName;

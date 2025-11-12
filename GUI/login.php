@@ -116,15 +116,15 @@ include 'includes/header.php';
                             <div class="ms-3 mt-1" style="font-size: 0.9rem;">
                                 <div class="mb-1">
                                     <i class="bi bi-person-circle text-muted"></i> maria.santos@email.com
-                                    <span class="text-muted">/ password123</span>
+                                    <span class="text-muted">/ password</span>
                                 </div>
                                 <div class="mb-1">
                                     <i class="bi bi-person-circle text-muted"></i> juan.delacruz@email.com
-                                    <span class="text-muted">/ password123</span>
+                                    <span class="text-muted">/ password</span>
                                 </div>
                                 <div>
                                     <i class="bi bi-person-circle text-muted"></i> ana.reyes@email.com
-                                    <span class="text-muted">/ password123</span>
+                                    <span class="text-muted">/ password</span>
                                 </div>
                             </div>
                         </div>
@@ -133,15 +133,15 @@ include 'includes/header.php';
                             <div class="ms-3 mt-1" style="font-size: 0.9rem;">
                                 <div class="mb-1">
                                     <i class="bi bi-shop text-muted"></i> glam.salon@email.com
-                                    <span class="text-muted">/ password123</span>
+                                    <span class="text-muted">/ password</span>
                                 </div>
                                 <div class="mb-1">
                                     <i class="bi bi-shop text-muted"></i> tranquil.spa@email.com
-                                    <span class="text-muted">/ password123</span>
+                                    <span class="text-muted">/ password</span>
                                 </div>
                                 <div>
                                     <i class="bi bi-shop text-muted"></i> classic.barber@email.com
-                                    <span class="text-muted">/ password123</span>
+                                    <span class="text-muted">/ password</span>
                                 </div>
                             </div>
                         </div>

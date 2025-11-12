@@ -4,8 +4,12 @@ require_once 'functions.php';
 
 $pageTitle = 'BeautyGo - Beauty Services in Nasugbu, Batangas';
 
-// Get all businesses
-$businesses = getBusinessesWithDistance();
+// Get user location if available (for distance calculation)
+$userLat = $_SESSION['user_latitude'] ?? null;
+$userLon = $_SESSION['user_longitude'] ?? null;
+
+// Get all businesses with distance calculation
+$businesses = getBusinessesWithDistance($userLat, $userLon);
 
 include 'includes/header.php';
 ?>
@@ -264,46 +268,42 @@ include 'includes/header.php';
         color: var(--brand-burgundy);
     }
 
-    /* Business Listings */
-    .business-listing-grid {
-        display: flex !important;
-        flex-wrap: wrap !important;
-        gap: 1.5rem !important;
-        margin-bottom: 2rem !important;
-    }
-    
-    .business-listing-item {
-        flex: 0 0 calc(25% - 1.125rem) !important;
-        max-width: calc(25% - 1.125rem) !important;
-    }
-
-    .airbnb-card {
-        background: white;
-        border-radius: 12px;
-        overflow: hidden;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
-
-    .airbnb-card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 8px 24px rgba(0,0,0,0.15);
-    }
-
-    .airbnb-card-image-wrapper {
+    /* Business Card Base */
+    .business-card {
         position: relative;
-        width: 100%;
-        height: 250px;
+        width: 280px;
+        background: #fff;
+        border-radius: 15px;
+        overflow: hidden;
+        box-shadow: 0 6px 16px rgba(0,0,0,0.1);
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+
+    .business-card:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 10px 24px rgba(0,0,0,0.15);
+    }
+
+    /* Image Section */
+    .business-card-img {
+        position: relative;
+        height: 220px;
         overflow: hidden;
     }
 
-    .airbnb-card-image {
+    .business-card-img img {
         width: 100%;
         height: 100%;
         object-fit: cover;
+        transition: transform 0.4s ease;
     }
 
+    .business-card:hover .business-card-img img {
+        transform: scale(1.05);
+    }
+
+    /* Badges */
     .airbnb-badge {
         position: absolute;
         top: 12px;
@@ -314,61 +314,86 @@ include 'includes/header.php';
         font-size: 0.85rem;
         font-weight: 600;
         color: var(--brand-burgundy);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
 
+    .distance-badge {
+        position: absolute;
+        bottom: 12px;
+        left: 12px;
+        background: rgba(255, 255, 255, 0.95);
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--brand-burgundy);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    /* Heart Button */
     .airbnb-favorite-btn {
         position: absolute;
-        top: 12px;
-        right: 12px;
-        background: white;
+        top: 10px;
+        right: 10px;
         border: none;
-        width: 36px;
-        height: 36px;
+        background: rgba(255, 255, 255, 0.9);
         border-radius: 50%;
+        width: 34px;
+        height: 34px;
         display: flex;
-        align-items: center;
         justify-content: center;
+        align-items: center;
         cursor: pointer;
-        transition: all 0.3s ease;
+        transition: all 0.3s;
+        z-index: 10;
     }
 
     .airbnb-favorite-btn:hover {
-        transform: scale(1.1);
+        background: var(--brand-pink);
+        color: var(--brand-burgundy);
     }
 
-    .airbnb-card-content {
-        padding: 1rem;
+    /* Card Content */
+    .business-card-content {
+        padding: 15px;
     }
 
-    .airbnb-card-title {
-        font-size: 1rem;
+    .business-name {
         font-weight: 600;
-        color: #222;
-        margin-bottom: 0.5rem;
+        font-size: 1.1rem;
+        color: var(--brand-burgundy);
+        margin-bottom: 8px;
+        display: -webkit-box;
+        -webkit-line-clamp: 1;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
     }
 
-    .airbnb-card-subtitle {
+    .business-type-location {
         color: #717171;
         font-size: 0.9rem;
+        margin-bottom: 8px;
     }
 
-    .airbnb-card-footer {
-        display: flex;
-        align-items: center;
-        margin-top: 0.5rem;
-    }
-
+    /* Rating */
     .airbnb-rating {
         display: flex;
         align-items: center;
-        gap: 0.25rem;
+        gap: 5px;
         color: #222;
+        font-size: 0.9rem;
     }
 
     .airbnb-rating i {
         color: var(--brand-rose);
     }
 
+    .rating-count {
+        color: #717171;
+        font-size: 0.85rem;
+    }
+
+    /* Empty State */
     .empty-state {
         text-align: center;
         padding: 4rem 2rem;
@@ -379,6 +404,14 @@ include 'includes/header.php';
         font-size: 4rem;
         color: var(--brand-burgundy);
         margin-bottom: 1rem;
+    }
+
+    .business-grid {
+        display: flex;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 2rem;
+        padding: 2rem 0;
     }
 
     @media (max-width: 768px) {
@@ -412,113 +445,22 @@ include 'includes/header.php';
             font-size: 1.75rem;
         }
 
-        .business-listing-item {
-            flex: 0 0 100% !important;
-            max-width: 100% !important;
+        .business-card {
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .search-bar-container {
+            flex-direction: column;
+            border-radius: 20px;
+        }
+
+        .search-divider {
+            width: 100%;
+            height: 1px;
+            margin: 0.5rem 0;
         }
     }
-    
-    @media (min-width: 768px) and (max-width: 1199px) {
-        .business-listing-item {
-            flex: 0 0 calc(50% - 0.75rem) !important;
-            max-width: calc(50% - 0.75rem) !important;
-        }
-    }
-
-    /* Card Base */
-.business-card {
-    position: relative;
-    width: 250px;
-    background: #fff;
-    border-radius: 15px;
-    overflow: hidden;
-    box-shadow: 0 6px 16px rgba(0,0,0,0.1);
-    transition: all 0.3s ease;
-    cursor: pointer;
-}
-
-.business-card:hover {
-    transform: translateY(-8px);
-    box-shadow: 0 10px 24px rgba(0,0,0,0.15);
-}
-
-/* Image Section */
-.business-card-img {
-    position: relative;
-}
-
-.business-card-img img {
-    width: 100%;
-    height: 220px; /* increased from 180px */
-    object-fit: cover;
-    transition: transform 0.4s ease; /* added */
-}
-
-.business-card:hover .business-card-img img {
-    transform: scale(1.05); /* slight zoom on hover */
-}
-
-
-/* Heart Button */
-.airbnb-favorite-btn {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    border: none;
-    background: rgba(255, 255, 255, 0.9);
-    border-radius: 50%;
-    width: 34px;
-    height: 34px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    cursor: pointer;
-    transition: all 0.3s;
-}
-
-.airbnb-favorite-btn:hover {
-    background: var(--brand-pink);
-    color: var(--brand-burgundy);
-}
-
-/* Card Content */
-.business-card-content {
-    padding: 15px;
-    text-align: center;
-}
-
-.business-name {
-    font-weight: 600;
-    color: var(--brand-burgundy);
-    margin-bottom: 0;
-}
-
-/* Hidden Info */
-.business-hover-info {
-    opacity: 0;
-    height: 0;
-    overflow: hidden;
-    transition: all 0.4s ease;
-}
-
-/* Show on Hover */
-.business-card:hover .business-hover-info {
-    opacity: 1;
-    height: auto;
-    margin-top: 10px;
-}
-
-/* Rating */
-.airbnb-rating {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 5px;
-    color: var(--brand-rose);
-    font-size: 14px;
-}
-
-
 </style>
 
 <main>
@@ -579,8 +521,6 @@ include 'includes/header.php';
     <!-- Hero Section with Search -->
     <section class="hero-section-new">
         <div class="container">
-
-            
             <!-- Search Bar -->
             <div class="search-bar-wrapper">
                 <div class="search-bar-container">
@@ -595,6 +535,7 @@ include 'includes/header.php';
                             <option value="salon">Salon</option>
                             <option value="spa">Spa</option>
                             <option value="barbershop">Barbershop</option>
+                            <option value="clinic">Clinic</option>
                         </select>
                         <i class="bi bi-chevron-down category-arrow"></i>
                     </div>
@@ -604,64 +545,105 @@ include 'includes/header.php';
     </section>
     
     <!-- Business Listings Section -->
-<div class="container my-5 text-center" id="business-section">
-    <h4 class="mb-4">Featured Beauty Services in Nasugbu</h4>
+    <div class="container my-5 text-center" id="business-section">
+        <h4 class="mb-4">Featured Beauty Services in Nasugbu</h4>
 
-    <?php if (empty($businesses)): ?>
-        <div class="empty-state">
-            <i class="bi bi-shop"></i>
-            <h4>No Businesses Found</h4>
-            <p>Be the first to register your beauty business!</p>
-            <a href="register-business.php" class="btn btn-primary">Register Business</a>
-        </div>
-    <?php else: ?>
-        <div class="d-flex justify-content-center flex-wrap gap-4">
-            <?php foreach ($businesses as $business): ?>
-                <div class="business-card" 
-                     onclick="window.location.href='business-detail.php?id=<?php echo $business['business_id']; ?>'">
+        <?php if (empty($businesses)): ?>
+            <div class="empty-state">
+                <i class="bi bi-shop"></i>
+                <h4>No Businesses Found</h4>
+                <p>Be the first to register your beauty business!</p>
+                <a href="register-business.php" class="btn btn-primary">Register Business</a>
+            </div>
+        <?php else: ?>
+            <div class="business-grid">
+                <?php foreach ($businesses as $business): ?>
+                    <?php 
+                    // Get business album/logo
+                    $album = getBusinessAlbum($business['business_id']);
+                    $businessImage = null;
+                    
+                    // Try to get logo from album
+                    if ($album && !empty($album['logo'])) {
+                        $businessImage = 'data:image/jpeg;base64,' . base64_encode($album['logo']);
+                    }
+                    
+                    // Fallback to default images based on type
+                    if (!$businessImage) {
+                        $defaultImages = [
+                            'salon' => 'https://images.unsplash.com/photo-1521590832167-7bcbfaa6381f?w=600',
+                            'spa' => 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=600',
+                            'barbershop' => 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=600',
+                            'clinic' => 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=600'
+                        ];
+                        $businessType = strtolower($business['business_type'] ?? 'salon');
+                        $businessImage = $defaultImages[$businessType] ?? 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=600';
+                    }
+                    
+                    // Calculate average rating
+                    $avgRating = calculateAverageRating($business['business_id']);
+                    $reviews = getBusinessReviews($business['business_id']);
+                    $reviewCount = count($reviews);
+                    
+                    // Get location info
+                    $location = $business['city'] ?? 'Nasugbu';
+                    if (!empty($business['business_address'])) {
+                        $addressParts = explode(',', $business['business_address']);
+                        $location = trim($addressParts[0]);
+                    }
+                    ?>
+                    
+                    <div class="business-card" 
+                         data-type="<?php echo strtolower($business['business_type'] ?? 'salon'); ?>"
+                         data-name="<?php echo htmlspecialchars($business['business_name']); ?>"
+                         onclick="window.location.href='business-detail.php?id=<?php echo $business['business_id']; ?>'">
 
-                    <div class="business-card-img">
-                        <?php 
-                        $defaultImage = 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=600';
-                        if ($business['business_type'] == 'salon') {
-                            $defaultImage = 'https://images.unsplash.com/photo-1521590832167-7bcbfaa6381f?w=600';
-                        } elseif ($business['business_type'] == 'spa') {
-                            $defaultImage = 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=600';
-                        }
-                        ?>
-                        <img src="<?php echo $defaultImage; ?>" alt="<?php echo $business['business_name']; ?>">
+                        <div class="business-card-img">
+                            <img src="<?php echo $businessImage; ?>" 
+                                 alt="<?php echo htmlspecialchars($business['business_name']); ?>">
 
-                        <!-- Top Rated Badge -->
-                        <?php if (calculateAverageRating($business['business_id']) >= 4.5): ?>
-                            <span class="airbnb-badge">
-                                <i class="bi bi-award-fill"></i> Top Rated
-                            </span>
-                        <?php endif; ?>
+                            <!-- Top Rated Badge -->
+                            <?php if ($avgRating >= 4.5): ?>
+                                <span class="airbnb-badge">
+                                    <i class="bi bi-award-fill"></i> Top Rated
+                                </span>
+                            <?php endif; ?>
 
-                        <!-- Heart Favorite Button -->
-                        <button class="airbnb-favorite-btn" onclick="event.stopPropagation(); toggleFavorite(<?php echo $business['business_id']; ?>)">
-                            <i class="bi bi-heart"></i>
-                        </button>
-                    </div>
+                            <!-- Distance Badge -->
+                            <?php if (isset($business['distance']) && $business['distance'] < 999): ?>
+                                <span class="distance-badge">
+                                    <i class="bi bi-geo-alt-fill"></i> <?php echo $business['distance']; ?> km
+                                </span>
+                            <?php endif; ?>
 
-                    <div class="business-card-content">
-                        <h5 class="business-name"><?php echo $business['business_name']; ?></h5>
-                        <div class="business-hover-info">
-                            <p class="mb-1 text-muted">
-                                <?php echo ucfirst($business['business_type']); ?> in 
-                                <?php echo isset($business['business_address']) ? explode(',', $business['business_address'])[0] : ($business['city'] ?? 'Nasugbu'); ?>
+                            <!-- Heart Favorite Button -->
+                            <button class="airbnb-favorite-btn" 
+                                    onclick="event.stopPropagation(); toggleFavorite(<?php echo $business['business_id']; ?>)">
+                                <i class="bi bi-heart"></i>
+                            </button>
+                        </div>
+
+                        <div class="business-card-content">
+                            <h5 class="business-name"><?php echo htmlspecialchars($business['business_name']); ?></h5>
+                            
+                            <p class="business-type-location">
+                                <?php echo ucfirst($business['business_type'] ?? 'Salon'); ?> • <?php echo htmlspecialchars($location); ?>
                             </p>
+
                             <div class="airbnb-rating">
                                 <i class="bi bi-star-fill"></i>
-                                <strong><?php echo number_format(calculateAverageRating($business['business_id']), 2); ?></strong>
+                                <strong><?php echo number_format($avgRating, 1); ?></strong>
+                                <?php if ($reviewCount > 0): ?>
+                                    <span class="rating-count">(<?php echo $reviewCount; ?> <?php echo $reviewCount === 1 ? 'review' : 'reviews'; ?>)</span>
+                                <?php else: ?>
+                                    <span class="rating-count">(New)</span>
+                                <?php endif; ?>
                             </div>
                         </div>
                     </div>
-                </div>
-            <?php endforeach; ?>
-        </div>
-            <?php endif; ?>
-        </div>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
     </div>
 </main>
 
@@ -672,11 +654,9 @@ include 'includes/header.php';
     let autoSlideInterval;
 
     function showSlide(index) {
-        // Remove active class from all slides and dots
         slides.forEach(slide => slide.classList.remove('active'));
         dots.forEach(dot => dot.classList.remove('active'));
 
-        // Handle wrap around
         if (index >= slides.length) {
             currentSlide = 0;
         } else if (index < 0) {
@@ -685,7 +665,6 @@ include 'includes/header.php';
             currentSlide = index;
         }
 
-        // Add active class to current slide and dot
         slides[currentSlide].classList.add('active');
         dots[currentSlide].classList.add('active');
     }
@@ -703,7 +682,7 @@ include 'includes/header.php';
     function startAutoSlide() {
         autoSlideInterval = setInterval(() => {
             showSlide(currentSlide + 1);
-        }, 5000); // Change slide every 5 seconds
+        }, 5000);
     }
 
     function resetAutoSlide() {
@@ -725,31 +704,97 @@ include 'includes/header.php';
     // Start automatic sliding
     startAutoSlide();
 
-    // Filter businesses function
+    // Filter businesses function - UPDATED
     function filterBusinesses() {
         const searchTerm = document.getElementById('searchInput').value.toLowerCase();
         const typeFilter = document.getElementById('typeFilter').value.toLowerCase();
-        const businessItems = document.querySelectorAll('.business-listing-item');
+        const businessCards = document.querySelectorAll('.business-card');
         
-        businessItems.forEach(item => {
-            const businessName = item.querySelector('.airbnb-card-title').textContent.toLowerCase();
-            const businessType = item.getAttribute('data-type').toLowerCase();
+        let visibleCount = 0;
+        
+        businessCards.forEach(card => {
+            const businessName = card.getAttribute('data-name').toLowerCase();
+            const businessType = card.getAttribute('data-type').toLowerCase();
             
             const matchesSearch = businessName.includes(searchTerm);
             const matchesType = typeFilter === '' || businessType === typeFilter;
             
             if (matchesSearch && matchesType) {
-                item.style.display = 'block';
+                card.style.display = 'block';
+                visibleCount++;
             } else {
-                item.style.display = 'none';
+                card.style.display = 'none';
             }
         });
+        
+        // Show/hide empty state
+        const businessGrid = document.querySelector('.business-grid');
+        const emptyState = document.querySelector('.empty-state');
+        
+        if (visibleCount === 0 && businessCards.length > 0) {
+            if (businessGrid) businessGrid.style.display = 'none';
+            if (!emptyState) {
+                const section = document.querySelector('#business-section');
+                const newEmptyState = document.createElement('div');
+                newEmptyState.className = 'empty-state';
+                newEmptyState.innerHTML = `
+                    <i class="bi bi-search"></i>
+                    <h4>No Results Found</h4>
+                    <p>Try adjusting your search or filters</p>
+                `;
+                section.appendChild(newEmptyState);
+            }
+        } else {
+            if (businessGrid) businessGrid.style.display = 'flex';
+            if (emptyState && businessCards.length > 0) {
+                emptyState.remove();
+            }
+        }
     }
 
-    // Toggle favorite function (placeholder)
+    // Toggle favorite function
     function toggleFavorite(businessId) {
-        console.log('Toggle favorite for business:', businessId);
-        // Add your favorite toggle logic here
+        // Check if user is logged in
+        <?php if (isCustomerLoggedIn()): ?>
+            // Add your favorite toggle logic here
+            console.log('Toggle favorite for business:', businessId);
+            
+            // You can make an AJAX call to save favorites
+            // Example:
+            // fetch('api/toggle-favorite.php', {
+            //     method: 'POST',
+            //     headers: { 'Content-Type': 'application/json' },
+            //     body: JSON.stringify({ business_id: businessId })
+            // })
+            // .then(response => response.json())
+            // .then(data => {
+            //     // Update UI
+            //     event.target.classList.toggle('favorited');
+            // });
+        <?php else: ?>
+            alert('Please login to add favorites');
+            window.location.href = 'login.php';
+        <?php endif; ?>
+    }
+
+    // Request user location for distance calculation
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(function(position) {
+            // Send location to server via AJAX to update session
+            fetch('api/update-location.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    latitude: position.coords.latitude,
+                    longitude: position.coords.longitude
+                })
+            })
+            .then(() => {
+                // Optionally reload to show distances
+                // location.reload();
+            })
+            .catch(err => console.log('Location update failed:', err));
+        });
     }
 </script>
 

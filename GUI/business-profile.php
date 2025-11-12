@@ -1,4 +1,4 @@
-<?php
+<?php //full "Analysis"
 require_once 'config.php';
 require_once 'functions.php';
 
@@ -9,7 +9,7 @@ if (!isBusinessLoggedIn()) {
 }
 
 $business = getCurrentBusiness();
-$businessId = $business['business_id'] ?? $business['id'];
+$businessId = $business['business_id'];
 $album = getOrCreateBusinessAlbum($businessId);
 
 // Handle profile update
@@ -17,9 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
     $businessData = [
         'business_name' => sanitize($_POST['business_name']),
         'business_type' => $_POST['business_type'],
-        'description' => sanitize($_POST['description']),
         'business_desc' => sanitize($_POST['description']),
-        'address' => sanitize($_POST['address']),
         'business_address' => sanitize($_POST['address']),
         'city' => sanitize($_POST['city']),
         'latitude' => floatval($_POST['latitude']),
@@ -35,88 +33,66 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
     exit;
 }
 
-// Handle portfolio images update (10 images max)
+// Handle portfolio images update (logo + 10 images)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_portfolio'])) {
-    $uploadDir = 'uploads/portfolio/';
-    
-    // Create upload directory if it doesn't exist
-    if (!file_exists($uploadDir)) {
-        mkdir($uploadDir, 0755, true);
-    }
-    
     $images = [];
-    $uploadErrors = [];
     
-    // Get existing images from album
-    for ($i = 1; $i <= 10; $i++) {
-        $existingImage = $album['image_' . $i] ?? '';
-        if (!empty($existingImage)) {
-            $images[$i] = $existingImage;
-        }
+    // Handle logo upload
+    if (isset($_FILES['logo']) && $_FILES['logo']['error'] === UPLOAD_ERR_OK) {
+        $images['logo'] = file_get_contents($_FILES['logo']['tmp_name']);
+    } else {
+        $images['logo'] = null; // Keep existing logo if not uploading new one
     }
     
-    // Process file uploads
-    for ($i = 1; $i <= 10; $i++) {
-        // Check if there's a file uploaded for this slot
-        if (isset($_FILES['image_' . $i]) && $_FILES['image_' . $i]['error'] === UPLOAD_ERR_OK) {
-            $file = $_FILES['image_' . $i];
-            
+    // Handle image uploads (1-10)
+    for ($i = 0; $i < 10; $i++) {
+        $fileKey = 'image_' . ($i + 1);
+        if (isset($_FILES[$fileKey]) && $_FILES[$fileKey]['error'] === UPLOAD_ERR_OK) {
             // Validate file type
             $allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-            $fileType = mime_content_type($file['tmp_name']);
+            $fileType = $_FILES[$fileKey]['type'];
             
-            if (!in_array($fileType, $allowedTypes)) {
-                $uploadErrors[] = "Image $i: Invalid file type. Only JPG, PNG, GIF, and WEBP are allowed.";
-                continue;
-            }
-            
-            // Validate file size (max 5MB)
-            if ($file['size'] > 5 * 1024 * 1024) {
-                $uploadErrors[] = "Image $i: File size exceeds 5MB limit.";
-                continue;
-            }
-            
-            // Generate unique filename
-            $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
-            $filename = 'business_' . $businessId . '_img_' . $i . '_' . time() . '.' . $extension;
-            $targetPath = $uploadDir . $filename;
-            
-            // Delete old image if exists
-            if (isset($images[$i]) && !empty($images[$i]) && file_exists($images[$i])) {
-                unlink($images[$i]);
-            }
-            
-            // Move uploaded file
-            if (move_uploaded_file($file['tmp_name'], $targetPath)) {
-                $images[$i] = $targetPath;
+            if (in_array($fileType, $allowedTypes)) {
+                // Validate file size (max 5MB)
+                if ($_FILES[$fileKey]['size'] <= 5 * 1024 * 1024) {
+                    $images[$i] = file_get_contents($_FILES[$fileKey]['tmp_name']);
+                } else {
+                    $_SESSION['error'] = 'Image ' . ($i + 1) . ' is too large. Maximum size is 5MB.';
+                }
             } else {
-                $uploadErrors[] = "Image $i: Failed to upload file.";
+                $_SESSION['error'] = 'Image ' . ($i + 1) . ' has invalid file type. Only JPG, PNG, GIF, and WebP are allowed.';
             }
-        }
-        // Check if user wants to remove the image
-        elseif (isset($_POST['remove_image_' . $i])) {
-            // Delete the file if it exists
-            if (isset($images[$i]) && !empty($images[$i]) && file_exists($images[$i])) {
-                unlink($images[$i]);
-            }
-            unset($images[$i]);
-        }
-    }
-    
-    // Prepare images array for database (fill empty slots with empty strings)
-    $imagesForDb = [];
-    for ($i = 1; $i <= 10; $i++) {
-        $imagesForDb[] = $images[$i] ?? '';
-    }
-    
-    if (updateAlbumImages($businessId, $imagesForDb)) {
-        if (empty($uploadErrors)) {
-            $_SESSION['success'] = 'Portfolio images updated successfully';
         } else {
-            $_SESSION['warning'] = 'Portfolio updated with some errors: ' . implode(' ', $uploadErrors);
+            $images[$i] = null; // Keep existing image if not uploading new one
         }
+    }
+    
+    if (updateAlbumImages($businessId, $images)) {
+        $_SESSION['success'] = 'Portfolio images updated successfully';
     } else {
         $_SESSION['error'] = 'Failed to update portfolio images';
+    }
+    header('Location: business-profile.php');
+    exit;
+}
+
+// Handle individual image deletion
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_image'])) {
+    $imageSlot = $_POST['image_slot'];
+    
+    // Create array with null for the specific slot to delete
+    $images = [];
+    if ($imageSlot === 'logo') {
+        $images['logo'] = ''; // Empty string to clear the logo
+    } else {
+        $slotIndex = intval(str_replace('image', '', $imageSlot)) - 1;
+        $images[$slotIndex] = ''; // Empty string to clear the image
+    }
+    
+    if (updateAlbumImages($businessId, $images)) {
+        $_SESSION['success'] = 'Image deleted successfully';
+    } else {
+        $_SESSION['error'] = 'Failed to delete image';
     }
     header('Location: business-profile.php');
     exit;
@@ -143,7 +119,6 @@ include 'includes/header.php';
 
 .portfolio-preview:hover {
     border-color: var(--color-rose);
-    background-color: #f0f0f0;
 }
 
 .portfolio-preview img {
@@ -155,7 +130,6 @@ include 'includes/header.php';
 .portfolio-preview .placeholder {
     color: #999;
     text-align: center;
-    pointer-events: none;
 }
 
 .image-slot {
@@ -189,17 +163,61 @@ include 'includes/header.php';
     display: flex;
 }
 
-.file-input-hidden {
-    display: none;
+.logo-preview {
+    width: 200px;
+    height: 200px;
+    border: 2px dashed #ddd;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    background-color: #f8f9fa;
+    transition: all 0.3s ease;
+    margin: 0 auto 20px;
 }
 
+.logo-preview:hover {
+    border-color: var(--color-rose);
+}
 
+.logo-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    padding: 10px;
+}
 
-.file-name-display {
-    font-size: 0.75rem;
-    color: #666;
-    margin-top: 0.25rem;
-    word-break: break-all;
+.file-input-wrapper {
+    position: relative;
+    overflow: hidden;
+    display: inline-block;
+    width: 100%;
+}
+
+.file-input-wrapper input[type=file] {
+    position: absolute;
+    left: -9999px;
+}
+
+.file-input-label {
+    display: block;
+    padding: 8px 12px;
+    background-color: #f8f9fa;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+.file-input-label:hover {
+    background-color: #e9ecef;
+    border-color: var(--color-rose);
+}
+
+.file-input-label i {
+    margin-right: 5px;
 }
 </style>
 
@@ -288,55 +306,97 @@ include 'includes/header.php';
                     </div>
                 </div>
                 
+                <!-- Business Logo Card -->
+                <div class="card mb-3">
+                    <div class="card-body p-4">
+                        <h5 class="mb-3">
+                            <i class="bi bi-image"></i> Business Logo
+                        </h5>
+                        
+                        <form action="" method="POST" enctype="multipart/form-data">
+                            <div class="text-center">
+                                <div class="logo-preview" id="logo_preview">
+                                    <?php if (!empty($album['logo'])): ?>
+                                        <img src="data:image/jpeg;base64,<?php echo base64_encode($album['logo']); ?>" alt="Business Logo">
+                                    <?php else: ?>
+                                        <div class="placeholder">
+                                            <i class="bi bi-building" style="font-size: 3rem;"></i>
+                                            <p class="mb-0 small">No logo uploaded</p>
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
+                                
+                                <div class="file-input-wrapper">
+                                    <input type="file" name="logo" id="logo" accept="image/*" onchange="previewLogo(this)">
+                                    <label for="logo" class="file-input-label">
+                                        <i class="bi bi-upload"></i> Choose Logo Image
+                                    </label>
+                                </div>
+                                
+                                <?php if (!empty($album['logo'])): ?>
+                                    <button type="submit" name="delete_image" class="btn btn-sm btn-outline-danger mt-2" onclick="return confirm('Are you sure you want to delete the logo?')">
+                                        <i class="bi bi-trash"></i> Delete Logo
+                                    </button>
+                                    <input type="hidden" name="image_slot" value="logo">
+                                <?php endif; ?>
+                            </div>
+                            
+                            <div class="d-grid mt-3">
+                                <button type="submit" name="update_portfolio" class="btn btn-success">
+                                    <i class="bi bi-cloud-upload"></i> Upload Logo
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                
                 <!-- Portfolio Images Card -->
                 <div class="card mb-3">
                     <div class="card-body p-4">
                         <h5 class="mb-3">
-                            <i class="bi bi-images"></i> Portfolio Images
-                            <span class="badge bg-primary ms-2">Maximum 10 images per business</span>
+                            <i class="bi bi-images"></i> Portfolio Gallery
+                            <span class="badge bg-primary ms-2">Maximum 10 images</span>
                         </h5>
                         
-                        <form action="" method="POST" id="portfolioForm" enctype="multipart/form-data">
+                        <form action="" method="POST" enctype="multipart/form-data" id="portfolioForm">
                             <div class="row">
                                 <?php for ($i = 1; $i <= 10; $i++): ?>
-                                    <?php $imageUrl = $album['image_' . $i] ?? ''; ?>
+                                    <?php 
+                                    $imageKey = 'image' . $i;
+                                    $hasImage = !empty($album[$imageKey]);
+                                    ?>
                                     <div class="col-lg-3 col-md-4 col-sm-6 mb-3">
                                         <div class="image-slot">
                                             <label class="form-label fw-bold">Image <?php echo $i; ?></label>
                                             
                                             <div class="portfolio-preview" id="preview_<?php echo $i; ?>">
-                                                <?php if (!empty($imageUrl)): ?>
-                                                    <img src="<?php echo htmlspecialchars($imageUrl); ?>" alt="Portfolio <?php echo $i; ?>">
-                                                    <button type="button" class="remove-image-btn" onclick="event.preventDefault(); removeImage(<?php echo $i; ?>)">
-                                                        <i class="bi bi-x-lg"></i>
-                                                    </button>
+                                                <?php if ($hasImage): ?>
+                                                    <img src="data:image/jpeg;base64,<?php echo base64_encode($album[$imageKey]); ?>" alt="Portfolio <?php echo $i; ?>">
                                                 <?php else: ?>
                                                     <div class="placeholder">
-                                                        <i class="bi bi-cloud-upload" style="font-size: 2rem;"></i>
+                                                        <i class="bi bi-image" style="font-size: 2rem;"></i>
                                                         <p class="mb-0 small">No image</p>
                                                     </div>
                                                 <?php endif; ?>
                                             </div>
                                             
-                                            <input 
-                                                type="file" 
-                                                class="file-input-hidden" 
-                                                id="file_input_<?php echo $i; ?>" 
-                                                name="image_<?php echo $i; ?>" 
-                                                accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
-                                                onchange="previewImage(<?php echo $i; ?>, this)">
-                                            
-                                            <input type="hidden" name="remove_image_<?php echo $i; ?>" id="remove_flag_<?php echo $i; ?>" value="0">
-                                            
-                                            <button type="button" class="btn btn-sm btn-outline-primary mt-2 w-100" onclick="document.getElementById('file_input_<?php echo $i; ?>').click()">
-                                                <i class="bi bi-cloud-upload"></i> Click to Upload
-                                            </button>
-                                            
-                                            <div class="file-name-display" id="filename_<?php echo $i; ?>">
-                                                <?php if (!empty($imageUrl)): ?>
-                                                    <?php echo basename($imageUrl); ?>
-                                                <?php endif; ?>
+                                            <div class="file-input-wrapper mt-2">
+                                                <input 
+                                                    type="file" 
+                                                    name="image_<?php echo $i; ?>" 
+                                                    id="image_<?php echo $i; ?>" 
+                                                    accept="image/*"
+                                                    onchange="previewImage(this, <?php echo $i; ?>)">
+                                                <label for="image_<?php echo $i; ?>" class="file-input-label">
+                                                    <i class="bi bi-upload"></i> Choose Image
+                                                </label>
                                             </div>
+                                            
+                                            <?php if ($hasImage): ?>
+                                                <button type="button" class="btn btn-sm btn-outline-danger w-100 mt-1" onclick="deleteImage('<?php echo $imageKey; ?>')">
+                                                    <i class="bi bi-trash"></i> Delete
+                                                </button>
+                                            <?php endif; ?>
                                         </div>
                                     </div>
                                 <?php endfor; ?>
@@ -345,18 +405,17 @@ include 'includes/header.php';
                             <div class="alert alert-info mt-3">
                                 <i class="bi bi-info-circle"></i> <strong>Tips for great portfolio images:</strong>
                                 <ul class="mb-0 mt-2">
-                                    <li>Click the "Click to Upload" button below each image slot to select a photo</li>
-                                    <li>Supported formats: JPG, PNG, GIF, WEBP</li>
+                                    <li>Upload high-quality images (recommended: 800x600px or larger)</li>
                                     <li>Maximum file size: 5MB per image</li>
-                                    <li>Recommended size: 800x600px or larger for best quality</li>
+                                    <li>Supported formats: JPG, PNG, GIF, WebP</li>
                                     <li>Showcase your best work - before/after photos, finished styles, your shop interior, etc.</li>
-                                    <li>Hover over existing images to see the remove button</li>
+                                    <li>You can upload up to 10 images to showcase your business</li>
                                 </ul>
                             </div>
                             
                             <div class="d-grid">
                                 <button type="submit" name="update_portfolio" class="btn btn-success btn-lg">
-                                    <i class="bi bi-cloud-upload"></i> Update Portfolio Images
+                                    <i class="bi bi-cloud-upload"></i> Upload Selected Images
                                 </button>
                             </div>
                         </form>
@@ -373,7 +432,7 @@ include 'includes/header.php';
                                 <small class="text-muted">Services</small>
                             </div>
                             <div class="col-3">
-                                <h3 style="color: var(--color-rose);"><?php echo count(getBusinessStaff($businessId)); ?></h3>
+                                <h3 style="color: var(--color-rose);"><?php echo count(getBusinessEmployees($businessId)); ?></h3>
                                 <small class="text-muted">Staff</small>
                             </div>
                             <div class="col-3">
@@ -393,72 +452,56 @@ include 'includes/header.php';
 </main>
 
 <script>
-function previewImage(slot, input) {
-    const preview = document.getElementById('preview_' + slot);
-    const filenameDisplay = document.getElementById('filename_' + slot);
-    const removeFlag = document.getElementById('remove_flag_' + slot);
-    
-    // Reset remove flag when new file is selected
-    removeFlag.value = '0';
+function previewLogo(input) {
+    const preview = document.getElementById('logo_preview');
     
     if (input.files && input.files[0]) {
         const reader = new FileReader();
-        const file = input.files[0];
-        
-        // Validate file size (5MB)
-        if (file.size > 5 * 1024 * 1024) {
-            alert('File size exceeds 5MB limit. Please choose a smaller file.');
-            input.value = '';
-            return;
-        }
         
         reader.onload = function(e) {
-            preview.innerHTML = `
-                <img src="${e.target.result}" alt="Portfolio ${slot}">
-                <button type="button" class="remove-image-btn" onclick="event.preventDefault(); removeImage(${slot})">
-                    <i class="bi bi-x-lg"></i>
-                </button>
-            `;
-            filenameDisplay.textContent = file.name;
+            preview.innerHTML = `<img src="${e.target.result}" alt="Logo Preview">`;
         };
         
-        reader.readAsDataURL(file);
+        reader.readAsDataURL(input.files[0]);
     }
 }
 
-function removeImage(slot) {
-    const input = document.getElementById('file_input_' + slot);
+function previewImage(input, slot) {
     const preview = document.getElementById('preview_' + slot);
-    const filenameDisplay = document.getElementById('filename_' + slot);
-    const removeFlag = document.getElementById('remove_flag_' + slot);
     
-    // Clear file input
-    input.value = '';
-    
-    // Set remove flag
-    removeFlag.value = '1';
-    
-    // Reset preview
-    preview.innerHTML = `
-        <div class="placeholder">
-            <i class="bi bi-cloud-upload" style="font-size: 2rem;"></i>
-            <p class="mb-0 small">Click to upload</p>
-        </div>
-    `;
-    
-    // Clear filename display
-    filenameDisplay.textContent = '';
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        
+        reader.onload = function(e) {
+            preview.innerHTML = `<img src="${e.target.result}" alt="Preview ${slot}">`;
+        };
+        
+        reader.readAsDataURL(input.files[0]);
+    }
 }
 
-// Prevent form submission when clicking remove button
-document.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('.remove-image-btn').forEach(btn => {
-        btn.addEventListener('click', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-        });
-    });
-});
+function deleteImage(imageSlot) {
+    if (confirm('Are you sure you want to delete this image?')) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '';
+        
+        const deleteInput = document.createElement('input');
+        deleteInput.type = 'hidden';
+        deleteInput.name = 'delete_image';
+        deleteInput.value = '1';
+        
+        const slotInput = document.createElement('input');
+        slotInput.type = 'hidden';
+        slotInput.name = 'image_slot';
+        slotInput.value = imageSlot;
+        
+        form.appendChild(deleteInput);
+        form.appendChild(slotInput);
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
 </script>
 
 <?php include 'includes/footer.php'; ?>

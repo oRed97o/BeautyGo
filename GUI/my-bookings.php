@@ -8,12 +8,12 @@ if (!isCustomerLoggedIn()) {
     exit;
 }
 
-$user = getCurrentUser();
-$appointments = getCustomerAppointments($user['customer_id'] ?? $user['id']);
+$customer = getCurrentCustomer();
+$appointments = getCustomerAppointments($customer['customer_id']);
 
-// Sort appointments by booking date (newest booked first)
+// Sort appointments by set_date (newest booked first)
 usort($appointments, function($a, $b) {
-    return strtotime($b['created_at']) - strtotime($a['created_at']);
+    return strtotime($b['set_date']) - strtotime($a['set_date']);
 });
 
 $pageTitle = 'My Bookings - BeautyGo';
@@ -43,6 +43,23 @@ include 'includes/header.php';
 
 .back-button i {
     font-size: 1.2rem;
+}
+
+/* Status badges */
+.status-pending { background-color: #ffc107; color: #000; }
+.status-confirmed { background-color: #28a745; color: #fff; }
+.status-cancelled { background-color: #dc3545; color: #fff; }
+.status-completed { background-color: #007bff; color: #fff; }
+
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+}
+
+.empty-state i {
+    font-size: 4rem;
+    color: var(--color-rose);
+    margin-bottom: 20px;
 }
 </style>
 
@@ -74,9 +91,9 @@ include 'includes/header.php';
                         <div class="row">
                             <div class="col-md-8">
                                 <div class="d-flex justify-content-between align-items-start mb-2">
-                                    <h5 class="mb-0"><?php echo $appointment['business_name']; ?></h5>
-                                    <span class="badge status-<?php echo $appointment['status']; ?>">
-                                        <?php echo ucfirst($appointment['status']); ?>
+                                    <h5 class="mb-0"><?php echo htmlspecialchars($appointment['business_name']); ?></h5>
+                                    <span class="badge status-<?php echo $appointment['appoint_status']; ?>">
+                                        <?php echo ucfirst($appointment['appoint_status']); ?>
                                     </span>
                                 </div>
                                 
@@ -84,25 +101,37 @@ include 'includes/header.php';
                                     <div class="col-md-6">
                                         <p class="mb-1">
                                             <i class="bi bi-scissors text-muted"></i>
-                                            <strong>Service:</strong> <?php echo $appointment['service_name']; ?>
+                                            <strong>Service:</strong> <?php echo htmlspecialchars($appointment['service_name']); ?>
                                         </p>
                                         <p class="mb-1">
                                             <i class="bi bi-person text-muted"></i>
-                                            <strong>Staff:</strong> <?php echo htmlspecialchars($appointment['staff_name'] ?? 'Any Available'); ?>
+                                            <strong>Staff:</strong> <?php echo htmlspecialchars($appointment['staff_fname'] . ' ' . $appointment['staff_lname']); ?>
+                                        </p>
+                                        <p class="mb-1">
+                                            <i class="bi bi-star text-muted"></i>
+                                            <strong>Specialization:</strong> <?php echo htmlspecialchars($appointment['specialization']); ?>
                                         </p>
                                     </div>
                                     <div class="col-md-6">
                                         <p class="mb-1">
                                             <i class="bi bi-calendar text-muted"></i>
-                                            <strong>Date & Time:</strong> <?php echo formatDateTime($appointment['appointment_datetime']); ?>
+                                            <strong>Date & Time:</strong> <?php echo formatDateTime($appointment['appoint_date']); ?>
+                                        </p>
+                                        <p class="mb-1">
+                                            <i class="bi bi-clock text-muted"></i>
+                                            <strong>Duration:</strong> <?php echo $appointment['duration']; ?> minutes
+                                        </p>
+                                        <p class="mb-1">
+                                            <i class="bi bi-geo-alt text-muted"></i>
+                                            <strong>Address:</strong> <?php echo htmlspecialchars($appointment['business_address']); ?>
                                         </p>
                                     </div>
                                 </div>
                                 
-                                <?php if (!empty($appointment['notes'])): ?>
+                                <?php if (!empty($appointment['appoint_desc'])): ?>
                                     <p class="mb-1">
                                         <i class="bi bi-chat-left-text text-muted"></i>
-                                        <strong>Notes:</strong> <?php echo $appointment['notes']; ?>
+                                        <strong>Notes:</strong> <?php echo htmlspecialchars($appointment['appoint_desc']); ?>
                                     </p>
                                 <?php endif; ?>
                                 
@@ -121,13 +150,13 @@ include 'includes/header.php';
                                         <i class="bi bi-shop"></i> View Business
                                     </a>
                                     
-                                    <?php if ($appointment['status'] == 'pending'): ?>
+                                    <?php if ($appointment['appoint_status'] == 'pending'): ?>
                                         <button class="btn btn-outline-danger btn-sm" onclick="if(confirm('Cancel this appointment?')) { updateAppointmentStatus('<?php echo $appointment['appointment_id']; ?>', 'cancelled'); }">
                                             <i class="bi bi-x-circle"></i> Cancel Appointment
                                         </button>
                                     <?php endif; ?>
                                     
-                                    <?php if ($appointment['status'] == 'completed'): ?>
+                                    <?php if ($appointment['appoint_status'] == 'completed'): ?>
                                         <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#reviewModal<?php echo $appointment['appointment_id']; ?>">
                                             <i class="bi bi-star"></i> Write Review
                                         </button>
@@ -137,12 +166,12 @@ include 'includes/header.php';
                         </div>
                     </div>
                     <div class="card-footer bg-transparent text-muted small">
-                        Booked on <?php echo formatDate($appointment['created_at']); ?>
+                        Booked on <?php echo formatDate($appointment['set_date']); ?>
                     </div>
                 </div>
                 
                 <!-- Review Modal -->
-                <?php if ($appointment['status'] == 'completed'): ?>
+                <?php if ($appointment['appoint_status'] == 'completed'): ?>
                     <div class="modal fade" id="reviewModal<?php echo $appointment['appointment_id']; ?>" tabindex="-1">
                         <div class="modal-dialog">
                             <div class="modal-content">
@@ -154,8 +183,7 @@ include 'includes/header.php';
                                     <div class="modal-body">
                                         <input type="hidden" name="appointment_id" value="<?php echo $appointment['appointment_id']; ?>">
                                         <input type="hidden" name="business_id" value="<?php echo $appointment['business_id']; ?>">
-                                        <input type="hidden" name="customer_id" value="<?php echo $user['customer_id'] ?? $user['id']; ?>">
-                                        <input type="hidden" name="user_name" value="<?php echo $user['name']; ?>">
+                                        <input type="hidden" name="customer_id" value="<?php echo $customer['customer_id']; ?>">
                                         
                                         <div class="mb-3">
                                             <label class="form-label">Rating</label>
@@ -170,9 +198,20 @@ include 'includes/header.php';
                                         </div>
                                         
                                         <div class="mb-3">
-                                            <label for="comment" class="form-label">Your Review</label>
-                                            <textarea class="form-control" name="comment" rows="4" required placeholder="Share your experience..."></textarea>
+                                            <label for="review_text" class="form-label">Your Review</label>
+                                            <textarea class="form-control" name="review_text" rows="4" required placeholder="Share your experience..."></textarea>
                                         </div>
+
+                                        <div class="mb-3">
+                                            <label class="form-label">Add Photos (Optional - Max 5 images)</label>
+                                            <input type="file" class="form-control mb-2" name="review_img1" accept="image/*">
+                                            <input type="file" class="form-control mb-2" name="review_img2" accept="image/*">
+                                            <input type="file" class="form-control mb-2" name="review_img3" accept="image/*">
+                                            <input type="file" class="form-control mb-2" name="review_img4" accept="image/*">
+                                            <input type="file" class="form-control" name="review_img5" accept="image/*">
+                                            <small class="text-muted">JPG, PNG, GIF, WebP - Max 5MB per image</small>
+                                        </div>
+
                                     </div>
                                     <div class="modal-footer">
                                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -190,7 +229,6 @@ include 'includes/header.php';
 
 <script>
 function updateAppointmentStatus(appointmentId, status) {
-    // Create a form and submit it
     const form = document.createElement('form');
     form.method = 'POST';
     form.action = 'update-booking.php';
@@ -202,18 +240,13 @@ function updateAppointmentStatus(appointmentId, status) {
     
     const statusInput = document.createElement('input');
     statusInput.type = 'hidden';
-    statusInput.name = 'status';
+    statusInput.name = 'appoint_status';
     statusInput.value = status;
     
     form.appendChild(idInput);
     form.appendChild(statusInput);
     document.body.appendChild(form);
     form.submit();
-}
-
-// Legacy function name for backwards compatibility
-function updateBookingStatus(id, status) {
-    updateAppointmentStatus(id, status);
 }
 </script>
 

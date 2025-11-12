@@ -4,155 +4,225 @@ require_once 'functions.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
-    
-    if ($action === 'register_user') {
-        // Get form data
-        $name = trim($_POST['name'] ?? '');
-        $email = trim($_POST['email'] ?? '');
-        $password = $_POST['password'] ?? '';
-        $phone = trim($_POST['phone'] ?? '');
-        $address = trim($_POST['address'] ?? '');
-        
-        // Beauty profile data (optional)
-        $faceShape = $_POST['face_shape'] ?? null;
-        $skinTone = $_POST['skin_tone'] ?? null;
-        $bodyMass = $_POST['body_mass'] ?? null;
-        $desiredHairLength = $_POST['desired_hair_length'] ?? null;
-        $preferences = trim($_POST['preferences'] ?? '');
-        
-        // Validate required fields
-        if (empty($name) || empty($email) || empty($password) || empty($phone) || empty($address)) {
-            $_SESSION['error'] = 'Please fill in all required fields.';
-            header('Location: user-register.php');
+
+    switch ($action) {
+        case 'register_user':
+            registerUser();
+            break;
+        case 'register_business':
+            registerBusiness();
+            break;
+        case 'login':
+            login();
+            break;
+        case 'logout':
+            logout();
+            break;
+    }
+}
+
+// ==========================
+// Register New Customer
+// ==========================
+function registerUser() {
+    $email = sanitize($_POST['email'] ?? '');
+    $password = $_POST['password'] ?? '';
+    $fname = sanitize($_POST['fname'] ?? '');
+    $surname = sanitize($_POST['surname'] ?? '');
+    $address = sanitize($_POST['cstmr_address'] ?? '');
+    $phone = sanitize($_POST['cstmr_num'] ?? '');
+
+    // Required field validation
+    if (empty($fname) || empty($email) || empty($password) || empty($phone)) {
+        $_SESSION['error'] = 'Please fill in all required fields.';
+        header('Location: register-user.php');
+        exit;
+    }
+
+    // Email format
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $_SESSION['error'] = 'Invalid email format.';
+        header('Location: register-user.php');
+        exit;
+    }
+
+    // Password strength
+    if (strlen($password) < 8) {
+        $_SESSION['error'] = 'Password must be at least 8 characters long.';
+        header('Location: register-user.php');
+        exit;
+    }
+
+    // Check if email exists
+    if (getCustomerByEmail($email)) {
+        $_SESSION['error'] = 'Email already registered.';
+        header('Location: register-user.php');
+        exit;
+    }
+
+    // Handle profile picture upload (still stored as BLOB)
+    $profilePic = null;
+    if (isset($_FILES['profile_pic']) && $_FILES['profile_pic']['error'] === UPLOAD_ERR_OK) {
+        $file = $_FILES['profile_pic'];
+
+        // Validate file type and size
+        $allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        $maxSize = 5 * 1024 * 1024; // 5MB limit
+
+        if (!in_array($file['type'], $allowedTypes)) {
+            $_SESSION['error'] = 'Invalid file type. Only JPG, PNG, GIF, and WebP are allowed.';
+            header('Location: register-user.php');
             exit;
         }
-        
-        // Validate email format
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            $_SESSION['error'] = 'Invalid email format.';
-            header('Location: user-register.php');
+
+        if ($file['size'] > $maxSize) {
+            $_SESSION['error'] = 'Profile picture must be less than 5MB.';
+            header('Location: register-user.php');
             exit;
         }
-        
-        // Validate password length
-        if (strlen($password) < 6) {
-            $_SESSION['error'] = 'Password must be at least 6 characters long.';
-            header('Location: user-register.php');
+
+        $profilePic = file_get_contents($file['tmp_name']);
+    }
+
+    // Build customer data array
+    $userData = [
+        'fname' => $fname,
+        'mname' => sanitize($_POST['mname'] ?? ''),
+        'surname' => $surname,
+        'cstmr_num' => $phone,
+        'cstmr_email' => $email,
+        'password' => $password,
+        'cstmr_address' => $address,
+        'face_shape' => $_POST['face_shape'] ?? '',
+        'body_type' => $_POST['body_type'] ?? '',
+        'eye_color' => $_POST['eye_color'] ?? '',
+        'skin_tone' => $_POST['skin_tone'] ?? '',
+        'hair_type' => $_POST['hair_type'] ?? '',
+        'hair_color' => $_POST['hair_color'] ?? '',
+        'current_hair_length' => $_POST['current_hair_length'] ?? '',
+        'desired_hair_length' => $_POST['desired_hair_length'] ?? '',
+        'profile_pic' => $profilePic
+    ];
+
+    // Insert new customer
+    $customerId = createCustomer($userData);
+
+    if ($customerId) {
+        $_SESSION['customer_id'] = $customerId;
+        $_SESSION['user_type'] = 'customer';
+        $_SESSION['success'] = 'Registration successful! Welcome to BeautyGo!';
+        header('Location: index.php');
+    } else {
+        $_SESSION['error'] = 'Registration failed. Please try again.';
+        header('Location: register-user.php');
+    }
+    exit;
+}
+
+// ==========================
+// Register New Business
+// ==========================
+function registerBusiness() {
+    $email = sanitize($_POST['email']);
+    $password = $_POST['password'] ?? '';
+    $businessName = sanitize($_POST['business_name'] ?? '');
+    $businessType = sanitize($_POST['business_type'] ?? 'Salon');
+    $city = sanitize($_POST['city'] ?? 'Nasugbu');
+
+    // Validate required fields
+    if (empty($businessName) || empty($email) || empty($password)) {
+        $_SESSION['error'] = 'Please fill in all required fields.';
+        header('Location: register-business.php');
+        exit;
+    }
+
+    // Email format
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $_SESSION['error'] = 'Invalid email format.';
+        header('Location: register-business.php');
+        exit;
+    }
+
+    // Password strength
+    if (strlen($password) < 6) {
+        $_SESSION['error'] = 'Password must be at least 6 characters long.';
+        header('Location: register-business.php');
+        exit;
+    }
+
+    // Check if email exists
+    if (getBusinessByEmail($email)) {
+        $_SESSION['error'] = 'Email already registered.';
+        header('Location: register-business.php');
+        exit;
+    }
+
+    $businessData = [
+        'business_email' => $email,
+        'business_password' => $password,
+        'business_name' => $businessName,
+        'business_type' => $businessType,
+        'business_desc' => sanitize($_POST['business_desc'] ?? $_POST['description'] ?? ''),
+        'business_address' => sanitize($_POST['business_address'] ?? $_POST['address'] ?? ''),
+        'business_num' => sanitize($_POST['business_num'] ?? ''),
+        'city' => $city,
+        'latitude' => $_POST['latitude'] ?? 14.0697,
+        'longitude' => $_POST['longitude'] ?? 120.6328
+    ];
+
+    $businessId = createBusiness($businessData);
+
+    if ($businessId) {
+        $_SESSION['business_id'] = $businessId;
+        $_SESSION['user_type'] = 'business';
+        $_SESSION['success'] = 'Business registration successful!';
+        header('Location: business-dashboard.php');
+    } else {
+        $_SESSION['error'] = 'Registration failed. Please try again.';
+        header('Location: register-business.php');
+    }
+    exit;
+}
+
+// ==========================
+// Login
+// ==========================
+function login() {
+    $email = sanitize($_POST['email']);
+    $password = $_POST['password'];
+    $type = $_POST['type'] ?? 'customer';
+
+    if ($type === 'business') {
+        $business = getBusinessByEmail($email);
+        if ($business && password_verify($password, $business['business_password'])) {
+            $_SESSION['business_id'] = $business['business_id'];
+            $_SESSION['user_type'] = 'business';
+            $_SESSION['success'] = 'Welcome back, ' . $business['business_name'] . '!';
+            header('Location: business-dashboard.php');
             exit;
         }
-        
-        try {
-            // Check if email already exists
-            $stmt = $pdo->prepare("SELECT customer_id FROM customer WHERE email = ?");
-            $stmt->execute([$email]);
-            
-            if ($stmt->fetch()) {
-                $_SESSION['error'] = 'Email address already registered.';
-                header('Location: user-register.php');
-                exit;
-            }
-            
-            // Handle profile picture upload
-            $profilePicturePath = null;
-            
-            if (isset($_FILES['profile_picture']) && $_FILES['profile_picture']['error'] === UPLOAD_ERR_OK) {
-                $file = $_FILES['profile_picture'];
-                
-                // Validate file
-                $allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-                $maxSize = 5 * 1024 * 1024; // 5MB
-                
-                if (!in_array($file['type'], $allowedTypes)) {
-                    $_SESSION['error'] = 'Invalid file type. Only JPG, PNG, GIF, and WebP are allowed.';
-                    header('Location: user-register.php');
-                    exit;
-                }
-                
-                if ($file['size'] > $maxSize) {
-                    $_SESSION['error'] = 'File size must be less than 5MB.';
-                    header('Location: user-register.php');
-                    exit;
-                }
-                
-                // Create uploads directory if it doesn't exist
-                $uploadDir = 'uploads/profiles/';
-                if (!file_exists($uploadDir)) {
-                    mkdir($uploadDir, 0755, true);
-                }
-                
-                // Generate unique filename
-                $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
-                $filename = 'profile_' . time() . '_' . uniqid() . '.' . $extension;
-                $targetPath = $uploadDir . $filename;
-                
-                // Move uploaded file
-                if (move_uploaded_file($file['tmp_name'], $targetPath)) {
-                    $profilePicturePath = $targetPath;
-                } else {
-                    $_SESSION['error'] = 'Failed to upload profile picture.';
-                    header('Location: user-register.php');
-                    exit;
-                }
-            }
-            
-            // Hash password
-            $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
-            
-            // Insert user into database
-            $stmt = $pdo->prepare("
-                INSERT INTO customer (
-                    customer_name, email, password, phone, address,
-                    face_shape, skin_tone, body_mass, desired_hair_length, 
-                    preferences, profile_picture, created_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
-            ");
-            
-            $stmt->execute([
-                $name,
-                $email,
-                $hashedPassword,
-                $phone,
-                $address,
-                $faceShape,
-                $skinTone,
-                $bodyMass,
-                $desiredHairLength,
-                $preferences,
-                $profilePicturePath
-            ]);
-            
-            // Get the newly created customer ID
-            $customerId = $pdo->lastInsertId();
-            
-            // Set session variables for auto-login
-            $_SESSION['user_id'] = $customerId;
-            $_SESSION['user_name'] = $name;
-            $_SESSION['user_email'] = $email;
+    } else {
+        $customer = getCustomerByEmail($email);
+        if ($customer && password_verify($password, $customer['cstmr_password'])) {
+            $_SESSION['customer_id'] = $customer['customer_id'];
             $_SESSION['user_type'] = 'customer';
-            if ($profilePicturePath) {
-                $_SESSION['user_profile_picture'] = $profilePicturePath;
-            }
-            
-            $_SESSION['success'] = 'Registration successful! Welcome to BeautyGo!';
+            $_SESSION['success'] = 'Welcome back, ' . $customer['fname'] . '!';
             header('Location: index.php');
-            exit;
-            
-        } catch (PDOException $e) {
-            // If database insert fails and profile picture was uploaded, delete it
-            if (isset($profilePicturePath) && file_exists($profilePicturePath)) {
-                unlink($profilePicturePath);
-            }
-            
-            $_SESSION['error'] = 'Registration failed: ' . $e->getMessage();
-            header('Location: user-register.php');
             exit;
         }
     }
-    
-    // Handle other authentication actions (login, logout, etc.)
-    // ... rest of your auth.php code ...
+
+    $_SESSION['error'] = 'Invalid email or password.';
+    header('Location: login.php');
+    exit;
 }
 
-header('Location: index.php');
-exit;
+// ==========================
+// Logout
+// ==========================
+function logout() {
+    session_destroy();
+    header('Location: index.php');
+    exit;
+}
 ?>

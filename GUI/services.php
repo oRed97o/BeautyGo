@@ -19,6 +19,33 @@ foreach ($allServices as $service) {
 include 'includes/header.php';
 ?>
 
+<style>
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+}
+
+.empty-state i {
+    font-size: 4rem;
+    color: var(--color-rose);
+    margin-bottom: 20px;
+}
+
+.business-services-card {
+    border: 1px solid #dee2e6;
+}
+
+.service-card .card {
+    border: 1px solid #e0e0e0;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.service-card .card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 4px 12px rgba(133, 14, 53, 0.15);
+}
+</style>
+
 <main>
     <div class="container my-4">
         <h2 class="mb-4">Browse All Services</h2>
@@ -51,13 +78,8 @@ include 'includes/header.php';
         <?php else: ?>
             <?php foreach ($servicesByBusiness as $businessId => $services): ?>
                 <?php
-                $business = null;
-                foreach ($businesses as $b) {
-                    if ($b['id'] == $businessId) {
-                        $business = $b;
-                        break;
-                    }
-                }
+                // Get business info for this group of services
+                $business = getBusinessById($businessId);
                 if (!$business) continue;
                 ?>
                 
@@ -65,12 +87,12 @@ include 'includes/header.php';
                     <div class="card-header bg-white">
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
-                                <h4 class="mb-1"><?php echo $business['business_name']; ?></h4>
+                                <h4 class="mb-1"><?php echo htmlspecialchars($business['business_name']); ?></h4>
                                 <small class="text-muted">
-                                    <i class="bi bi-geo-alt"></i> <?php echo $business['address']; ?>
+                                    <i class="bi bi-geo-alt"></i> <?php echo htmlspecialchars($business['business_address'] . ', ' . $business['city']); ?>
                                 </small>
                             </div>
-                            <a href="business-detail.php?id=<?php echo $business['id']; ?>" class="btn btn-outline-primary btn-sm">
+                            <a href="business-detail.php?id=<?php echo $business['business_id']; ?>" class="btn btn-outline-primary btn-sm">
                                 View Business
                             </a>
                         </div>
@@ -78,24 +100,34 @@ include 'includes/header.php';
                     <div class="card-body">
                         <div class="row">
                             <?php foreach ($services as $service): ?>
-                                <div class="col-md-6 col-lg-4 mb-3 service-card" data-service-name="<?php echo strtolower($service['name']); ?>">
+                                <div class="col-md-6 col-lg-4 mb-3 service-card" data-service-name="<?php echo strtolower($service['service_name']); ?>">
                                     <div class="card h-100">
                                         <div class="card-body">
-                                            <h5 class="card-title"><?php echo $service['name']; ?></h5>
-                                            <p class="card-text text-muted small"><?php echo $service['description']; ?></p>
-                                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                                <h5 class="card-title mb-0"><?php echo htmlspecialchars($service['service_name']); ?></h5>
+                                                <?php if (!empty($service['service_type'])): ?>
+                                                    <span class="badge bg-secondary"><?php echo htmlspecialchars($service['service_type']); ?></span>
+                                                <?php endif; ?>
+                                            </div>
+                                            
+                                            <?php if (!empty($service['service_desc'])): ?>
+                                                <p class="card-text text-muted small"><?php echo htmlspecialchars($service['service_desc']); ?></p>
+                                            <?php endif; ?>
+                                            
+                                            <div class="d-flex justify-content-between align-items-center mb-3">
                                                 <small class="text-muted">
                                                     <i class="bi bi-clock"></i> <?php echo $service['duration']; ?> mins
                                                 </small>
-                                                <strong style="color: var(--color-burgundy);">₱<?php echo number_format($service['price'], 2); ?></strong>
+                                                <strong style="color: var(--color-burgundy);">₱<?php echo number_format($service['cost'], 2); ?></strong>
                                             </div>
+                                            
                                             <?php if (isCustomerLoggedIn()): ?>
-                                                <a href="booking.php?business_id=<?php echo $business['id']; ?>" class="btn btn-primary btn-sm w-100">
-                                                    Book Now
+                                                <a href="booking.php?business_id=<?php echo $business['business_id']; ?>&service_id=<?php echo $service['service_id']; ?>" class="btn btn-primary btn-sm w-100">
+                                                    <i class="bi bi-calendar-check"></i> Book Now
                                                 </a>
                                             <?php else: ?>
                                                 <a href="login.php" class="btn btn-outline-primary btn-sm w-100">
-                                                    Login to Book
+                                                    <i class="bi bi-box-arrow-in-right"></i> Login to Book
                                                 </a>
                                             <?php endif; ?>
                                         </div>

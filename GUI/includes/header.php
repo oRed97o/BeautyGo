@@ -52,8 +52,8 @@
                             $currentUser = getCurrentBusiness();
                             $displayName = $currentUser['business_name'] ?? 'Business';
                         } else {
-                            $currentUser = getCurrentUser();
-                            $displayName = $currentUser['name'] ?? 'User';
+                            $currentUser = getCurrentCustomer();
+                            $displayName = $currentUser['fname'] ?? 'User';
                         }
                         ?>
                         <?php if (isBusinessLoggedIn()): ?>

@@ -1,4 +1,4 @@
-<?php
+<?php //full "Analysis"
 require_once 'config.php';
 require_once 'functions.php';
 
@@ -16,7 +16,7 @@ if (!$business) {
 }
 
 $services = getBusinessServices($businessId);
-$staff = getBusinessStaff($businessId);
+$staff = getBusinessEmployees($businessId); // Fixed: was getBusinessStaff
 $reviews = getBusinessReviews($businessId);
 $averageRating = calculateAverageRating($businessId);
 $album = getBusinessAlbum($businessId);
@@ -24,10 +24,16 @@ $album = getBusinessAlbum($businessId);
 // Get all available images from album
 $albumImages = [];
 for ($i = 1; $i <= 10; $i++) {
-    $imageKey = 'image_' . $i;
+    $imageKey = 'image' . $i; // Fixed: removed underscore
     if (isset($album[$imageKey]) && !empty($album[$imageKey])) {
-        $albumImages[] = $album[$imageKey];
+        // Convert BLOB to base64 for display
+        $albumImages[] = 'data:image/jpeg;base64,' . base64_encode($album[$imageKey]);
     }
+}
+
+// Handle logo if it exists
+if (isset($album['logo']) && !empty($album['logo'])) {
+    array_unshift($albumImages, 'data:image/jpeg;base64,' . base64_encode($album['logo']));
 }
 
 // If no images, use default
@@ -215,25 +221,6 @@ include 'includes/header.php';
         opacity: 1;
     }
 }
-
-/* Map Container Styles */
-.map-container {
-    border-radius: 12px;
-    overflow: hidden;
-    height: 350px;
-    border: 2px solid var(--color-cream);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    transition: all 0.3s ease;
-}
-
-.map-container:hover {
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-    transform: translateY(-2px);
-}
-
-.map-container iframe {
-    border: 0;
-}
 </style>
 
 <main>
@@ -287,7 +274,7 @@ include 'includes/header.php';
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-start mb-3">
                             <div>
-                                <h2 class="mb-1"><?php echo $business['business_name']; ?></h2>
+                                <h2 class="mb-1"><?php echo htmlspecialchars($business['business_name']); ?></h2>
                                 <span class="badge badge-rose"><?php echo ucfirst($business['business_type']); ?></span>
                             </div>
                             <?php if (isCustomerLoggedIn()): ?>
@@ -301,7 +288,7 @@ include 'includes/header.php';
                             <?php endif; ?>
                         </div>
                         
-                        <p class="business-description"><?php echo $business['business_desc'] ?? ''; ?></p>
+                        <p class="business-description"><?php echo htmlspecialchars($business['business_desc'] ?? ''); ?></p>
                         
                         <div class="mb-2">
                             <div class="rating mb-2">
@@ -323,13 +310,13 @@ include 'includes/header.php';
                             <div class="col-md-6">
                                 <p class="mb-2">
                                     <i class="bi bi-geo-alt text-muted"></i>
-                                    <?php echo $business['business_address'] ?? ''; ?><?php if ($business['city']) echo ', ' . $business['city']; ?>
+                                    <?php echo htmlspecialchars($business['business_address'] ?? ''); ?><?php if (!empty($business['city'])) echo ', ' . htmlspecialchars($business['city']); ?>
                                 </p>
                             </div>
                             <div class="col-md-6">
                                 <p class="mb-2">
                                     <i class="bi bi-envelope text-muted"></i>
-                                    <?php echo $business['business_email'] ?? ''; ?>
+                                    <?php echo htmlspecialchars($business['business_email'] ?? ''); ?>
                                 </p>
                             </div>
                         </div>
@@ -354,10 +341,10 @@ include 'includes/header.php';
                                 <div class="service-item">
                                     <div class="d-flex justify-content-between align-items-start">
                                         <div>
-                                            <h5 class="mb-1"><?php echo $service['service_name']; ?></h5>
-                                            <p class="text-muted mb-1"><?php echo $service['description']; ?></p>
+                                            <h5 class="mb-1"><?php echo htmlspecialchars($service['service_name']); ?></h5>
+                                            <p class="text-muted mb-1"><?php echo htmlspecialchars($service['service_desc'] ?? ''); ?></p>
                                             <small class="text-muted">
-                                                <i class="bi bi-clock"></i> <?php echo $service['duration']; ?> mins
+                                                <i class="bi bi-clock"></i> <?php echo htmlspecialchars($service['duration']); ?>
                                             </small>
                                         </div>
                                         <div class="text-end">
@@ -383,11 +370,11 @@ include 'includes/header.php';
                             <?php foreach ($reviews as $review): ?>
                                 <div class="review-item">
                                     <div class="d-flex justify-content-between align-items-start mb-1">
-                                        <strong><?php echo $review['customer_name'] ?? 'Anonymous'; ?></strong>
+                                        <strong><?php echo htmlspecialchars(trim(($review['customer_fname'] ?? '') . ' ' . ($review['customer_lname'] ?? '')) ?: 'Anonymous'); ?></strong>
                                         <div class="rating">
                                             <?php
                                             for ($i = 1; $i <= 5; $i++) {
-                                                if ($i <= $review['rating']) {
+                                                if ($i <= ($review['rating'] ?? 0)) {
                                                     echo '<i class="bi bi-star-fill"></i>';
                                                 } else {
                                                     echo '<i class="bi bi-star"></i>';
@@ -396,8 +383,8 @@ include 'includes/header.php';
                                             ?>
                                         </div>
                                     </div>
-                                    <p class="text-muted mb-1"><?php echo $review['comment']; ?></p>
-                                    <small class="text-muted"><?php echo formatDate($review['created_at']); ?></small>
+                                    <p class="text-muted mb-1"><?php echo htmlspecialchars($review['review_text'] ?? ''); ?></p>
+                                    <small class="text-muted"><?php echo formatDate($review['review_date'] ?? ''); ?></small>
                                 </div>
                             <?php endforeach; ?>
                         <?php endif; ?>
@@ -417,104 +404,23 @@ include 'includes/header.php';
                             </div>
                         <?php else: ?>
                             <?php foreach ($staff as $member): ?>
+                                <?php
+                                $employeeName = trim(($member['employ_fname'] ?? '') . ' ' . ($member['employ_lname'] ?? '')) ?: 'Staff Member';
+                                $employeeImg = $member['employ_img'] ?? null;
+                                ?>
                                 <div class="staff-member">
-                                    <?php if (isset($member['photo']) && $member['photo']): ?>
-                                        <img src="<?php echo $member['photo']; ?>" alt="<?php echo $member['employee_name']; ?>">
+                                    <?php if (!empty($employeeImg)): ?>
+                                        <img src="data:image/jpeg;base64,<?php echo base64_encode($employeeImg); ?>" alt="<?php echo htmlspecialchars($employeeName); ?>">
                                     <?php else: ?>
                                         <div class="bg-secondary rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 80px; height: 80px; margin-bottom: 0.5rem;">
                                             <i class="bi bi-person-fill text-white" style="font-size: 2rem;"></i>
                                         </div>
                                     <?php endif; ?>
-                                    <h6 class="mb-0"><?php echo $member['employee_name']; ?></h6>
-                                    <small class="text-muted"><?php echo $member['specialization'] ?? ''; ?></small>
+                                    <h6 class="mb-0"><?php echo htmlspecialchars($employeeName); ?></h6>
+                                    <small class="text-muted"><?php echo htmlspecialchars($member['specialization'] ?? ''); ?></small>
                                 </div>
                             <?php endforeach; ?>
                         <?php endif; ?>
-                    </div>
-                </div>
-
-                <!-- Location Map -->
-                <div class="card">
-                    <div class="card-body">
-                        <h4 class="mb-3">
-                            <i class="bi bi-geo-alt-fill" style="color: var(--color-burgundy);"></i> Our Location
-                        </h4>
-                        <?php
-                        // Define map URLs for each business (using business name as fallback)
-                        $businessMaps = [
-                            // By ID
-                            '1' => [ // Tranquil Day Spa - Calayo
-                                'embed' => 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d482.62!2d120.6125989!3d14.1450445!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMTTCsDA4JzQyLjIiTiAxMjDCsDM2JzQ1LjQiRQ!5e0!3m2!1sen!2sph!4v1730434500000!5m2!1sen!2sph',
-                                'link' => 'https://www.google.com/maps/@14.1450445,120.6125989,18.89z?entry=ttu&g_ep=EgoyMDI1MTAyOS4yIKXMDSoASAFQAw%3D%3D',
-                                'address' => 'Calayo, Nasugbu, Batangas'
-                            ],
-                            '2' => [ // Classic Cuts Barbershop - Bucana
-                                'embed' => 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3866.5!2d120.6271805!3d14.0626427!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x33bd94edf2d0fd6b%3A0xefccd1a2914e068f!2sBucana%2C%20Nasugbu%2C%20Batangas!5e0!3m2!1sen!2sph!4v1730434300000!5m2!1sen!2sph',
-                                'link' => 'https://www.google.com/maps/place/Bucana,+Nasugbu,+Batangas/@14.0647086,120.6201178,15z/data=!3m1!4b1!4m6!3m5!1s0x33bd94edf2d0fd6b:0xefccd1a2914e068f!8m2!3d14.0626427!4d120.6271805!16s%2Fg%2F11fyxcxs26?entry=ttu&g_ep=EgoyMDI1MTAyOS4yIKXMDSoASAFQAw%3D%3D',
-                                'address' => 'Bucana, Nasugbu, Batangas'
-                            ],
-                            // By business name (as fallback)
-                            'tranquil day spa' => [
-                                'embed' => 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d482.62!2d120.6125989!3d14.1450445!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMTTCsDA4JzQyLjIiTiAxMjDCsDM2JzQ1LjQiRQ!5e0!3m2!1sen!2sph!4v1730434500000!5m2!1sen!2sph',
-                                'link' => 'https://www.google.com/maps/@14.1450445,120.6125989,18.89z?entry=ttu&g_ep=EgoyMDI1MTAyOS4yIKXMDSoASAFQAw%3D%3D',
-                                'address' => 'Calayo, Nasugbu, Batangas'
-                            ],
-                            'classic cuts barbershop' => [
-                                'embed' => 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3866.5!2d120.6271805!3d14.0626427!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x33bd94edf2d0fd6b%3A0xefccd1a2914e068f!2sBucana%2C%20Nasugbu%2C%20Batangas!5e0!3m2!1sen!2sph!4v1730434300000!5m2!1sen!2sph',
-                                'link' => 'https://www.google.com/maps/place/Bucana,+Nasugbu,+Batangas/@14.0647086,120.6201178,15z/data=!3m1!4b1!4m6!3m5!1s0x33bd94edf2d0fd6b:0xefccd1a2914e068f!8m2!3d14.0626427!4d120.6271805!16s%2Fg%2F11fyxcxs26?entry=ttu&g_ep=EgoyMDI1MTAyOS4yIKXMDSoASAFQAw%3D%3D',
-                                'address' => 'Bucana, Nasugbu, Batangas'
-                            ]
-                        ];
-                        
-                        // Try to get map data by business ID first, then by business name
-                        $mapData = null;
-                        
-                        // Try by ID
-                        if (isset($businessMaps[$businessId])) {
-                            $mapData = $businessMaps[$businessId];
-                        }
-                        // Try by business name (lowercase)
-                        elseif (isset($business['business_name'])) {
-                            $businessNameKey = strtolower(trim($business['business_name']));
-                            if (isset($businessMaps[$businessNameKey])) {
-                                $mapData = $businessMaps[$businessNameKey];
-                            }
-                        }
-                        
-                        // Fallback to default
-                        if (!$mapData) {
-                            $mapData = [
-                                'embed' => 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3865.8539768719744!2d120.62739577593395!3d14.074614586473989!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x33bd96ae421d7fdf%3A0x3789902f720f49d2!2sNasugbu%2C%20Batangas!5e0!3m2!1sen!2sph!4v1730433820000!5m2!1sen!2sph',
-                                'link' => 'https://www.google.com/maps/search/' . urlencode($business['business_address'] ?? 'Nasugbu, Batangas'),
-                                'address' => $business['business_address'] ?? 'Nasugbu, Batangas'
-                            ];
-                        }
-                        ?>
-                        
-                        <!-- Debug info (remove this after testing) -->
-                        <!-- Business ID: <?php echo $businessId; ?> | Business Name: <?php echo $business['business_name']; ?> -->
-                        
-                        <div class="map-container">
-                            <iframe 
-                                src="<?php echo $mapData['embed']; ?>" 
-                                width="100%" 
-                                height="100%" 
-                                style="border:0;" 
-                                allowfullscreen="" 
-                                loading="lazy" 
-                                referrerpolicy="no-referrer-when-downgrade">
-                            </iframe>
-                        </div>
-                        <div class="mt-3 text-center">
-                            <a href="<?php echo $mapData['link']; ?>" 
-                               target="_blank" 
-                               class="btn btn-outline-primary btn-sm">
-                                <i class="bi bi-map"></i> Open in Google Maps
-                            </a>
-                        </div>
-                        <div class="mt-2 text-muted small text-center">
-                            <i class="bi bi-pin-map"></i> <?php echo htmlspecialchars($mapData['address']); ?>
-                        </div>
                     </div>
                 </div>
             </div>
