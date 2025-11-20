@@ -1,0 +1,510 @@
+:root {
+        --brand-burgundy: #850E35;
+        --brand-rose: #EE6983;
+        --brand-pink: #FFC4C4;
+        --brand-cream: #FFF5E4;
+    }
+
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        background-color: var(--brand-cream);
+    }
+
+    /* BeautyGo Homepage Styles */
+
+/* Hero Carousel Styles */
+.hero-carousel-wrapper {
+    position: relative;
+    width: 100%;
+    height: 600px;
+    overflow: hidden;
+}
+
+.carousel-slide {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    transition: opacity 1s ease-in-out;
+}
+
+.carousel-slide.active {
+    opacity: 1;
+}
+
+.carousel-slide img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+}
+
+.carousel-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.3), rgba(133, 14, 53, 0.6));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.carousel-content {
+    text-align: center;
+    color: white;
+    z-index: 10;
+    padding: 2rem;
+    max-width: 800px;
+}
+
+.carousel-content h1 {
+    font-size: 3.5rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+}
+
+.carousel-content p {
+    font-size: 1.5rem;
+    margin-bottom: 2rem;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+}
+
+.carousel-btn {
+    background-color: var(--color-burgundy);
+    color: white;
+    padding: 1rem 2.5rem;
+    border: none;
+    border-radius: 50px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.carousel-btn:hover {
+    background-color: var(--color-rose);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(238, 105, 131, 0.4);
+    color: white;
+}
+
+.carousel-nav {
+    position: absolute;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 1rem;
+    z-index: 20;
+}
+
+.carousel-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.5);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 2px solid white;
+}
+
+.carousel-dot.active {
+    background-color: white;
+    transform: scale(1.2);
+}
+
+.carousel-arrow {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background-color: rgba(255, 255, 255, 0.3);
+    color: white;
+    border: none;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    font-size: 1.5rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.carousel-arrow:hover {
+    background-color: rgba(255, 255, 255, 0.5);
+}
+
+.carousel-arrow.left {
+    left: 2rem;
+}
+
+.carousel-arrow.right {
+    right: 2rem;
+}
+
+/* Hero Section with Search */
+.hero-section-new {
+    background: linear-gradient(135deg, var(--color-burgundy) 0%, var(--color-rose) 100%);
+    padding: 4rem 0 3rem 0;
+    color: white;
+}
+
+.hero-content {
+    text-align: center;
+    margin-bottom: 2.5rem;
+}
+
+.hero-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    color: var(--color-cream);
+}
+
+.hero-title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    color: white;
+}
+
+/* Search Bar */
+.search-bar-wrapper {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.search-bar-container {
+    background: white;
+    border-radius: 50px;
+    padding: 0.5rem;
+    display: flex;
+    align-items: center;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+}
+
+.search-input-group {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    padding: 0 1rem;
+}
+
+.search-icon {
+    color: var(--color-burgundy);
+    font-size: 1.2rem;
+    margin-right: 0.75rem;
+}
+
+.search-input {
+    border: none;
+    outline: none;
+    font-size: 1rem;
+    width: 100%;
+    color: #333;
+}
+
+.search-input::placeholder {
+    color: #999;
+}
+
+.search-divider {
+    width: 1px;
+    height: 30px;
+    background-color: #ddd;
+}
+
+.search-category-group {
+    position: relative;
+    padding: 0 1rem;
+}
+
+.search-category-select {
+    border: none;
+    outline: none;
+    font-size: 1rem;
+    padding-right: 2rem;
+    background: transparent;
+    cursor: pointer;
+    color: #333;
+    appearance: none;
+}
+
+.category-arrow {
+    position: absolute;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+    color: var(--color-burgundy);
+}
+
+/* Business Card Base */
+.business-card {
+    position: relative;
+    width: 280px;
+    background: #fff;
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.business-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 10px 24px rgba(0,0,0,0.15);
+}
+
+/* Image Section */
+.business-card-img {
+    position: relative;
+    height: 220px;
+    overflow: hidden;
+}
+
+.business-card-img img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.4s ease;
+}
+
+.business-card:hover .business-card-img img {
+    transform: scale(1.05);
+}
+
+/* Badges */
+.airbnb-badge {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    background: white;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--color-burgundy);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.distance-badge {
+    position: absolute;
+    bottom: 12px;
+    left: 12px;
+    background: rgba(255, 255, 255, 0.95);
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--color-burgundy);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+/* Heart Button */
+.airbnb-favorite-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    border: none;
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 50%;
+    width: 34px;
+    height: 34px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    z-index: 10;
+}
+
+.airbnb-favorite-btn:hover {
+    background: var(--color-pink);
+    color: var(--color-burgundy);
+}
+
+/* Card Content */
+.business-card-content {
+    padding: 15px;
+}
+
+.business-name {
+    font-weight: 600;
+    font-size: 1.1rem;
+    color: var(--color-burgundy);
+    margin-bottom: 8px;
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.business-type-location {
+    color: #717171;
+    font-size: 0.9rem;
+    margin-bottom: 8px;
+}
+
+/* Rating */
+.airbnb-rating {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    color: #222;
+    font-size: 0.9rem;
+}
+
+.airbnb-rating i {
+    color: var(--color-rose);
+}
+
+.rating-count {
+    color: #717171;
+    font-size: 0.85rem;
+}
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: #717171;
+}
+
+.empty-state i {
+    font-size: 4rem;
+    color: var(--color-burgundy);
+    margin-bottom: 1rem;
+}
+
+.business-grid {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 2rem;
+    padding: 2rem 0;
+}
+
+/* Favorite button states */
+.airbnb-favorite-btn.favorited {
+    background: var(--color-burgundy);
+}
+
+.airbnb-favorite-btn.favorited i {
+    color: white;
+}
+
+.airbnb-favorite-btn i {
+    transition: all 0.3s ease;
+}
+
+/* Heart fill animation */
+@keyframes heartBeat {
+    0%, 100% {
+        transform: scale(1);
+    }
+    25% {
+        transform: scale(1.3);
+    }
+    50% {
+        transform: scale(1.1);
+    }
+}
+
+.airbnb-favorite-btn.favorited i {
+    animation: heartBeat 0.4s ease;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .hero-carousel-wrapper {
+        height: 500px;
+    }
+
+    .carousel-content h1 {
+        font-size: 2rem;
+    }
+
+    .carousel-content p {
+        font-size: 1.1rem;
+    }
+
+    .carousel-arrow {
+        width: 40px;
+        height: 40px;
+        font-size: 1.2rem;
+    }
+
+    .carousel-arrow.left {
+        left: 1rem;
+    }
+
+    .carousel-arrow.right {
+        right: 1rem;
+    }
+
+    .hero-title {
+        font-size: 1.75rem;
+    }
+
+    .business-card {
+        width: 100%;
+        max-width: 400px;
+    }
+
+    .search-bar-container {
+        flex-direction: column;
+        border-radius: 20px;
+    }
+
+    .search-divider {
+        width: 100%;
+        height: 1px;
+        margin: 0.5rem 0;
+    }
+}
+
+    /* Favorite button states */
+    .airbnb-favorite-btn.favorited {
+        background: var(--brand-burgundy);
+    }
+
+    .airbnb-favorite-btn.favorited i {
+        color: white;
+    }
+
+    .airbnb-favorite-btn i {
+        transition: all 0.3s ease;
+    }
+
+    /* Heart fill animation */
+    @keyframes heartBeat {
+        0%, 100% {
+            transform: scale(1);
+        }
+        25% {
+            transform: scale(1.3);
+        }
+        50% {
+            transform: scale(1.1);
+        }
+    }
+
+    .airbnb-favorite-btn.favorited i {
+        animation: heartBeat 0.4s ease;
+    }

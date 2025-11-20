@@ -1,0 +1,147 @@
+/* Pretty calendar styling */
+input[type="date"] {
+    position: relative;
+    padding: 12px 16px;
+    font-size: 1rem;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    background-color: white;
+    cursor: pointer;
+}
+
+input[type="date"]:hover {
+    border-color: var(--color-rose);
+}
+
+input[type="date"]:focus {
+    outline: none;
+    border-color: var(--color-burgundy);
+    box-shadow: 0 0 0 3px rgba(133, 14, 53, 0.1);
+}
+
+/* Calendar icon color */
+input[type="date"]::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    filter: invert(23%) sepia(60%) saturate(2066%) hue-rotate(314deg) brightness(89%) contrast(92%);
+}
+
+/* Service checkbox styling */
+.service-checkbox-card {
+    border: 2px solid #e0e0e0;
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 12px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    background-color: white;
+}
+
+.service-checkbox-card:hover {
+    border-color: var(--color-rose);
+    background-color: var(--color-cream);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(133, 14, 53, 0.1);
+}
+
+.service-checkbox-card.selected {
+    border-color: var(--color-burgundy);
+    background-color: var(--color-cream);
+    box-shadow: 0 4px 12px rgba(133, 14, 53, 0.15);
+}
+
+.service-checkbox-card input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    accent-color: var(--color-burgundy);
+}
+
+/* Back button styling */
+.back-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--color-burgundy);
+    text-decoration: none;
+    font-weight: 500;
+    padding: 8px 16px;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    margin-bottom: 20px;
+}
+
+.back-button:hover {
+    background-color: var(--color-cream);
+    color: var(--color-rose);
+    transform: translateX(-4px);
+}
+
+.back-button i {
+    font-size: 1.2rem;
+}
+
+/* Booking summary styling */
+.booking-summary-card {
+    background: linear-gradient(135deg, #FFF5E4 0%, #FFC4C4 50%, #EE6983 100%);
+    border: none;
+    border-radius: 15px;
+    box-shadow: 0 8px 20px rgba(133, 14, 53, 0.15);
+    margin-top: 30px;
+}
+
+.booking-summary-card .card-body {
+    padding: 25px;
+}
+
+.summary-total {
+    font-size: 2rem;
+    font-weight: bold;
+    color: var(--color-burgundy);
+}
+
+/* Time select styling */
+.form-select {
+    padding: 12px 16px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.form-select:hover {
+    border-color: var(--color-rose);
+}
+
+.form-select:focus {
+    border-color: var(--color-burgundy);
+    box-shadow: 0 0 0 3px rgba(133, 14, 53, 0.1);
+}
+
+/* Enhanced form controls */
+.form-control:focus, .form-select:focus {
+    border-color: var(--color-burgundy);
+    box-shadow: 0 0 0 3px rgba(133, 14, 53, 0.1);
+}
+
+textarea.form-control {
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 12px 16px;
+    transition: all 0.3s ease;
+}
+
+textarea.form-control:hover {
+    border-color: var(--color-rose);
+}
+
+/* Selected services badge */
+.selected-count-badge {
+    display: inline-block;
+    background-color: var(--color-burgundy);
+    color: white;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    margin-left: 8px;
+}
