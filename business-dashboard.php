@@ -15,7 +15,6 @@ if (!isBusinessLoggedIn()) {
     exit;
 }
 
-
 $business = getCurrentBusiness();
 $businessId = $business['business_id'] ?? $business['id'];
 
