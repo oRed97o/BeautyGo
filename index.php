@@ -1,4 +1,7 @@
 <?php
+header("Cache-Control: no-cache, no-store, must-revalidate"); // Prevent caching
+header("Pragma: no-cache");
+header("Expires: 0");
 
 require_once 'db_connection/config.php';
 require_once 'backend/function_utilities.php';
@@ -18,9 +21,11 @@ $userLon = $_SESSION['user_longitude'] ?? null;
 // Get all businesses with distance calculation
 $businesses = getBusinessesWithDistance($userLat, $userLon);
 
+
 include 'includes/header.php';
 ?>
 
+<link rel="stylesheet" href="css/styles.css">
 <link rel="stylesheet" href="css/index.css">
 
 <main>
@@ -131,13 +136,14 @@ include 'includes/header.php';
             // Fallback to default images based on type
             if (!$businessImage) {
                 $defaultImages = [
-                    'salon' => 'https://images.unsplash.com/photo-1521590832167-7bcbfaa6381f?w=600',
-                    'spa' => 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=600',
-                    'barbershop' => 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=600',
-                    'clinic' => 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=600'
+                    'hair salon' => 'resources\salon.png',
+                    'spa & wellness' => 'resources\spa.png',
+                    'barbershop' => 'resources\barbers.png',
+                    'beauty clinic' => 'resources\clinic.png',
+                    'nail salon' => 'resources\nails.png'
                 ];
                 $businessType = strtolower($business['business_type'] ?? 'salon');
-                $businessImage = $defaultImages[$businessType] ?? 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=600';
+                $businessImage = $defaultImages[$businessType] ?? 'resources/default.png';
             }
             
             // Calculate average rating
@@ -183,10 +189,10 @@ include 'includes/header.php';
                     <?php endif; ?>
 
                     <!-- Heart Favorite Button - NO onclick in HTML -->
-                    <button class="airbnb-favorite-btn favorite-btn-<?php echo $business['business_id']; ?> <?php echo $isFavorited ? 'favorited' : ''; ?>" 
+                    <!--<button class="airbnb-favorite-btn favorite-btn-<?php echo $business['business_id']; ?> <?php echo $isFavorited ? 'favorited' : ''; ?>" 
                             data-business-id="<?php echo $business['business_id']; ?>">
                         <i class="bi bi-heart<?php echo $isFavorited ? '-fill' : ''; ?>"></i>
-                    </button>
+                    </button>  -->
                 </div>
 
                 <div class="business-card-content" onclick="window.location.href='business-detail.php?id=<?php echo $business['business_id']; ?>'">

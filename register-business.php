@@ -1,6 +1,7 @@
 <?php
 require_once 'db_connection/config.php';
 require_once 'backend/function_utilities.php';
+require_once 'backend/function_albums.php';
 
 // Redirect if already logged in
 if (isLoggedIn()) {
@@ -11,6 +12,8 @@ if (isLoggedIn()) {
 $pageTitle = 'Business Registration - BeautyGo';
 include 'includes/header.php';
 ?>
+
+<link rel="stylesheet" href="css/styles.css">
 
 <main>
     <div class="container my-5">
@@ -36,11 +39,11 @@ include 'includes/header.php';
                                 <label for="business_type" class="form-label">Business Type *</label>
                                 <select class="form-select" id="business_type" name="business_type" required>
                                     <option value="">Select a type...</option>
-                                    <option value="salon">Hair Salon</option>
-                                    <option value="spa">Spa & Wellness</option>
-                                    <option value="barbershop">Barbershop</option>
-                                    <option value="nail-salon">Nail Salon</option>
-                                    <option value="beauty-clinic">Beauty Clinic</option>
+                                    <option value="Hair Salon">Hair Salon</option>
+                                    <option value="Spa & Wellness">Spa & Wellness</option>
+                                    <option value="Barbershop">Barbershop</option>
+                                    <option value="Nail Salon">Nail Salon</option>
+                                    <option value="Beauty Clinic">Beauty Clinic</option>
                                 </select>
                             </div>
                             

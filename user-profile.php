@@ -29,6 +29,40 @@ $stmt->close();
 
 // Handle profile update
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
+    // Check if user wants to remove profile picture
+    $removePhoto = isset($_POST['remove_profile_pic']) && $_POST['remove_profile_pic'] === '1';
+    
+    // Validate file upload if provided
+    $uploadError = null;
+    $hasNewImage = false;
+    
+    if (isset($_FILES['profile_pic']) && $_FILES['profile_pic']['error'] !== UPLOAD_ERR_NO_FILE) {
+        if ($_FILES['profile_pic']['error'] === UPLOAD_ERR_OK) {
+            $allowedTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+            $maxSize = 5 * 1024 * 1024; // 5MB
+            
+            $fileType = $_FILES['profile_pic']['type'];
+            $fileSize = $_FILES['profile_pic']['size'];
+            
+            if (!in_array($fileType, $allowedTypes)) {
+                $uploadError = 'Invalid file type. Please upload JPG, JPEG, or PNG only.';
+            } elseif ($fileSize > $maxSize) {
+                $uploadError = 'File is too large. Maximum size is 5MB.';
+            } else {
+                // File is valid, mark that we have a new image
+                $hasNewImage = true;
+            }
+        } else {
+            $uploadError = 'Error uploading file. Please try again. Error code: ' . $_FILES['profile_pic']['error'];
+        }
+    }
+    
+    if ($uploadError) {
+        $_SESSION['error'] = $uploadError;
+        header('Location: user-profile.php');
+        exit;
+    }
+    
     $userData = [
         'fname' => sanitize($_POST['fname']),
         'mname' => sanitize($_POST['mname'] ?? ''),
@@ -43,11 +77,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
         'hair_type' => $_POST['hair_type'] ?? '',
         'hair_color' => $_POST['hair_color'] ?? '',
         'current_hair_length' => $_POST['current_hair_length'] ?? '',
-        'desired_hair_length' => $_POST['desired_hair_length'] ?? ''
+        'desired_hair_length' => $_POST['desired_hair_length'] ?? '',
+        'remove_profile_pic' => $removePhoto
     ];
     
     if (updateCustomer($customerId, $userData)) {
-        $_SESSION['success'] = 'Profile updated successfully';
+        if ($removePhoto) {
+            $_SESSION['success'] = 'Profile photo removed successfully!';
+        } elseif ($hasNewImage) {
+            $_SESSION['success'] = 'Profile and photo updated successfully!';
+        } else {
+            $_SESSION['success'] = 'Profile updated successfully';
+        }
     } else {
         $_SESSION['error'] = 'Failed to update profile';
     }
@@ -59,14 +100,9 @@ $pageTitle = 'My Profile - BeautyGo';
 include 'includes/header.php';
 ?>
 
-<style>
-:root {
-    --color-burgundy: <?php echo COLOR_BURGUNDY; ?>;
-    --color-rose: <?php echo COLOR_ROSE; ?>;
-    --color-pink: <?php echo COLOR_PINK; ?>;
-    --color-cream: <?php echo COLOR_CREAM; ?>;
-}
+<link rel="stylesheet" href="css/styles.css">
 
+<style>
 /* Back button styling */
 .back-button {
     display: inline-flex;
@@ -94,6 +130,7 @@ include 'includes/header.php';
 .profile-image-container {
     text-align: center;
     margin-bottom: 20px;
+    position: relative;
 }
 
 .profile-image {
@@ -118,6 +155,48 @@ include 'includes/header.php';
     margin: 0 auto;
     box-shadow: 0 4px 12px rgba(0,0,0,0.1);
 }
+
+.profile-image-wrapper {
+    position: relative;
+    display: inline-block;
+}
+
+.image-upload-overlay {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    background: var(--color-burgundy);
+    color: white;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.image-upload-overlay:hover {
+    background: var(--color-rose);
+    transform: scale(1.1);
+}
+
+.image-upload-overlay i {
+    font-size: 1.2rem;
+}
+
+#profile_pic {
+    display: none;
+}
+
+.image-preview-name {
+    font-size: 0.875rem;
+    color: var(--color-burgundy);
+    margin-top: 10px;
+    font-weight: 500;
+}
 </style>
 
 <main>
@@ -128,6 +207,20 @@ include 'includes/header.php';
             <span>Back to Home</span>
         </a>
 
+        <?php if (isset($_SESSION['success'])): ?>
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                <i class="bi bi-check-circle"></i> <?php echo $_SESSION['success']; unset($_SESSION['success']); ?>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        <?php endif; ?>
+
+        <?php if (isset($_SESSION['error'])): ?>
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <i class="bi bi-exclamation-triangle"></i> <?php echo $_SESSION['error']; unset($_SESSION['error']); ?>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        <?php endif; ?>
+
         <div class="row">
             <div class="col-lg-8 mx-auto">
                 <div class="card">
@@ -137,15 +230,37 @@ include 'includes/header.php';
                         <form action="" method="POST" enctype="multipart/form-data">
                             <!-- Profile Picture -->
                             <div class="profile-image-container">
+                                <div class="profile-image-wrapper">
+                                    <?php if (!empty($user['profile_pic'])): ?>
+                                        <img src="data:image/jpeg;base64,<?php echo base64_encode($user['profile_pic']); ?>" 
+                                            class="profile-image" 
+                                            alt="Profile Picture"
+                                            id="profilePreview">
+                                    <?php else: ?>
+                                        <div class="default-avatar" id="profilePreview">
+                                            <i class="bi bi-person-circle"></i>
+                                        </div>
+                                    <?php endif; ?>
+                                    
+                                    <label for="profile_pic" class="image-upload-overlay" title="Change profile picture">
+                                        <i class="bi bi-camera-fill"></i>
+                                    </label>
+                                    <input type="file" 
+                                        class="form-control" 
+                                        id="profile_pic" 
+                                        name="profile_pic" 
+                                        accept="image/jpeg,image/jpg,image/png">
+                                    <input type="hidden" id="remove_profile_pic" name="remove_profile_pic" value="0">
+                                </div>
+                                <div id="imagePreviewName" class="image-preview-name"></div>
+                                
                                 <?php if (!empty($user['profile_pic'])): ?>
-                                    <img src="data:image/jpeg;base64,<?php echo base64_encode($user['profile_pic']); ?>" 
-                                         class="profile-image" 
-                                         alt="Profile Picture">
-                                <?php else: ?>
-                                    <div class="default-avatar">
-                                        <i class="bi bi-person-circle"></i>
-                                    </div>
+                                    <button type="button" class="btn btn-sm btn-outline-danger mt-2" id="removePhotoBtn">
+                                        <i class="bi bi-trash"></i> Remove Photo
+                                    </button>
                                 <?php endif; ?>
+                                
+                                <small class="text-muted d-block mt-2">Click camera icon to change picture (JPG, PNG - Max 5MB)</small>
                             </div>
 
                             <!-- Personal Information -->
@@ -362,5 +477,81 @@ include 'includes/header.php';
         </div>
     </div>
 </main>
+
+<script>
+// Image preview functionality
+document.getElementById('profile_pic').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    const preview = document.getElementById('profilePreview');
+    const previewName = document.getElementById('imagePreviewName');
+    const removeInput = document.getElementById('remove_profile_pic');
+    
+    if (file) {
+        // Validate file type
+        const validTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+        if (!validTypes.includes(file.type)) {
+            alert('Please select a JPG or PNG image.');
+            this.value = '';
+            return;
+        }
+        
+        // Validate file size (5MB)
+        if (file.size > 5 * 1024 * 1024) {
+            alert('File is too large. Maximum size is 5MB.');
+            this.value = '';
+            return;
+        }
+        
+        // Reset remove flag when new file is selected
+        removeInput.value = '0';
+        
+        // Show preview
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            if (preview.tagName === 'IMG') {
+                preview.src = e.target.result;
+            } else {
+                // Replace default avatar with image
+                const img = document.createElement('img');
+                img.src = e.target.result;
+                img.className = 'profile-image';
+                img.alt = 'Profile Picture';
+                img.id = 'profilePreview';
+                preview.parentNode.replaceChild(img, preview);
+            }
+        };
+        reader.readAsDataURL(file);
+        
+        previewName.textContent = `Selected: ${file.name}`;
+    }
+});
+
+// Remove photo button functionality
+const removePhotoBtn = document.getElementById('removePhotoBtn');
+if (removePhotoBtn) {
+    removePhotoBtn.addEventListener('click', function() {
+        if (confirm('Are you sure you want to remove your profile picture?')) {
+            document.getElementById('remove_profile_pic').value = '1';
+            
+            // Clear file input
+            document.getElementById('profile_pic').value = '';
+            
+            // Replace image with default avatar
+            const preview = document.getElementById('profilePreview');
+            const defaultAvatar = document.createElement('div');
+            defaultAvatar.className = 'default-avatar';
+            defaultAvatar.id = 'profilePreview';
+            defaultAvatar.innerHTML = '<i class="bi bi-person-circle"></i>';
+            preview.parentNode.replaceChild(defaultAvatar, preview);
+            
+            // Clear preview name
+            document.getElementById('imagePreviewName').textContent = 'Photo will be removed when you save';
+            
+            // Hide remove button
+            this.style.display = 'none';
+        }
+    });
+}
+</script>
 
 <?php include 'includes/footer.php'; ?>

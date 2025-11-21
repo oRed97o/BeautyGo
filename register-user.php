@@ -12,6 +12,115 @@ $pageTitle = 'Customer Registration - BeautyGo';
 include 'includes/header.php';
 ?>
 
+<link rel="stylesheet" href="css/styles.css">
+
+<style>
+.profile-upload-container {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.profile-preview-wrapper {
+    position: relative;
+    display: inline-block;
+    margin-bottom: 15px;
+}
+
+.profile-preview {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 4px solid var(--color-cream);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    display: none;
+}
+
+.profile-preview.show {
+    display: block;
+}
+
+.default-profile-icon {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--color-burgundy), var(--color-rose));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 3rem;
+    margin: 0 auto;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+}
+
+.default-profile-icon.hide {
+    display: none;
+}
+
+.upload-btn-wrapper {
+    position: relative;
+    display: inline-block;
+    margin-top: 10px;
+}
+
+.upload-btn {
+    background-color: var(--color-burgundy);
+    color: white;
+    padding: 8px 20px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: none;
+}
+
+.upload-btn:hover {
+    background-color: var(--color-rose);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.upload-btn i {
+    margin-right: 5px;
+}
+
+.remove-photo-btn {
+    position: absolute;
+    top: 0;
+    right: 0;
+    background: var(--color-burgundy);
+    color: white;
+    border: 2px solid white;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+
+.remove-photo-btn.show {
+    display: flex;
+}
+
+.remove-photo-btn:hover {
+    background: #dc3545;
+    transform: scale(1.1);
+}
+
+.file-name-display {
+    margin-top: 8px;
+    font-size: 0.875rem;
+    color: var(--color-burgundy);
+    font-weight: 500;
+}
+</style>
+
 <main>
     <div class="container my-5">
         <div class="row justify-content-center">
@@ -50,10 +159,26 @@ include 'includes/header.php';
                                 <p class="section-subtitle">Tell us about yourself</p>
                             </div>
 
-                            <div class="mb-3">
-                                <label for="profile_pic" class="form-label">Profile Picture</label>
-                                <input type="file" class="form-control" id="profile_pic" name="profile_pic" accept="image/*">
-                                <small class="text-muted">Optional - Upload a profile picture (JPG, PNG, GIF, WebP - Max 5MB)</small>
+                            <!-- Profile Picture Upload with Preview -->
+                            <div class="profile-upload-container">
+                                <div class="profile-preview-wrapper">
+                                    <img src="" alt="Profile Preview" class="profile-preview" id="profilePreview">
+                                    <div class="default-profile-icon" id="defaultIcon">
+                                        <i class="bi bi-person-circle"></i>
+                                    </div>
+                                    <button type="button" class="remove-photo-btn" id="removePhotoBtn" title="Remove photo">
+                                        <i class="bi bi-x-lg"></i>
+                                    </button>
+                                </div>
+                                <div>
+                                    <label for="profile_pic" class="upload-btn">
+                                        <i class="bi bi-camera-fill"></i>
+                                        <span id="uploadBtnText">Upload Photo</span>
+                                    </label>
+                                    <input type="file" class="form-control d-none" id="profile_pic" name="profile_pic" accept="image/jpeg,image/png,image/gif,image/webp">
+                                </div>
+                                <div class="file-name-display" id="fileNameDisplay"></div>
+                                <small class="text-muted d-block mt-2">Optional - JPG, PNG, GIF, WebP (Max 5MB)</small>
                             </div>
                             
                             <div class="row">
@@ -251,9 +376,17 @@ document.getElementById('userRegisterForm').addEventListener('submit', function(
     }
 });
 
-// Profile picture preview
-document.getElementById('profile_pic').addEventListener('change', function(e) {
+// Profile picture preview functionality
+const profilePicInput = document.getElementById('profile_pic');
+const profilePreview = document.getElementById('profilePreview');
+const defaultIcon = document.getElementById('defaultIcon');
+const removePhotoBtn = document.getElementById('removePhotoBtn');
+const fileNameDisplay = document.getElementById('fileNameDisplay');
+const uploadBtnText = document.getElementById('uploadBtnText');
+
+profilePicInput.addEventListener('change', function(e) {
     const file = e.target.files[0];
+    
     if (file) {
         // Validate file size (5MB)
         if (file.size > 5 * 1024 * 1024) {
@@ -269,6 +402,31 @@ document.getElementById('profile_pic').addEventListener('change', function(e) {
             this.value = '';
             return;
         }
+        
+        // Show preview
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            profilePreview.src = e.target.result;
+            profilePreview.classList.add('show');
+            defaultIcon.classList.add('hide');
+            removePhotoBtn.classList.add('show');
+            fileNameDisplay.textContent = file.name;
+            uploadBtnText.textContent = 'Change Photo';
+        };
+        reader.readAsDataURL(file);
+    }
+});
+
+// Remove photo functionality
+removePhotoBtn.addEventListener('click', function() {
+    if (confirm('Remove this photo?')) {
+        profilePicInput.value = '';
+        profilePreview.src = '';
+        profilePreview.classList.remove('show');
+        defaultIcon.classList.remove('hide');
+        removePhotoBtn.classList.remove('show');
+        fileNameDisplay.textContent = '';
+        uploadBtnText.textContent = 'Upload Photo';
     }
 });
 </script>

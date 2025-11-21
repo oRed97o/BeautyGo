@@ -3,6 +3,7 @@ require_once __DIR__ . '/../db_connection/config.php';
 require_once __DIR__ . '/function_utilities.php';
 require_once __DIR__ . '/function_customers.php';
 require_once __DIR__ . '/function_businesses.php';
+require_once __DIR__ . '/function_albums.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
@@ -37,28 +38,28 @@ function registerUser() {
     // Required field validation
     if (empty($fname) || empty($email) || empty($password) || empty($phone)) {
         $_SESSION['error'] = 'Please fill in all required fields.';
-        header('Location: register-user.php');
+        header('Location: ../register-user.php');
         exit;
     }
 
     // Email format
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $_SESSION['error'] = 'Invalid email format.';
-        header('Location: register-user.php');
+        header('Location: ../register-user.php');
         exit;
     }
 
     // Password strength
     if (strlen($password) < 8) {
         $_SESSION['error'] = 'Password must be at least 8 characters long.';
-        header('Location: register-user.php');
+        header('Location: ../register-user.php');
         exit;
     }
 
     // Check if email exists
     if (getCustomerByEmail($email)) {
         $_SESSION['error'] = 'Email already registered.';
-        header('Location: register-user.php');
+        header('Location: ../register-user.php');
         exit;
     }
 
@@ -73,13 +74,13 @@ function registerUser() {
 
         if (!in_array($file['type'], $allowedTypes)) {
             $_SESSION['error'] = 'Invalid file type. Only JPG, PNG, GIF, and WebP are allowed.';
-            header('Location: register-user.php');
+            header('Location: ../register-user.php');
             exit;
         }
 
         if ($file['size'] > $maxSize) {
             $_SESSION['error'] = 'Profile picture must be less than 5MB.';
-            header('Location: register-user.php');
+            header('Location: ../register-user.php');
             exit;
         }
 
@@ -113,10 +114,10 @@ function registerUser() {
         $_SESSION['customer_id'] = $customerId;
         $_SESSION['user_type'] = 'customer';
         $_SESSION['success'] = 'Registration successful! Welcome to BeautyGo!';
-        header('Location: index.php');
+        header('Location: ../index.php');
     } else {
         $_SESSION['error'] = 'Registration failed. Please try again.';
-        header('Location: register-user.php');
+        header('Location: ../register-user.php');
     }
     exit;
 }
@@ -134,28 +135,28 @@ function registerBusiness() {
     // Validate required fields
     if (empty($businessName) || empty($email) || empty($password)) {
         $_SESSION['error'] = 'Please fill in all required fields.';
-        header('Location: register-business.php');
+        header('Location: ../register-business.php');
         exit;
     }
 
     // Email format
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $_SESSION['error'] = 'Invalid email format.';
-        header('Location: register-business.php');
+        header('Location: ../register-business.php');
         exit;
     }
 
     // Password strength
     if (strlen($password) < 6) {
         $_SESSION['error'] = 'Password must be at least 6 characters long.';
-        header('Location: register-business.php');
+        header('Location: ../register-business.php');
         exit;
     }
 
     // Check if email exists
     if (getBusinessByEmail($email)) {
         $_SESSION['error'] = 'Email already registered.';
-        header('Location: register-business.php');
+        header('Location: ../register-business.php');
         exit;
     }
 
@@ -178,10 +179,10 @@ function registerBusiness() {
         $_SESSION['business_id'] = $businessId;
         $_SESSION['user_type'] = 'business';
         $_SESSION['success'] = 'Business registration successful!';
-        header('Location: business-dashboard.php');
+        header('Location: ../business-dashboard.php');
     } else {
         $_SESSION['error'] = 'Registration failed. Please try again.';
-        header('Location: register-business.php');
+        header('Location: ../register-business.php');
     }
     exit;
 }
@@ -215,7 +216,7 @@ function login() {
     }
 
     $_SESSION['error'] = 'Invalid email or password.';
-    header('Location: login.php');
+    header('Location: ../login.php');
     exit;
 }
 
@@ -223,8 +224,13 @@ function login() {
 // Logout
 // ==========================
 function logout() {
-    session_destroy();
+    session_start();
+    session_unset();        // removes all session variables
+    session_destroy();      // destroys session data
+    setcookie(session_name(), '', time() - 3600, '/');  // remove session cookie
+
     header('Location: ../index.php');
     exit;
 }
+
 ?>

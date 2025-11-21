@@ -130,4 +130,83 @@ function calculateDistance($lat1, $lon1, $lat2, $lon2) {
     
     return round($distance, 1);
 }
+
+// ---------------------------
+// IMAGE COMPRESSION
+// ---------------------------
+
+/**
+ * Compress and resize image to reduce file size
+ * @param string $imageData - Raw image binary data
+ * @param int $maxWidth - Maximum width (default 800px)
+ * @param int $maxHeight - Maximum height (default 800px)
+ * @param int $quality - JPEG quality 1-100 (default 85)
+ * @return string - Compressed image binary data
+ */
+function compressImage($imageData, $maxWidth = 800, $maxHeight = 800, $quality = 85) {
+    // Create image from string
+    $image = imagecreatefromstring($imageData);
+    
+    if ($image === false) {
+        error_log("Failed to create image from string");
+        return $imageData; // Return original if compression fails
+    }
+    
+    // Get original dimensions
+    $origWidth = imagesx($image);
+    $origHeight = imagesy($image);
+    
+    // Calculate new dimensions while maintaining aspect ratio
+    $ratio = min($maxWidth / $origWidth, $maxHeight / $origHeight);
+    
+    // Only resize if image is larger than max dimensions
+    if ($ratio < 1) {
+        $newWidth = round($origWidth * $ratio);
+        $newHeight = round($origHeight * $ratio);
+        
+        // Create new image with new dimensions
+        $newImage = imagecreatetruecolor($newWidth, $newHeight);
+        
+        // Preserve transparency for PNG/GIF
+        imagealphablending($newImage, false);
+        imagesavealpha($newImage, true);
+        
+        // Resize
+        imagecopyresampled(
+            $newImage, $image,
+            0, 0, 0, 0,
+            $newWidth, $newHeight,
+            $origWidth, $origHeight
+        );
+        
+        imagedestroy($image);
+        $image = $newImage;
+    }
+    
+    // Compress to JPEG and capture output
+    ob_start();
+    imagejpeg($image, null, $quality);
+    $compressedData = ob_get_clean();
+    
+    imagedestroy($image);
+    
+    error_log("Image compressed from " . strlen($imageData) . " to " . strlen($compressedData) . " bytes");
+    
+    return $compressedData;
+}
+
+/**
+ * Process uploaded profile picture
+ * @return string|null - Compressed image data or null
+ */
+function processProfilePicture() {
+    if (!isset($_FILES['profile_pic']) || $_FILES['profile_pic']['error'] !== UPLOAD_ERR_OK) {
+        return null;
+    }
+    
+    $imageData = file_get_contents($_FILES['profile_pic']['tmp_name']);
+    
+    // Compress the image (max 800x800, 85% quality)
+    return compressImage($imageData, 800, 800, 85);
+}
 ?>
