@@ -1,13 +1,13 @@
 <?php
 
 require_once 'db_connection/config.php';
-require_once 'backend/function_utilities.php';      // for isBusinessLoggedIn(), getCurrentBusiness(), sanitize(), formatDate()
-require_once 'backend/function_businesses.php';     // for getCurrentBusiness() -> getBusinessById()
-require_once 'backend/function_appointments.php';   // for getBusinessAppointments(), getAppointmentById(), updateAppointmentStatus()
-require_once 'backend/function_services.php';       // for getBusinessServices(), createService()
-require_once 'backend/function_employees.php';      // for getBusinessEmployees(), createEmployee()
-require_once 'backend/function_reviews.php';        // for getBusinessReviews()
-require_once 'backend/function_notifications.php';  // for createAppointmentNotification() and header.php notifications
+require_once 'backend/function_utilities.php';
+require_once 'backend/function_businesses.php';
+require_once 'backend/function_appointments.php';
+require_once 'backend/function_services.php';
+require_once 'backend/function_employees.php';
+require_once 'backend/function_reviews.php';
+require_once 'backend/function_notifications.php';
 
 // Check if business is logged in
 if (!isBusinessLoggedIn()) {
@@ -23,11 +23,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
     $appointmentId = intval($_POST['appointment_id']);
     $newStatus = sanitize($_POST['status']);
     
-    // Get appointment details before updating
     $appointment = getAppointmentById($appointmentId);
     
     if ($appointment && updateAppointmentStatus($appointmentId, $newStatus)) {
-        // Send notification to customer
         createAppointmentNotification(
             $appointment['customer_id'],
             $businessId,
@@ -45,7 +43,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
     exit;
 }
 
-// Handle service management
+// Handle ADD service
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_service'])) {
     $serviceData = [
         'business_id' => $businessId,
@@ -66,14 +64,57 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_service'])) {
     exit;
 }
 
-// Handle staff management
+// Handle UPDATE service
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_service'])) {
+    $serviceId = intval($_POST['service_id']);
+    $serviceData = [
+        'service_name' => sanitize($_POST['service_name']),
+        'service_type' => sanitize($_POST['service_type'] ?? ''),
+        'service_desc' => sanitize($_POST['service_desc']),
+        'cost' => floatval($_POST['cost']),
+        'duration' => intval($_POST['duration'])
+    ];
+    
+    if (updateService($serviceId, $serviceData)) {
+        $_SESSION['success'] = 'Service updated successfully!';
+    } else {
+        $_SESSION['error'] = 'Failed to update service';
+    }
+    
+    header('Location: business-dashboard.php#services');
+    exit;
+}
+
+// Handle DELETE service
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_service'])) {
+    $serviceId = intval($_POST['service_id']);
+    
+    if (deleteService($serviceId)) {
+        $_SESSION['success'] = 'Service deleted successfully!';
+    } else {
+        $_SESSION['error'] = 'Failed to delete service. It may be associated with existing appointments.';
+    }
+    
+    header('Location: business-dashboard.php#services');
+    exit;
+}
+
+// Handle ADD staff
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_staff'])) {
+    // Handle skills - convert array to comma-separated string
+    $skills = '';
+    if (isset($_POST['skills']) && is_array($_POST['skills'])) {
+        $skills = implode(', ', $_POST['skills']);
+    } elseif (isset($_POST['skills'])) {
+        $skills = sanitize($_POST['skills']);
+    }
+    
     $staffData = [
         'business_id' => $businessId,
         'employ_fname' => sanitize($_POST['employ_fname']),
         'employ_lname' => sanitize($_POST['employ_lname']),
         'specialization' => sanitize($_POST['specialization']),
-        'skills' => sanitize($_POST['skills'] ?? ''),
+        'skills' => $skills,
         'employ_bio' => sanitize($_POST['employ_bio'] ?? ''),
         'employ_status' => 'available'
     ];
@@ -85,6 +126,67 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_staff'])) {
     }
     
     header('Location: business-dashboard.php#staff');
+    exit;
+}
+
+// Handle UPDATE staff
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_staff'])) {
+    $employId = intval($_POST['employ_id']);
+    
+    // Handle skills - convert array to comma-separated string
+    $skills = '';
+    if (isset($_POST['skills']) && is_array($_POST['skills'])) {
+        $skills = implode(', ', $_POST['skills']);
+    } elseif (isset($_POST['skills'])) {
+        $skills = sanitize($_POST['skills']);
+    }
+    
+    $staffData = [
+        'employ_fname' => sanitize($_POST['employ_fname']),
+        'employ_lname' => sanitize($_POST['employ_lname']),
+        'specialization' => sanitize($_POST['specialization']),
+        'skills' => $skills,
+        'employ_bio' => sanitize($_POST['employ_bio'] ?? ''),
+        'employ_status' => sanitize($_POST['employ_status'])
+    ];
+    
+    if (updateEmployee($employId, $staffData)) {
+        $_SESSION['success'] = 'Staff member updated successfully!';
+    } else {
+        $_SESSION['error'] = 'Failed to update staff member';
+    }
+    
+    header('Location: business-dashboard.php#staff');
+    exit;
+}
+
+// Handle DELETE staff
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_staff'])) {
+    $employId = intval($_POST['employ_id']);
+    
+    if (deleteEmployee($employId)) {
+        $_SESSION['success'] = 'Staff member removed successfully!';
+    } else {
+        $_SESSION['error'] = 'Failed to remove staff member';
+    }
+    
+    header('Location: business-dashboard.php#staff');
+    exit;
+}
+
+// Handle review reply - FIXED: Now passes all 4 required parameters
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reply_review'])) {
+    $reviewId = intval($_POST['review_id']);
+    $replyText = sanitize($_POST['reply_text']);
+    
+    // Add reply as business with all 4 parameters: reviewId, senderType, senderId, replyText
+    if (addReviewReply($reviewId, 'business', $businessId, $replyText)) {
+        $_SESSION['success'] = 'Reply posted successfully!';
+    } else {
+        $_SESSION['error'] = 'Failed to post reply';
+    }
+    
+    header('Location: business-dashboard.php#reviews');
     exit;
 }
 
@@ -102,14 +204,11 @@ $pendingBookings = array_filter($bookings, function($b) {
     return $b['appoint_status'] == 'pending';
 });
 
-$totalRevenue = array_sum(array_column($bookings, 'cost'));
-
 $pageTitle = 'Business Dashboard - BeautyGo';
 include 'includes/header.php';
 ?>
 
 <style>
-/* Back button styling */
 .back-button {
     display: inline-flex;
     align-items: center;
@@ -129,11 +228,6 @@ include 'includes/header.php';
     transform: translateX(-4px);
 }
 
-.back-button i {
-    font-size: 1.2rem;
-}
-
-/* Status action buttons */
 .status-actions {
     display: flex;
     gap: 5px;
@@ -143,30 +237,43 @@ include 'includes/header.php';
     margin: 0;
 }
 
-.notification-alert {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    z-index: 9999;
-    min-width: 300px;
-    animation: slideIn 0.3s ease-out;
+/* Review styling */
+.review-images {
+    margin-top: 0.5rem;
 }
 
-@keyframes slideIn {
-    from {
-        transform: translateX(400px);
-        opacity: 0;
-    }
-    to {
-        transform: translateX(0);
-        opacity: 1;
-    }
+.review-image-thumb {
+    width: 60px;
+    height: 60px;
+    object-fit: cover;
+    border-radius: 4px;
+    cursor: pointer;
+    border: 2px solid #e0e0e0;
+    transition: all 0.2s ease;
+}
+
+.review-image-thumb:hover {
+    opacity: 0.8;
+    transform: scale(1.05);
+    border-color: var(--color-burgundy);
+}
+
+.review-reply {
+    background-color: #f8f9fa;
+    padding: 0.75rem;
+    border-radius: 8px;
+    border-left: 3px solid var(--color-burgundy);
+}
+
+.replies-section {
+    padding-left: 1rem;
+    border-left: 3px solid #e0e0e0;
+    margin-top: 1rem;
 }
 </style>
 
 <main>
     <div class="container my-4">
-        <!-- Back Button -->
         <a href="index.php" class="back-button">
             <i class="bi bi-arrow-left-circle"></i>
             <span>Back to Home</span>
@@ -181,7 +288,7 @@ include 'includes/header.php';
         
         <!-- Stats Cards -->
         <div class="row mb-4">
-            <div class="col-md-3">
+            <div class="col-md-4">
                 <div class="card stat-card">
                     <div class="card-body">
                         <div class="d-flex align-items-center">
@@ -194,7 +301,7 @@ include 'includes/header.php';
                     </div>
                 </div>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-4">
                 <div class="card stat-card burgundy">
                     <div class="card-body">
                         <div class="d-flex align-items-center">
@@ -207,7 +314,7 @@ include 'includes/header.php';
                     </div>
                 </div>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-4">
                 <div class="card stat-card pink">
                     <div class="card-body">
                         <div class="d-flex align-items-center">
@@ -215,19 +322,6 @@ include 'includes/header.php';
                             <div class="ms-3">
                                 <h6 class="text-muted mb-0">Total Services</h6>
                                 <h3 class="mb-0"><?php echo count($services); ?></h3>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card stat-card">
-                    <div class="card-body">
-                        <div class="d-flex align-items-center">
-                            <i class="bi bi-cash-stack" style="font-size: 2rem; color: var(--color-burgundy);"></i>
-                            <div class="ms-3">
-                                <h6 class="text-muted mb-0">Total Revenue</h6>
-                                <h3 class="mb-0">₱<?php echo number_format($totalRevenue, 2); ?></h3>
                             </div>
                         </div>
                     </div>
@@ -391,12 +485,17 @@ include 'includes/header.php';
                                                 <td><?php echo htmlspecialchars($service['duration']); ?> min</td>
                                                 <td><strong>₱<?php echo number_format($service['cost'], 2); ?></strong></td>
                                                 <td>
-                                                    <button class="btn btn-sm btn-outline-primary" title="Edit Service">
+                                                    <button class="btn btn-sm btn-outline-primary" 
+                                                            onclick="editService(<?php echo htmlspecialchars(json_encode($service)); ?>)" 
+                                                            title="Edit Service">
                                                         <i class="bi bi-pencil"></i>
                                                     </button>
-                                                    <button class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete this service?')" title="Delete Service">
-                                                        <i class="bi bi-trash"></i>
-                                                    </button>
+                                                    <form method="POST" class="d-inline" onsubmit="return confirm('Delete this service?')">
+                                                        <input type="hidden" name="service_id" value="<?php echo $service['service_id']; ?>">
+                                                        <button type="submit" name="delete_service" class="btn btn-sm btn-outline-danger" title="Delete Service">
+                                                            <i class="bi bi-trash"></i>
+                                                        </button>
+                                                    </form>
                                                 </td>
                                             </tr>
                                         <?php endforeach; ?>
@@ -446,8 +545,16 @@ include 'includes/header.php';
                                                     <?php echo ucfirst($member['employ_status'] ?? 'available'); ?>
                                                 </span>
                                                 <div class="btn-group btn-group-sm d-block">
-                                                    <button class="btn btn-outline-primary"><i class="bi bi-pencil"></i> Edit</button>
-                                                    <button class="btn btn-outline-danger" onclick="return confirm('Remove this staff member?')"><i class="bi bi-trash"></i></button>
+                                                    <button class="btn btn-outline-primary" 
+                                                            onclick="editStaff(<?php echo htmlspecialchars(json_encode($member)); ?>)">
+                                                        <i class="bi bi-pencil"></i> Edit
+                                                    </button>
+                                                    <form method="POST" class="d-inline" onsubmit="return confirm('Remove this staff member?')">
+                                                        <input type="hidden" name="employ_id" value="<?php echo $member['employ_id']; ?>">
+                                                        <button type="submit" name="delete_staff" class="btn btn-outline-danger">
+                                                            <i class="bi bi-trash"></i>
+                                                        </button>
+                                                    </form>
                                                 </div>
                                             </div>
                                         </div>
@@ -459,7 +566,7 @@ include 'includes/header.php';
                 </div>
             </div>
             
-            <!-- Reviews Tab -->
+            <!-- Reviews Tab - UPDATED WITH THREADED REPLIES -->
             <div class="tab-pane fade" id="reviews" role="tabpanel">
                 <div class="card">
                     <div class="card-body">
@@ -490,7 +597,73 @@ include 'includes/header.php';
                                             ?>
                                         </div>
                                     </div>
-                                    <p class="mb-0"><?php echo htmlspecialchars($review['review_text']); ?></p>
+                                    <p class="mb-2"><?php echo htmlspecialchars($review['review_text']); ?></p>
+                                    
+                                    <!-- Display Review Images -->
+                                    <?php if (!empty($review['images'])): ?>
+                                        <div class="review-images mb-3">
+                                            <div class="d-flex gap-2 flex-wrap">
+                                                <?php foreach ($review['images'] as $image): ?>
+                                                    <img src="<?php echo htmlspecialchars($image); ?>" 
+                                                         alt="Review image" 
+                                                         class="review-image-thumb"
+                                                         onclick="window.open('<?php echo htmlspecialchars($image); ?>', '_blank')">
+                                                <?php endforeach; ?>
+                                            </div>
+                                        </div>
+                                    <?php endif; ?>
+                                    
+                                    <!-- Display existing replies -->
+                                    <?php if (!empty($review['replies'])): ?>
+                                        <div class="replies-section mt-3">
+                                            <strong class="text-muted d-block mb-2">
+                                                <i class="bi bi-chat-dots"></i> Conversation:
+                                            </strong>
+                                            <?php foreach ($review['replies'] as $reply): ?>
+                                                <div class="review-reply mb-2">
+                                                    <div class="d-flex align-items-start gap-2">
+                                                        <?php if ($reply['sender_type'] === 'business'): ?>
+                                                            <i class="bi bi-shop text-primary"></i>
+                                                        <?php else: ?>
+                                                            <i class="bi bi-person-circle text-secondary"></i>
+                                                        <?php endif; ?>
+                                                        <div class="flex-grow-1">
+                                                            <div class="d-flex justify-content-between">
+                                                                <strong class="<?php echo $reply['sender_type'] === 'business' ? 'text-primary' : ''; ?>">
+                                                                    <?php echo htmlspecialchars($reply['sender_name']); ?>
+                                                                    <?php if ($reply['sender_type'] === 'business'): ?>
+                                                                        <span class="badge bg-primary" style="font-size: 0.7rem;">You</span>
+                                                                    <?php endif; ?>
+                                                                </strong>
+                                                                <small class="text-muted"><?php echo formatDate($reply['reply_date']); ?></small>
+                                                            </div>
+                                                            <p class="mb-0 mt-1"><?php echo htmlspecialchars($reply['reply_text']); ?></p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            <?php endforeach; ?>
+                                        </div>
+                                    <?php endif; ?>
+                                    
+                                    <!-- Reply button - always visible -->
+                                    <button class="btn btn-sm btn-outline-primary mt-2" 
+                                            onclick="showReplyForm(<?php echo $review['review_id']; ?>)">
+                                        <i class="bi bi-reply"></i> <?php echo !empty($review['replies']) ? 'Reply Again' : 'Reply'; ?>
+                                    </button>
+                                    
+                                    <!-- Reply form (hidden by default) -->
+                                    <form method="POST" id="replyForm<?php echo $review['review_id']; ?>" style="display: none;" class="mt-2">
+                                        <input type="hidden" name="review_id" value="<?php echo $review['review_id']; ?>">
+                                        <div class="input-group">
+                                            <textarea class="form-control" name="reply_text" rows="2" placeholder="Write your reply..." required></textarea>
+                                            <button type="submit" name="reply_review" class="btn btn-primary">
+                                                <i class="bi bi-send"></i> Send
+                                            </button>
+                                            <button type="button" class="btn btn-secondary" onclick="hideReplyForm(<?php echo $review['review_id']; ?>)">
+                                                Cancel
+                                            </button>
+                                        </div>
+                                    </form>
                                 </div>
                             <?php endforeach; ?>
                         <?php endif; ?>
@@ -512,6 +685,14 @@ include 'includes/header.php';
             <form method="POST">
                 <div class="modal-body">
                     <div class="mb-3">
+                        <label for="service_name" class="form-label">Service Name *</label>
+                        <input type="text" class="form-control" id="service_name" name="service_name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="service_type" class="form-label">Service Type</label>
+                        <input type="text" class="form-control" id="service_type" name="service_type" placeholder="e.g., Hair, Nails, Massage">
+                    </div>
+                    <div class="mb-3">
                         <label for="service_desc" class="form-label">Description *</label>
                         <textarea class="form-control" id="service_desc" name="service_desc" rows="3" required></textarea>
                     </div>
@@ -530,6 +711,51 @@ include 'includes/header.php';
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" name="add_service" class="btn btn-primary">
                         <i class="bi bi-plus-circle"></i> Add Service
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Service Modal -->
+<div class="modal fade" id="editServiceModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-pencil"></i> Edit Service</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST">
+                <input type="hidden" id="edit_service_id" name="service_id">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="edit_service_name" class="form-label">Service Name *</label>
+                        <input type="text" class="form-control" id="edit_service_name" name="service_name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_service_type" class="form-label">Service Type</label>
+                        <input type="text" class="form-control" id="edit_service_type" name="service_type" placeholder="e.g., Hair, Nails, Massage">
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_service_desc" class="form-label">Description *</label>
+                        <textarea class="form-control" id="edit_service_desc" name="service_desc" rows="3" required></textarea>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="edit_duration" class="form-label">Duration (minutes) *</label>
+                            <input type="number" class="form-control" id="edit_duration" name="duration" min="15" step="15" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="edit_cost" class="form-label">Price (₱) *</label>
+                            <input type="number" step="0.01" class="form-control" id="edit_cost" name="cost" min="0" required>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" name="update_service" class="btn btn-primary">
+                        <i class="bi bi-check-circle"></i> Update Service
                     </button>
                 </div>
             </form>
@@ -559,11 +785,27 @@ include 'includes/header.php';
                     </div>
                     <div class="mb-3">
                         <label for="specialization" class="form-label">Specialization *</label>
-                        <input type="text" class="form-control" id="specialization" name="specialization" placeholder="e.g., Hair Colorist, Massage Therapist" required>
+                        <select class="form-select" id="specialization" name="specialization" required>
+                            <option value="">Choose specialization...</option>
+                            <?php foreach ($services as $service): ?>
+                                <option value="<?php echo htmlspecialchars($service['service_name']); ?>">
+                                    <?php echo htmlspecialchars($service['service_name']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                            <option value="General Services">General Services</option>
+                        </select>
+                        <small class="text-muted">Select from your services or choose General Services</small>
                     </div>
                     <div class="mb-3">
                         <label for="skills" class="form-label">Skills</label>
-                        <input type="text" class="form-control" id="skills" name="skills" placeholder="e.g., Balayage, Deep Tissue Massage">
+                        <select class="form-select" id="skills" name="skills" multiple size="4">
+                            <?php foreach ($services as $service): ?>
+                                <option value="<?php echo htmlspecialchars($service['service_name']); ?>">
+                                    <?php echo htmlspecialchars($service['service_name']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <small class="text-muted">Hold Ctrl (Cmd on Mac) to select multiple skills</small>
                     </div>
                     <div class="mb-3">
                         <label for="employ_bio" class="form-label">Bio</label>
@@ -581,6 +823,74 @@ include 'includes/header.php';
     </div>
 </div>
 
+<!-- Edit Staff Modal -->
+<div class="modal fade" id="editStaffModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-pencil"></i> Edit Staff Member</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST">
+                <input type="hidden" id="edit_employ_id" name="employ_id">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="edit_employ_fname" class="form-label">First Name *</label>
+                            <input type="text" class="form-control" id="edit_employ_fname" name="employ_fname" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="edit_employ_lname" class="form-label">Last Name *</label>
+                            <input type="text" class="form-control" id="edit_employ_lname" name="employ_lname" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_specialization" class="form-label">Specialization *</label>
+                        <select class="form-select" id="edit_specialization" name="specialization" required>
+                            <option value="">Choose specialization...</option>
+                            <?php foreach ($services as $service): ?>
+                                <option value="<?php echo htmlspecialchars($service['service_name']); ?>">
+                                    <?php echo htmlspecialchars($service['service_name']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                            <option value="General Services">General Services</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_skills" class="form-label">Skills</label>
+                        <select class="form-select" id="edit_skills" name="skills" multiple size="4">
+                            <?php foreach ($services as $service): ?>
+                                <option value="<?php echo htmlspecialchars($service['service_name']); ?>">
+                                    <?php echo htmlspecialchars($service['service_name']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <small class="text-muted">Hold Ctrl (Cmd on Mac) to select multiple skills</small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_employ_bio" class="form-label">Bio</label>
+                        <textarea class="form-control" id="edit_employ_bio" name="employ_bio" rows="2"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_employ_status" class="form-label">Status</label>
+                        <select class="form-select" id="edit_employ_status" name="employ_status" required>
+                            <option value="available">Available</option>
+                            <option value="unavailable">Unavailable</option>
+                            <option value="on_leave">On Leave</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" name="update_staff" class="btn btn-primary">
+                        <i class="bi bi-check-circle"></i> Update Staff
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <script>
 // Auto-dismiss alerts after 5 seconds
 setTimeout(function() {
@@ -591,10 +901,102 @@ setTimeout(function() {
     });
 }, 5000);
 
-// Confirm delete action
-function confirmDelete(message) {
-    return confirm(message);
+// Edit Service Function
+function editService(service) {
+    document.getElementById('edit_service_id').value = service.service_id;
+    document.getElementById('edit_service_name').value = service.service_name;
+    document.getElementById('edit_service_type').value = service.service_type || '';
+    document.getElementById('edit_service_desc').value = service.service_desc;
+    document.getElementById('edit_duration').value = service.duration;
+    document.getElementById('edit_cost').value = service.cost;
+    
+    var editModal = new bootstrap.Modal(document.getElementById('editServiceModal'));
+    editModal.show();
 }
+
+// Edit Staff Function
+function editStaff(member) {
+    document.getElementById('edit_employ_id').value = member.employ_id;
+    document.getElementById('edit_employ_fname').value = member.employ_fname;
+    document.getElementById('edit_employ_lname').value = member.employ_lname;
+    document.getElementById('edit_specialization').value = member.specialization || '';
+    document.getElementById('edit_employ_bio').value = member.employ_bio || '';
+    document.getElementById('edit_employ_status').value = member.employ_status || 'available';
+    
+    // Handle skills multi-select
+    const skillsSelect = document.getElementById('edit_skills');
+    const skills = (member.skills || '').split(',').map(s => s.trim());
+    for (let option of skillsSelect.options) {
+        option.selected = skills.includes(option.value);
+    }
+    
+    var editModal = new bootstrap.Modal(document.getElementById('editStaffModal'));
+    editModal.show();
+}
+
+// Show/Hide Reply Form
+function showReplyForm(reviewId) {
+    document.getElementById('replyForm' + reviewId).style.display = 'block';
+}
+
+function hideReplyForm(reviewId) {
+    document.getElementById('replyForm' + reviewId).style.display = 'none';
+}
+
+// Handle multi-select for skills (convert to comma-separated string)
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle skills multi-select for Add Staff form
+    const addSkillsSelect = document.getElementById('skills');
+    const addStaffForm = document.getElementById('addStaffModal').querySelector('form');
+    
+    if (addStaffForm) {
+        addStaffForm.addEventListener('submit', function(e) {
+            if (addSkillsSelect) {
+                // Get all selected options
+                const selectedOptions = Array.from(addSkillsSelect.selectedOptions);
+                const selectedValues = selectedOptions.map(option => option.value);
+                
+                // Remove the multi-select from form submission
+                addSkillsSelect.name = '';
+                
+                // Add hidden inputs for each selected skill
+                selectedValues.forEach(value => {
+                    const hiddenInput = document.createElement('input');
+                    hiddenInput.type = 'hidden';
+                    hiddenInput.name = 'skills[]';
+                    hiddenInput.value = value;
+                    addStaffForm.appendChild(hiddenInput);
+                });
+            }
+        });
+    }
+    
+    // Handle skills multi-select for Edit Staff form
+    const editSkillsSelect = document.getElementById('edit_skills');
+    const editStaffForm = document.getElementById('editStaffModal').querySelector('form');
+    
+    if (editStaffForm) {
+        editStaffForm.addEventListener('submit', function(e) {
+            if (editSkillsSelect) {
+                // Get all selected options
+                const selectedOptions = Array.from(editSkillsSelect.selectedOptions);
+                const selectedValues = selectedOptions.map(option => option.value);
+                
+                // Remove the multi-select from form submission
+                editSkillsSelect.name = '';
+                
+                // Add hidden inputs for each selected skill
+                selectedValues.forEach(value => {
+                    const hiddenInput = document.createElement('input');
+                    hiddenInput.type = 'hidden';
+                    hiddenInput.name = 'skills[]';
+                    hiddenInput.value = value;
+                    editStaffForm.appendChild(hiddenInput);
+                });
+            }
+        });
+    }
+});
 </script>
 
-<?php include 'includes/footer.php'; ?> 
+<?php include 'includes/footer.php'; ?>

@@ -56,6 +56,52 @@ include 'includes/header.php';
 
 <link rel="stylesheet" href="css/business-detail.css">
 
+<style>
+/* Additional styles for review images and replies */
+.review-images {
+    margin-top: 0.5rem;
+}
+
+.review-image-thumb {
+    width: 80px;
+    height: 80px;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 2px solid #e0e0e0;
+    transition: all 0.3s ease;
+}
+
+.review-image-thumb:hover {
+    transform: scale(1.05);
+    border-color: var(--color-burgundy);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+.review-replies {
+    padding-left: 1rem;
+    border-left: 3px solid #f0f0f0;
+    margin-top: 1rem;
+}
+
+.review-reply {
+    background-color: #f8f9fa;
+    padding: 0.75rem;
+    border-radius: 8px;
+    border-left: 3px solid var(--color-burgundy);
+}
+
+.review-item {
+    padding-bottom: 1rem;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.review-item:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+</style>
+
 <main>
     <div class="container my-4">
         <!-- Back Button -->
@@ -191,7 +237,7 @@ include 'includes/header.php';
                 </div>
                 
                 <!-- Reviews -->
-                <div class="card mb-4">
+                <div class="card mb-4" id="reviews">
                     <div class="card-body">
                         <h4 class="mb-3">Customer Reviews</h4>
                         <?php if (empty($reviews)): ?>
@@ -217,7 +263,79 @@ include 'includes/header.php';
                                         </div>
                                     </div>
                                     <p class="text-muted mb-1"><?php echo htmlspecialchars($review['review_text'] ?? ''); ?></p>
+                                    
+                                    <!-- Review Images -->
+                                    <?php if (!empty($review['images'])): ?>
+                                        <div class="review-images mb-2">
+                                            <div class="d-flex gap-2 flex-wrap">
+                                                <?php foreach ($review['images'] as $image): ?>
+                                                    <img src="<?php echo htmlspecialchars($image); ?>" 
+                                                         alt="Review image" 
+                                                         class="review-image-thumb"
+                                                         onclick="openImageModal('<?php echo htmlspecialchars($image); ?>')"
+                                                         style="cursor: pointer;">
+                                                <?php endforeach; ?>
+                                            </div>
+                                        </div>
+                                    <?php endif; ?>
+                                    
                                     <small class="text-muted"><?php echo formatDate($review['review_date'] ?? ''); ?></small>
+                                    
+                                    <!-- Display Replies -->
+                                    <?php if (!empty($review['replies'])): ?>
+                                        <div class="review-replies mt-3">
+                                            <?php foreach ($review['replies'] as $reply): ?>
+                                                <div class="review-reply mb-2">
+                                                    <div class="d-flex align-items-start gap-2">
+                                                        <?php if ($reply['sender_type'] === 'business'): ?>
+                                                            <i class="bi bi-shop text-primary"></i>
+                                                        <?php else: ?>
+                                                            <i class="bi bi-person-circle text-secondary"></i>
+                                                        <?php endif; ?>
+                                                        <div class="flex-grow-1">
+                                                            <div class="d-flex justify-content-between align-items-start">
+                                                                <strong class="<?php echo $reply['sender_type'] === 'business' ? 'text-primary' : ''; ?>">
+                                                                    <?php echo htmlspecialchars($reply['sender_name']); ?>
+                                                                    <?php if ($reply['sender_type'] === 'business'): ?>
+                                                                        <span class="badge bg-primary ms-1" style="font-size: 0.7rem;">Owner</span>
+                                                                    <?php endif; ?>
+                                                                </strong>
+                                                                <small class="text-muted"><?php echo formatDate($reply['reply_date']); ?></small>
+                                                            </div>
+                                                            <p class="mb-0 mt-1"><?php echo htmlspecialchars($reply['reply_text']); ?></p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            <?php endforeach; ?>
+                                        </div>
+                                    <?php endif; ?>
+                                    
+                                    <!-- Reply button for logged-in customers -->
+                                    <?php if (isCustomerLoggedIn()): ?>
+                                        <?php 
+                                        $currentCustomer = getCurrentCustomer();
+                                        // Only show reply button if customer is not the review author or if they want to continue conversation
+                                        ?>
+                                        <button class="btn btn-sm btn-outline-secondary mt-2" 
+                                                onclick="showCustomerReplyForm(<?php echo $review['review_id']; ?>)">
+                                            <i class="bi bi-reply"></i> Reply
+                                        </button>
+                                        
+                                        <!-- Customer reply form (hidden by default) -->
+                                        <form method="POST" action="backend/reply-review.php" id="customerReplyForm<?php echo $review['review_id']; ?>" style="display: none;" class="mt-2">
+                                            <input type="hidden" name="review_id" value="<?php echo $review['review_id']; ?>">
+                                            <input type="hidden" name="business_id" value="<?php echo $business['business_id']; ?>">
+                                            <div class="input-group">
+                                                <textarea class="form-control" name="reply_text" rows="2" placeholder="Write your reply..." required></textarea>
+                                                <button type="submit" name="reply_to_review" class="btn btn-primary">
+                                                    <i class="bi bi-send"></i> Send
+                                                </button>
+                                                <button type="button" class="btn btn-secondary" onclick="hideCustomerReplyForm(<?php echo $review['review_id']; ?>)">
+                                                    Cancel
+                                                </button>
+                                            </div>
+                                        </form>
+                                    <?php endif; ?>
                                 </div>
                             <?php endforeach; ?>
                         <?php endif; ?>
@@ -261,7 +379,23 @@ include 'includes/header.php';
     </div>
 </main>
 
+<!-- Image Modal for Review Images -->
+<div class="modal fade" id="imageModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Review Image</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center">
+                <img id="modalImage" src="" alt="Review image" style="max-width: 100%; height: auto;">
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
+// Slideshow functionality
 let currentSlideIndex = 0;
 const slides = document.querySelectorAll('.slide');
 const indicators = document.querySelectorAll('.indicator');
@@ -378,6 +512,32 @@ function handleSwipe() {
         changeSlide(-1); // Swipe right
     }
 }
+
+// Review image modal functionality
+function openImageModal(imageSrc) {
+    const modal = new bootstrap.Modal(document.getElementById('imageModal'));
+    document.getElementById('modalImage').src = imageSrc;
+    modal.show();
+}
+
+// Show/hide customer reply form
+function showCustomerReplyForm(reviewId) {
+    document.getElementById('customerReplyForm' + reviewId).style.display = 'block';
+}
+
+function hideCustomerReplyForm(reviewId) {
+    document.getElementById('customerReplyForm' + reviewId).style.display = 'none';
+}
+
+// Scroll to reviews section if hash is present
+document.addEventListener('DOMContentLoaded', function() {
+    if (window.location.hash === '#reviews') {
+        const reviewsSection = document.getElementById('reviews');
+        if (reviewsSection) {
+            reviewsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }
+});
 </script>
 
 <?php include 'includes/footer.php'; ?>

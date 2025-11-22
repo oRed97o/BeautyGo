@@ -58,7 +58,8 @@ function createEmployee($data) {
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     ");
 
-    $stmt->bind_param("iissssss",
+    // Fixed: should be 'iisssssss' (9 parameters: int, int, string, string, string, string, string, string, string/blob)
+    $stmt->bind_param("iisssssss",
         $serviceId,
         $businessId,
         $employFname,
@@ -116,6 +117,7 @@ function updateEmployee($id, $data) {
             WHERE employ_id = ?
         ");
         
+        // Fixed: should be 'sssssssi' (8 parameters)
         $stmt->bind_param("sssssssi",
             $employFname,
             $employLname,
@@ -155,9 +157,32 @@ function updateEmployee($id, $data) {
 // Delete employee
 function deleteEmployee($id) {
     $conn = getDbConnection();
-    $stmt = $conn->prepare("DELETE FROM employees WHERE employ_id = ?");
-    $stmt->bind_param("i", $id);
-    $success = $stmt->execute();
-    $stmt->close();
-    return $success;
+    
+    // Start transaction
+    $conn->begin_transaction();
+    
+    try {
+        // First, set employ_id to NULL in all appointments associated with this employee
+        $stmt1 = $conn->prepare("UPDATE appointments SET employ_id = NULL WHERE employ_id = ?");
+        $stmt1->bind_param("i", $id);
+        $stmt1->execute();
+        $stmt1->close();
+        
+        // Now delete the employee
+        $stmt2 = $conn->prepare("DELETE FROM employees WHERE employ_id = ?");
+        $stmt2->bind_param("i", $id);
+        $stmt2->execute();
+        $success = $stmt2->affected_rows > 0;
+        $stmt2->close();
+        
+        // Commit transaction
+        $conn->commit();
+        return $success;
+        
+    } catch (Exception $e) {
+        // Rollback on error
+        $conn->rollback();
+        error_log("Employee deletion failed: " . $e->getMessage());
+        return false;
+    }
 }

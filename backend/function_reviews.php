@@ -3,7 +3,7 @@
 // REVIEW FUNCTIONS
 // ============================================================
 
-// Get reviews for a business (with review images)
+// Get reviews for a business (with review images and replies)
 function getBusinessReviews($businessId) {  
     $conn = getDbConnection();
 
@@ -44,11 +44,73 @@ function getBusinessReviews($businessId) {
         }
 
         $row['images'] = $images;
+        
+        // Get replies for this review
+        $row['replies'] = getReviewReplies($row['review_id']);
+        
         $reviews[] = $row;
     }
 
     $stmt->close();
     return $reviews;
+}
+
+// Get replies for a specific review
+function getReviewReplies($reviewId) {
+    $conn = getDbConnection();
+    
+    $stmt = $conn->prepare("
+        SELECT 
+            rr.reply_id,
+            rr.review_id,
+            rr.sender_type,
+            rr.sender_id,
+            rr.reply_text,
+            rr.reply_date,
+            CASE 
+                WHEN rr.sender_type = 'customer' THEN CONCAT(c.fname, ' ', c.surname)
+                WHEN rr.sender_type = 'business' THEN b.business_name
+            END AS sender_name
+        FROM review_replies rr
+        LEFT JOIN customers c ON rr.sender_type = 'customer' AND rr.sender_id = c.customer_id
+        LEFT JOIN businesses b ON rr.sender_type = 'business' AND rr.sender_id = b.business_id
+        WHERE rr.review_id = ?
+        ORDER BY rr.reply_date ASC
+    ");
+    
+    $stmt->bind_param("i", $reviewId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    $replies = [];
+    while ($row = $result->fetch_assoc()) {
+        $replies[] = $row;
+    }
+    
+    $stmt->close();
+    return $replies;
+}
+
+// Add a reply to a review
+function addReviewReply($reviewId, $senderType, $senderId, $replyText) {
+    $conn = getDbConnection();
+    
+    $stmt = $conn->prepare("
+        INSERT INTO review_replies (review_id, sender_type, sender_id, reply_text, reply_date)
+        VALUES (?, ?, ?, ?, NOW())
+    ");
+    
+    $stmt->bind_param("isis", $reviewId, $senderType, $senderId, $replyText);
+    
+    if ($stmt->execute()) {
+        $replyId = $conn->insert_id;
+        $stmt->close();
+        return $replyId;
+    }
+    
+    error_log("Reply creation failed: " . $stmt->error);
+    $stmt->close();
+    return false;
 }
 
 // Create review (with up to 5 images)
