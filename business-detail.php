@@ -67,52 +67,7 @@ include 'includes/header.php';
 ?>
 
 <link rel="stylesheet" href="css/business-detail.css">
-
-<style>
-/* Additional styles for review images and replies */
-.review-images {
-    margin-top: 0.5rem;
-}
-
-.review-image-thumb {
-    width: 80px;
-    height: 80px;
-    object-fit: cover;
-    border-radius: 8px;
-    border: 2px solid #e0e0e0;
-    transition: all 0.3s ease;
-}
-
-.review-image-thumb:hover {
-    transform: scale(1.05);
-    border-color: var(--color-burgundy);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-}
-
-.review-replies {
-    padding-left: 1rem;
-    border-left: 3px solid #f0f0f0;
-    margin-top: 1rem;
-}
-
-.review-reply {
-    background-color: #f8f9fa;
-    padding: 0.75rem;
-    border-radius: 8px;
-    border-left: 3px solid var(--color-burgundy);
-}
-
-.review-item {
-    padding-bottom: 1rem;
-    margin-bottom: 1rem;
-    border-bottom: 1px solid #e0e0e0;
-}
-
-.review-item:last-child {
-    border-bottom: none;
-    margin-bottom: 0;
-}
-</style>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
 <main>
     <div class="container my-4">
@@ -386,6 +341,20 @@ include 'includes/header.php';
                         <?php endif; ?>
                     </div>
                 </div>
+
+                <!-- Location Map -->
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h4 class="mb-3"><i class="bi bi-geo-alt-fill"></i> Location</h4>
+                        <div id="businessMap" style="height: 250px; border-radius: 10px; overflow: hidden;"></div>
+                        <div class="mt-2">
+                            <small class="text-muted">
+                                <i class="bi bi-pin-map"></i> 
+                                <?php echo htmlspecialchars($business['business_address'] ?? ''); ?><?php if (!empty($business['city'])) echo ', ' . htmlspecialchars($business['city']); ?>
+                            </small>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -405,6 +374,8 @@ include 'includes/header.php';
         </div>
     </div>
 </div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
 // Slideshow functionality
@@ -550,6 +521,28 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 });
+
+// Business Location Map
+const bizLat = <?php echo $business['latitude'] ?? 14.0697; ?>;
+const bizLng = <?php echo $business['longitude'] ?? 120.6328; ?>;
+
+const businessMap = L.map('businessMap').setView([bizLat, bizLng], 16);
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap',
+    maxZoom: 19
+}).addTo(businessMap);
+
+const markerIcon = L.divIcon({
+    html: '<i class="bi bi-geo-alt-fill" style="font-size: 2rem; color: #850E35;"></i>',
+    className: 'custom-marker',
+    iconSize: [32, 32],
+    iconAnchor: [16, 32]
+});
+
+L.marker([bizLat, bizLng], { icon: markerIcon })
+    .addTo(businessMap)
+    .bindPopup('<strong><?php echo addslashes(htmlspecialchars($business['business_name'])); ?></strong><br><?php echo addslashes(htmlspecialchars($business['business_address'] ?? '')); ?>');
 </script>
 
 <?php include 'includes/footer.php'; ?>
