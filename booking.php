@@ -9,9 +9,7 @@ require_once 'backend/function_employees.php';      // for getBusinessEmployees(
 require_once 'backend/function_appointments.php';   // for createAppointment()
 require_once 'backend/function_notifications.php';  // for notifications (used by header.php)
 
-// Rest of your code...
 $businessId = $_GET['business_id'] ?? '';
-// etc...
 
 // Check if user is logged in
 if (!isCustomerLoggedIn()) {
@@ -62,7 +60,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_booking'])) {
             
             $appointmentData = [
                 'customer_id' => $user['customer_id'],
-                'service_id' => intval($serviceId), // Ensure it's an integer
+                'service_id' => intval($serviceId), 
                 'employ_id' => $employId,
                 'appoint_date' => $appointDate,
                 'appoint_status' => 'pending',
@@ -90,6 +88,7 @@ $pageTitle = 'Book Appointment - ' . $business['business_name'];
 include 'includes/header.php';
 ?>
 
+<link rel="stylesheet" href="css/styles.css">
 <link rel="stylesheet" href="css/booking.css">
 
 <main>
@@ -118,37 +117,39 @@ include 'includes/header.php';
                                         No services available. Please contact the business directly.
                                     </div>
                                 <?php else: ?>
-                                    <?php foreach ($services as $service): ?>
-                                        <div class="service-checkbox-card" onclick="toggleServiceCard(this)">
-                                            <div class="d-flex align-items-start gap-3">
-                                                <input 
-                                                    class="form-check-input mt-1" 
-                                                    type="checkbox" 
-                                                    name="service_ids[]" 
-                                                    id="service_<?php echo $service['service_id']; ?>" 
-                                                    value="<?php echo $service['service_id']; ?>" 
-                                                    data-name="<?php echo htmlspecialchars($service['service_name']); ?>"
-                                                    data-price="<?php echo $service['cost']; ?>"
-                                                    data-duration="<?php echo htmlspecialchars($service['duration']); ?>"
-                                                    onchange="updateServiceSelection()"
-                                                    onclick="event.stopPropagation()">
-                                                <label class="flex-grow-1" for="service_<?php echo $service['service_id']; ?>" style="cursor: pointer;">
-                                                    <div class="d-flex justify-content-between align-items-start">
-                                                        <div>
-                                                            <strong style="font-size: 1.1rem;"><?php echo htmlspecialchars($service['service_name']); ?></strong>
-                                                            <?php if (!empty($service['service_desc'])): ?>
-                                                                <p class="text-muted small mb-1"><?php echo htmlspecialchars($service['service_desc']); ?></p>
-                                                            <?php endif; ?>
-                                                            <small class="text-muted">
-                                                                <i class="bi bi-clock"></i> <?php echo htmlspecialchars($service['duration']); ?>
-                                                            </small>
+                                    <div class="services-container">
+                                        <?php foreach ($services as $service): ?>
+                                            <div class="service-checkbox-card" onclick="toggleServiceCard(this)">
+                                                <div class="d-flex align-items-start gap-3">
+                                                    <input 
+                                                        class="form-check-input mt-1" 
+                                                        type="checkbox" 
+                                                        name="service_ids[]" 
+                                                        id="service_<?php echo $service['service_id']; ?>" 
+                                                        value="<?php echo $service['service_id']; ?>" 
+                                                        data-name="<?php echo htmlspecialchars($service['service_name']); ?>"
+                                                        data-price="<?php echo $service['cost']; ?>"
+                                                        data-duration="<?php echo htmlspecialchars($service['duration']); ?>"
+                                                        onchange="updateServiceSelection()"
+                                                        onclick="event.stopPropagation()">
+                                                    <label class="flex-grow-1" for="service_<?php echo $service['service_id']; ?>" style="cursor: pointer;">
+                                                        <div class="d-flex justify-content-between align-items-start">
+                                                            <div>
+                                                                <strong style="font-size: 1.1rem;"><?php echo htmlspecialchars($service['service_name']); ?></strong>
+                                                                <?php if (!empty($service['service_desc'])): ?>
+                                                                    <p class="text-muted small mb-1"><?php echo htmlspecialchars($service['service_desc']); ?></p>
+                                                                <?php endif; ?>
+                                                                <small class="text-muted">
+                                                                    <i class="bi bi-clock"></i> <?php echo htmlspecialchars($service['duration']); ?>
+                                                                </small>
+                                                            </div>
+                                                            <strong style="color: var(--color-burgundy); font-size: 1.2rem;">₱<?php echo number_format($service['cost'], 2); ?></strong>
                                                         </div>
-                                                        <strong style="color: var(--color-burgundy); font-size: 1.2rem;">₱<?php echo number_format($service['cost'], 2); ?></strong>
-                                                    </div>
-                                                </label>
+                                                    </label>
+                                                </div>
                                             </div>
-                                        </div>
-                                    <?php endforeach; ?>
+                                        <?php endforeach; ?>
+                                    </div>
                                 <?php endif; ?>
                             </div>
                             
@@ -219,7 +220,45 @@ include 'includes/header.php';
                                 <textarea class="form-control" id="notes" name="notes" rows="3" placeholder="Any special requests or requirements..."></textarea>
                             </div>
                             
-                            <div class="d-grid">
+                            <!-- Booking Summary (Moved inside form) -->
+                            <div class="card booking-summary-card">
+                                <div class="card-body">
+                                    <h5 class="mb-3" style="color: var(--color-burgundy);">
+                                        <i class="bi bi-receipt"></i> Booking Summary
+                                    </h5>
+                                    
+                                    <div class="row mb-3">
+                                        <div class="col-md-6">
+                                            <div class="mb-2">
+                                                <strong style="color: var(--color-burgundy);">Business:</strong><br>
+                                                <span><?php echo htmlspecialchars($business['business_name']); ?></span>
+                                            </div>
+                                            <div class="mb-2">
+                                                <strong style="color: var(--color-burgundy);">Location:</strong><br>
+                                                <span><?php echo htmlspecialchars($business['business_address'] ?? 'N/A'); ?></span>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-2">
+                                                <strong style="color: var(--color-burgundy);">Your Name:</strong><br>
+                                                <span><?php echo htmlspecialchars($user['fname']); ?></span>
+                                            </div>
+                                            <div class="mb-2">
+                                                <strong style="color: var(--color-burgundy);">Contact:</strong><br>
+                                                <span><?php echo htmlspecialchars($user['cstmr_num'] ?? 'N/A'); ?></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <hr style="border-color: var(--color-burgundy); opacity: 0.3;">
+                                    
+                                    <div id="summary" class="text-muted">
+                                        <small><i class="bi bi-info-circle"></i> Select services to see booking details</small>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="d-grid mt-3">
                                 <button type="submit" name="submit_booking" class="btn btn-primary btn-lg">
                                     <i class="bi bi-calendar-check"></i> Confirm Booking
                                 </button>
@@ -227,93 +266,265 @@ include 'includes/header.php';
                         </form>
                     </div>
                 </div>
-
-                <!-- Booking Summary (Below Form) -->
-                <div class="booking-summary-card card">
-                    <div class="card-body">
-                        <h5 class="mb-3" style="color: var(--color-burgundy);">
-                            <i class="bi bi-receipt"></i> Booking Summary
-                        </h5>
-                        
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <div class="mb-2">
-                                    <strong style="color: var(--color-burgundy);">Business:</strong><br>
-                                    <span><?php echo htmlspecialchars($business['business_name']); ?></span>
-                                </div>
-                                <div class="mb-2">
-                                    <strong style="color: var(--color-burgundy);">Location:</strong><br>
-                                    <span><?php echo htmlspecialchars($business['business_address'] ?? 'N/A'); ?></span>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-2">
-                                    <strong style="color: var(--color-burgundy);">Your Name:</strong><br>
-                                    <span><?php echo htmlspecialchars($user['fname']); ?></span>
-                                </div>
-                                <div class="mb-2">
-                                    <strong style="color: var(--color-burgundy);">Contact:</strong><br>
-                                    <span><?php echo htmlspecialchars($user['cstmr_num'] ?? 'N/A'); ?></span>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <hr style="border-color: var(--color-burgundy); opacity: 0.3;">
-                        
-                        <div id="summary" class="text-muted">
-                            <small><i class="bi bi-info-circle"></i> Select services to see booking details</small>
-                        </div>
-                    </div>
-                </div>
             </div>
             
             <div class="col-lg-4">
-                <!-- Customer Info Card -->
-                <div class="card">
-                    <div class="card-body">
-                        <h6 class="mb-3" style="color: var(--color-burgundy);">
-                            <i class="bi bi-person-circle"></i> Your Information
-                        </h6>
-                        <div class="mb-2">
-                            <i class="bi bi-person"></i> <strong>Name:</strong><br>
-                            <span class="ms-4"><?php echo htmlspecialchars($user['fname']); ?></span>
-                        </div>
-                        <div class="mb-2">
-                            <i class="bi bi-telephone"></i> <strong>Phone:</strong><br>
-                            <span class="ms-4"><?php echo htmlspecialchars($user['cstmr_num'] ?? 'N/A'); ?></span>
-                        </div>
-                        <div>
-                            <i class="bi bi-envelope"></i> <strong>Email:</strong><br>
-                            <span class="ms-4"><?php echo htmlspecialchars($user['cstmr_email']); ?></span>
+                <div class="sticky-sidebar">
+                    <!-- Customer Info Card -->
+                    <div class="card">
+                        <div class="card-body">
+                            <h6 class="mb-3" style="color: var(--color-burgundy);">
+                                <i class="bi bi-person-circle"></i> Your Information
+                            </h6>
+                            <div class="mb-2">
+                                <i class="bi bi-person"></i> <strong>Name:</strong><br>
+                                <span class="ms-4"><?php echo htmlspecialchars($user['fname']); ?></span>
+                            </div>
+                            <div class="mb-2">
+                                <i class="bi bi-telephone"></i> <strong>Phone:</strong><br>
+                                <span class="ms-4"><?php echo htmlspecialchars($user['cstmr_num'] ?? 'N/A'); ?></span>
+                            </div>
+                            <div>
+                                <i class="bi bi-envelope"></i> <strong>Email:</strong><br>
+                                <span class="ms-4"><?php echo htmlspecialchars($user['cstmr_email']); ?></span>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Business Info Card -->
-                <div class="card mt-3">
-                    <div class="card-body">
-                        <h6 class="mb-3" style="color: var(--color-burgundy);">
-                            <i class="bi bi-shop"></i> Business Information
-                        </h6>
-                        <div class="mb-2">
-                            <strong>Type:</strong> <?php echo htmlspecialchars($business['business_type'] ?? 'N/A'); ?>
+                    <!-- Business Info Card -->
+                    <div class="card mt-3">
+                        <div class="card-body">
+                            <h6 class="mb-3" style="color: var(--color-burgundy);">
+                                <i class="bi bi-shop"></i> Business Information
+                            </h6>
+                            <div class="mb-2">
+                                <strong>Type:</strong> <?php echo htmlspecialchars($business['business_type'] ?? 'N/A'); ?>
+                            </div>
+                            <?php if (!empty($business['business_contact_num'])): ?>
+                            <div class="mb-2">
+                                <i class="bi bi-telephone"></i> <?php echo htmlspecialchars($business['business_contact_num']); ?>
+                            </div>
+                            <?php endif; ?>
+                            <?php if (!empty($business['business_email'])): ?>
+                            <div>
+                                <i class="bi bi-envelope"></i> <?php echo htmlspecialchars($business['business_email']); ?>
+                            </div>
+                            <?php endif; ?>
                         </div>
-                        <?php if (!empty($business['business_contact_num'])): ?>
-                        <div class="mb-2">
-                            <i class="bi bi-telephone"></i> <?php echo htmlspecialchars($business['business_contact_num']); ?>
-                        </div>
-                        <?php endif; ?>
-                        <?php if (!empty($business['business_email'])): ?>
-                        <div>
-                            <i class="bi bi-envelope"></i> <?php echo htmlspecialchars($business['business_email']); ?>
-                        </div>
-                        <?php endif; ?>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 </main>
+
+<script>
+// Toggle service card selection visually
+function toggleServiceCard(card) {
+    const checkbox = card.querySelector('input[type="checkbox"]');
+    checkbox.checked = !checkbox.checked;
+    updateServiceSelection();
+}
+
+// Update selected count and visual state
+function updateServiceSelection() {
+    const checkboxes = document.querySelectorAll('input[name="service_ids[]"]');
+    let selectedCount = 0;
+    
+    checkboxes.forEach(checkbox => {
+        const card = checkbox.closest('.service-checkbox-card');
+        if (checkbox.checked) {
+            card.classList.add('selected');
+            selectedCount++;
+        } else {
+            card.classList.remove('selected');
+        }
+    });
+    
+    // Update badge
+    const badge = document.getElementById('selectedCountBadge');
+    if (selectedCount > 0) {
+        badge.textContent = selectedCount + ' selected';
+        badge.style.display = 'inline-block';
+    } else {
+        badge.style.display = 'none';
+    }
+    
+    updateSummary();
+}
+
+function selectStaff() {
+    const select = document.getElementById('employ_id');
+    const selectedOption = select.options[select.selectedIndex];
+    const staffName = selectedOption.getAttribute('data-name') || 'Any Available';
+    document.getElementById('staff_name').value = staffName;
+    updateSummary();
+}
+
+function updateSummary() {
+    const checkboxes = document.querySelectorAll('input[name="service_ids[]"]:checked');
+    const staffName = document.getElementById('staff_name').value;
+    const date = document.getElementById('date').value;
+    const time = document.getElementById('time').value;
+    
+    let summary = '';
+    let totalPrice = 0;
+    
+    if (checkboxes.length > 0) {
+        summary += '<div class="mb-3">';
+        summary += '<strong style="color: var(--color-burgundy); font-size: 1.1rem;">Selected Services:</strong>';
+        summary += '<ul class="mt-2 mb-0" style="list-style: none; padding-left: 0;">';
+        
+        checkboxes.forEach(checkbox => {
+            const serviceName = checkbox.getAttribute('data-name');
+            const price = parseFloat(checkbox.getAttribute('data-price'));
+            const duration = checkbox.getAttribute('data-duration');
+            totalPrice += price;
+            
+            summary += '<li class="mb-2" style="padding: 10px; background: white; border-radius: 8px; border-left: 4px solid var(--color-burgundy);">';
+            summary += '<strong>' + serviceName + '</strong><br>';
+            summary += '<small class="text-muted"><i class="bi bi-clock"></i> ' + duration + '</small><br>';
+            summary += '<span style="color: var(--color-burgundy); font-weight: 600;">₱' + price.toFixed(2) + '</span>';
+            summary += '</li>';
+        });
+        
+        summary += '</ul></div>';
+        
+        summary += '<div class="mb-2"><strong style="color: var(--color-burgundy);">Staff:</strong> ' + staffName + '</div>';
+        
+        if (date) {
+            const dateObj = new Date(date);
+            const dateStr = dateObj.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            summary += '<div class="mb-2"><strong style="color: var(--color-burgundy);">Date:</strong> ' + dateStr + '</div>';
+        }
+        
+        if (time) {
+            const timeObj = new Date('2000-01-01 ' + time);
+            const timeStr = timeObj.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+            summary += '<div class="mb-2"><strong style="color: var(--color-burgundy);">Time:</strong> ' + timeStr + '</div>';
+        }
+        
+        summary += '<hr style="border-color: var(--color-burgundy); opacity: 0.3;">';
+        summary += '<div class="text-center">';
+        summary += '<div><strong style="color: var(--color-burgundy);">Total Amount:</strong></div>';
+        summary += '<div class="summary-total">₱' + totalPrice.toFixed(2) + '</div>';
+        summary += '</div>';
+    } else {
+        summary = '<small class="text-muted"><i class="bi bi-info-circle"></i> Select services to see booking details</small>';
+    }
+    
+    document.getElementById('summary').innerHTML = summary;
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    updateServiceSelection();
+});
+</script>
+
+<script>
+// Toggle service card selection visually
+function toggleServiceCard(card) {
+    const checkbox = card.querySelector('input[type="checkbox"]');
+    checkbox.checked = !checkbox.checked;
+    updateServiceSelection();
+}
+
+// Update selected count and visual state
+function updateServiceSelection() {
+    const checkboxes = document.querySelectorAll('input[name="service_ids[]"]');
+    let selectedCount = 0;
+    
+    checkboxes.forEach(checkbox => {
+        const card = checkbox.closest('.service-checkbox-card');
+        if (checkbox.checked) {
+            card.classList.add('selected');
+            selectedCount++;
+        } else {
+            card.classList.remove('selected');
+        }
+    });
+    
+    // Update badge
+    const badge = document.getElementById('selectedCountBadge');
+    if (selectedCount > 0) {
+        badge.textContent = selectedCount + ' selected';
+        badge.style.display = 'inline-block';
+    } else {
+        badge.style.display = 'none';
+    }
+    
+    updateSummary();
+}
+
+function selectStaff() {
+    const select = document.getElementById('employ_id');
+    const selectedOption = select.options[select.selectedIndex];
+    const staffName = selectedOption.getAttribute('data-name') || 'Any Available';
+    document.getElementById('staff_name').value = staffName;
+    updateSummary();
+}
+
+function updateSummary() {
+    const checkboxes = document.querySelectorAll('input[name="service_ids[]"]:checked');
+    const staffName = document.getElementById('staff_name').value;
+    const date = document.getElementById('date').value;
+    const time = document.getElementById('time').value;
+    
+    let summary = '';
+    let totalPrice = 0;
+    
+    if (checkboxes.length > 0) {
+        summary += '<div class="mb-3">';
+        summary += '<strong style="color: var(--color-burgundy); font-size: 1.1rem;">Selected Services:</strong>';
+        summary += '<ul class="mt-2 mb-0" style="list-style: none; padding-left: 0;">';
+        
+        checkboxes.forEach(checkbox => {
+            const serviceName = checkbox.getAttribute('data-name');
+            const price = parseFloat(checkbox.getAttribute('data-price'));
+            const duration = checkbox.getAttribute('data-duration');
+            totalPrice += price;
+            
+            summary += '<li class="mb-2" style="padding: 10px; background: white; border-radius: 8px; border-left: 4px solid var(--color-burgundy);">';
+            summary += '<strong>' + serviceName + '</strong><br>';
+            summary += '<small class="text-muted"><i class="bi bi-clock"></i> ' + duration + '</small><br>';
+            summary += '<span style="color: var(--color-burgundy); font-weight: 600;">₱' + price.toFixed(2) + '</span>';
+            summary += '</li>';
+        });
+        
+        summary += '</ul></div>';
+        
+        summary += '<div class="mb-2"><strong style="color: var(--color-burgundy);">Staff:</strong> ' + staffName + '</div>';
+        
+        if (date) {
+            const dateObj = new Date(date);
+            const dateStr = dateObj.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            summary += '<div class="mb-2"><strong style="color: var(--color-burgundy);">Date:</strong> ' + dateStr + '</div>';
+        }
+        
+        if (time) {
+            const timeObj = new Date('2000-01-01 ' + time);
+            const timeStr = timeObj.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+            summary += '<div class="mb-2"><strong style="color: var(--color-burgundy);">Time:</strong> ' + timeStr + '</div>';
+        }
+        
+        summary += '<hr style="border-color: var(--color-burgundy); opacity: 0.3;">';
+        summary += '<div class="text-center">';
+        summary += '<div><strong style="color: var(--color-burgundy);">Total Amount:</strong></div>';
+        summary += '<div class="summary-total">₱' + totalPrice.toFixed(2) + '</div>';
+        summary += '</div>';
+    } else {
+        summary = '<small class="text-muted"><i class="bi bi-info-circle"></i> Select services to see booking details</small>';
+    }
+    
+    document.getElementById('summary').innerHTML = summary;
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    updateServiceSelection();
+});
+</script>
 
 <script>
 // Toggle service card selection visually

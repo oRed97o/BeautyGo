@@ -26,6 +26,8 @@ $pageTitle = 'My Bookings - BeautyGo';
 include 'includes/header.php';
 ?>
 
+<link rel="stylesheet" href="css/styles.css">
+
 <style>
 /* Back button styling */
 .back-button {
