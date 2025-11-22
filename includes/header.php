@@ -186,7 +186,7 @@
                                     <?php else: ?>
                                         <?php foreach (array_slice($notifications, 0, 5) as $notif): ?>
                                             <li>
-                                                <a href="backend/notifications.php" class="notification-item d-flex text-decoration-none text-dark">
+                                                <a href="my-bookings.php" class="notification-item d-flex text-decoration-none text-dark">
                                                     <div class="notification-icon <?php echo strpos(strtolower($notif['notif_title']), 'confirmed') !== false ? 'confirmed' : (strpos(strtolower($notif['notif_title']), 'completed') !== false ? 'completed' : 'cancelled'); ?> flex-shrink-0">
                                                         <i class="bi <?php 
                                                             if (strpos(strtolower($notif['notif_title']), 'confirmed') !== false) {

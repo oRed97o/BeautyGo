@@ -3,6 +3,11 @@
 // NOTIFICATION FUNCTIONS
 // ============================================================
 
+require_once __DIR__ . '/function_customers.php';
+require_once __DIR__ . '/function_businesses.php';
+require_once __DIR__ . '/function_appointments.php';
+
+
 // Get customer notifications
 function getCustomerNotifications($customerId, $limit = null) {
     $conn = getDbConnection();
@@ -31,7 +36,7 @@ function getCustomerNotifications($customerId, $limit = null) {
     return $data;
 }
 
-// Count unread notifications (last 24 hours)
+// Count unread notifications (using read_status field)
 function countUnreadNotifications($customerId) {
     $conn = getDbConnection();
     
@@ -39,7 +44,7 @@ function countUnreadNotifications($customerId) {
         SELECT COUNT(*) as count 
         FROM notifications 
         WHERE customer_id = ? 
-        AND notif_creation >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
+        AND read_status = 0
         AND notif_title NOT LIKE '%New Booking%'
         AND notif_title NOT LIKE '%Cancelled by Customer%'
     ");
@@ -87,7 +92,7 @@ function createAppointmentNotification($customerId, $businessId, $appointmentId,
     return $success;
 }
 
-// Get business notifications
+// Get business notifications (ONLY booking/cancellation notifications)
 function getBusinessNotifications($businessId, $limit = null) {
     $conn = getDbConnection();
     
@@ -95,6 +100,7 @@ function getBusinessNotifications($businessId, $limit = null) {
             FROM notifications n
             LEFT JOIN customers c ON n.customer_id = c.customer_id
             WHERE n.business_id = ? 
+            AND (n.notif_title LIKE '%New Booking%' OR n.notif_title LIKE '%Cancelled by Customer%')
             ORDER BY n.notif_creation DESC";
     
     if ($limit) {
@@ -116,7 +122,7 @@ function getBusinessNotifications($businessId, $limit = null) {
     return $data;
 }
 
-// Count recent business notifications (last 24 hours)
+// Count recent business notifications (using read_status field)
 function countRecentBusinessNotifications($businessId) {
     $conn = getDbConnection();
     
@@ -124,8 +130,8 @@ function countRecentBusinessNotifications($businessId) {
         SELECT COUNT(*) as count 
         FROM notifications 
         WHERE business_id = ? 
-        AND notif_creation >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
-        AND notif_title LIKE '%New Booking%'
+        AND read_status = 0
+        AND (notif_title LIKE '%New Booking%' OR notif_title LIKE '%Cancelled by Customer%')
     ");
     $stmt->bind_param("i", $businessId);
     $stmt->execute();
@@ -134,6 +140,43 @@ function countRecentBusinessNotifications($businessId) {
     $stmt->close();
     
     return $row['count'] ?? 0;
+}
+
+// Mark customer notifications as read
+function markCustomerNotificationsAsRead($customerId) {
+    $conn = getDbConnection();
+    
+    $stmt = $conn->prepare("
+        UPDATE notifications 
+        SET read_status = 1 
+        WHERE customer_id = ? 
+        AND read_status = 0
+        AND notif_title NOT LIKE '%New Booking%'
+        AND notif_title NOT LIKE '%Cancelled by Customer%'
+    ");
+    $stmt->bind_param("i", $customerId);
+    $success = $stmt->execute();
+    $stmt->close();
+    
+    return $success;
+}
+
+// Mark business notifications as read
+function markBusinessNotificationsAsRead($businessId) {
+    $conn = getDbConnection();
+    
+    $stmt = $conn->prepare("
+        UPDATE notifications 
+        SET read_status = 1 
+        WHERE business_id = ? 
+        AND read_status = 0
+        AND (notif_title LIKE '%New Booking%' OR notif_title LIKE '%Cancelled by Customer%')
+    ");
+    $stmt->bind_param("i", $businessId);
+    $success = $stmt->execute();
+    $stmt->close();
+    
+    return $success;
 }
 
 // Create notification when customer books appointment

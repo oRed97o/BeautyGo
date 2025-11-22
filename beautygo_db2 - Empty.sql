@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Nov 20, 2025 at 04:15 PM
+-- Generation Time: Nov 22, 2025 at 03:35 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -209,6 +209,21 @@ CREATE TABLE `reviews` (
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `review_replies`
+--
+
+CREATE TABLE `review_replies` (
+  `reply_id` int(11) NOT NULL,
+  `review_id` int(11) NOT NULL,
+  `sender_type` enum('customer','business') NOT NULL,
+  `sender_id` int(11) NOT NULL,
+  `reply_text` text NOT NULL,
+  `reply_date` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `services`
 --
 
@@ -222,7 +237,7 @@ CREATE TABLE `services` (
   `duration` int(11) DEFAULT NULL COMMENT 'Duration in minutes'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-
+--
 -- Indexes for dumped tables
 --
 
@@ -301,6 +316,14 @@ ALTER TABLE `reviews`
   ADD KEY `business_id` (`business_id`);
 
 --
+-- Indexes for table `review_replies`
+--
+ALTER TABLE `review_replies`
+  ADD PRIMARY KEY (`reply_id`),
+  ADD KEY `review_id` (`review_id`),
+  ADD KEY `idx_review_date` (`review_id`,`reply_date`);
+
+--
 -- Indexes for table `services`
 --
 ALTER TABLE `services`
@@ -372,6 +395,12 @@ ALTER TABLE `reviews`
   MODIFY `review_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
+-- AUTO_INCREMENT for table `review_replies`
+--
+ALTER TABLE `review_replies`
+  MODIFY `reply_id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT for table `services`
 --
 ALTER TABLE `services`
@@ -428,6 +457,12 @@ ALTER TABLE `profiles`
 ALTER TABLE `reviews`
   ADD CONSTRAINT `reviews_ibfk_1` FOREIGN KEY (`customer_id`) REFERENCES `customers` (`customer_id`),
   ADD CONSTRAINT `reviews_ibfk_2` FOREIGN KEY (`business_id`) REFERENCES `businesses` (`business_id`);
+
+--
+-- Constraints for table `review_replies`
+--
+ALTER TABLE `review_replies`
+  ADD CONSTRAINT `review_replies_ibfk_1` FOREIGN KEY (`review_id`) REFERENCES `reviews` (`review_id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `services`

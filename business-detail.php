@@ -45,9 +45,21 @@ if (isset($album['logo']) && !empty($album['logo'])) {
     array_unshift($albumImages, 'data:image/jpeg;base64,' . base64_encode($album['logo']));
 }
 
-// If no images, use default
+// If no images, use default based on business type
 if (empty($albumImages)) {
-    $albumImages[] = 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=400';
+    $defaultImages = [
+        'hair salon' => 'resources/salon.png',
+        'spa & wellness' => 'resources/spa.png',
+        'barbershop' => 'resources/barbers.png',
+        'beauty clinic' => 'resources/clinic.png',
+        'nail salon' => 'resources/nails.png'
+    ];
+    
+    $businessType = strtolower($business['business_type'] ?? 'salon');
+    $defaultImage = $defaultImages[$businessType] ?? 'resources/default.png';
+    
+    // Must be an array for the slideshow to work
+    $albumImages = [$defaultImage];
 }
 
 $pageTitle = $business['business_name'] . ' - BeautyGo';

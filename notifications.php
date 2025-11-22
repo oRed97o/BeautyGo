@@ -14,6 +14,9 @@ $customerId = $user['customer_id'];
 
 $notifications = getCustomerNotifications($customerId);
 
+// Mark all notifications as read when viewing notifications page
+markCustomerNotificationsAsRead($customerId);
+
 $pageTitle = 'Notifications - BeautyGo';
 include 'includes/header.php';
 ?>

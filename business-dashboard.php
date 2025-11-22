@@ -18,6 +18,11 @@ if (!isBusinessLoggedIn()) {
 $business = getCurrentBusiness();
 $businessId = $business['business_id'] ?? $business['id'];
 
+// Mark business notifications as read when viewing dashboard
+if (isset($business['business_id'])) {
+    markBusinessNotificationsAsRead($business['business_id']);
+}
+
 // Handle appointment status update with notification
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
     $appointmentId = intval($_POST['appointment_id']);

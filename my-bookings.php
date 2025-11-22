@@ -17,6 +17,9 @@ if (!isCustomerLoggedIn()) {
 $customer = getCurrentCustomer();
 $appointments = getCustomerAppointments($customer['customer_id']);
 
+// Mark notifications as read when viewing bookings page
+markCustomerNotificationsAsRead($customer['customer_id']);
+
 // Sort appointments by set_date (newest booked first)
 usort($appointments, function($a, $b) {
     return strtotime($b['set_date']) - strtotime($a['set_date']);
@@ -157,8 +160,12 @@ include 'includes/header.php';
                                     <a href="business-detail.php?id=<?php echo $appointment['business_id']; ?>" class="btn btn-outline-primary btn-sm">
                                         <i class="bi bi-shop"></i> View Business
                                     </a>
+
+                                    <a href="booking.php?business_id=<?php echo $appointment['business_id']; ?>" class="btn btn-primary btn-sm">
+                                        <i class="bi bi-calendar-plus"></i> Book Another Appointment
+                                    </a>
                                     
-                                    <?php if ($appointment['appoint_status'] == 'pending'): ?>
+                                    <?php if ($appointment['appoint_status'] == 'pending' || $appointment['appoint_status'] == 'confirmed'): ?>
                                         <button class="btn btn-outline-danger btn-sm" onclick="if(confirm('Cancel this appointment?')) { updateAppointmentStatus('<?php echo $appointment['appointment_id']; ?>', 'cancelled'); }">
                                             <i class="bi bi-x-circle"></i> Cancel Appointment
                                         </button>

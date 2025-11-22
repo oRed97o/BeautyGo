@@ -176,6 +176,23 @@ function registerBusiness() {
     $businessId = createBusiness($businessData);
 
     if ($businessId) {
+        // ===== ADD THIS SECTION HERE =====
+        // Handle logo upload if provided
+        if (isset($_FILES['business_logo']) && $_FILES['business_logo']['error'] === UPLOAD_ERR_OK) {
+            $allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+            
+            if (in_array($_FILES['business_logo']['type'], $allowedTypes) && 
+                $_FILES['business_logo']['size'] <= 5 * 1024 * 1024) {
+                
+                $imageData = file_get_contents($_FILES['business_logo']['tmp_name']);
+                $compressedLogo = compressImage($imageData, 800, 800, 85);
+                
+                // Update the album with the logo
+                updateSingleAlbumImage($businessId, 'logo', $compressedLogo);
+            }
+        }
+        // ===== END OF NEW SECTION =====
+        
         $_SESSION['business_id'] = $businessId;
         $_SESSION['user_type'] = 'business';
         $_SESSION['success'] = 'Business registration successful!';
