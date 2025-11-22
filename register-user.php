@@ -251,6 +251,103 @@ include 'includes/header.php';
     box-shadow: 0 4px 12px rgba(0,0,0,0.2);
 }
 
+.error-modal-overlay {
+    display: none;
+    position: fixed;
+    z-index: 10000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.2s ease;
+}
+
+.error-modal-overlay.show {
+    display: flex;
+}
+
+.error-modal-content {
+    background-color: white;
+    padding: 30px;
+    border-radius: 16px;
+    max-width: 450px;
+    width: 90%;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    animation: slideDown 0.3s ease;
+    text-align: center;
+}
+
+.error-modal-icon {
+    width: 70px;
+    height: 70px;
+    margin: 0 auto 20px;
+    background: linear-gradient(135deg, #dc3545, #c82333);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.5rem;
+    color: white;
+    animation: shake 0.5s ease;
+}
+
+.error-modal-title {
+    color: #dc3545;
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 15px;
+}
+
+.error-modal-message {
+    color: #555;
+    font-size: 1rem;
+    line-height: 1.6;
+    margin-bottom: 25px;
+}
+
+.error-modal-button {
+    background: var(--color-burgundy);
+    color: white;
+    border: none;
+    padding: 12px 40px;
+    border-radius: 25px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.error-modal-button:hover {
+    background: var(--color-rose);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(133, 14, 53, 0.3);
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideDown {
+    from { 
+        opacity: 0;
+        transform: translateY(-50px);
+    }
+    to { 
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-10px); }
+    75% { transform: translateX(10px); }
+}
+
 @keyframes fadeIn {
     from { opacity: 0; }
     to { opacity: 1; }
@@ -266,6 +363,8 @@ include 'includes/header.php';
         transform: translateY(0);
     }
 }
+
+
 </style>
 
 <main>
@@ -281,22 +380,7 @@ include 'includes/header.php';
                             <h2 class="registration-title">Customer Registration</h2>
                             <p class="registration-subtitle">Create your personalized beauty profile</p>
                         </div>
-                        
-                        <!-- Step Indicator -->
-                        <div class="step-indicator mb-4">
-                            <div class="step active">
-                                <div class="step-number">1</div>
-                            </div>
-                            <div class="step-line"></div>
-                            <div class="step">
-                                <div class="step-number">2</div>
-                            </div>
-                            <div class="step-line"></div>
-                            <div class="step">
-                                <div class="step-number">3</div>
-                            </div>
-                        </div>
-                        
+                    
                         <form action="backend/auth.php" method="POST" enctype="multipart/form-data" id="userRegisterForm">
                             <input type="hidden" name="action" value="register_user">
                             
@@ -532,13 +616,6 @@ include 'includes/header.php';
                                 </div>
                             </div>
                             
-                            <div class="mb-3 form-check">
-                                <input type="checkbox" class="form-check-input" id="terms" required>
-                                <label class="form-check-label" for="terms">
-                                    I agree to the Terms of Service and Privacy Policy
-                                </label>
-                            </div>
-                            
                             <button type="submit" class="btn btn-primary w-100 mb-3">
                                 <i class="bi bi-person-check"></i> Register Account
                             </button>
@@ -578,9 +655,46 @@ include 'includes/header.php';
         </div>
     </div>
 </div>
-</main>
+<div class="error-modal-overlay" id="errorModal">
+    <div class="error-modal-content">
+        <div class="error-modal-icon">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+        </div>
+        <h3 class="error-modal-title">Oops!</h3>
+        <p class="error-modal-message" id="errorModalMessage">Something went wrong.</p>
+        <button type="button" class="error-modal-button" onclick="closeErrorModal()">Got it</button>
+    </div>
+</div>
 
+<!-- REPLACE YOUR ENTIRE PASSWORD VALIDATION SCRIPT (around line 547-576) WITH THIS: -->
 <script>
+// Custom error modal functions
+function showErrorModal(message) {
+    document.getElementById('errorModalMessage').textContent = message;
+    document.getElementById('errorModal').classList.add('show');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeErrorModal() {
+    document.getElementById('errorModal').classList.remove('show');
+    document.body.style.overflow = '';
+}
+
+// Close modal when clicking outside
+document.getElementById('errorModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeErrorModal();
+    }
+});
+
+// Close modal with Escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeErrorModal();
+    }
+});
+
+// Form validation with custom modal
 document.getElementById('userRegisterForm').addEventListener('submit', function(e) {
     const password = document.getElementById('password').value;
     const confirmPassword = document.getElementById('confirm_password').value;
@@ -588,34 +702,42 @@ document.getElementById('userRegisterForm').addEventListener('submit', function(
     // Check if passwords match
     if (password !== confirmPassword) {
         e.preventDefault();
-        alert('Passwords do not match!');
+        showErrorModal('Passwords do not match! Please make sure both password fields are identical.');
         document.getElementById('confirm_password').focus();
         return false;
     }
     
-    // Validate password requirements (8 chars, numbers, symbols)
+    // Validate password length
     if (password.length < 8) {
         e.preventDefault();
-        alert('Password must be at least 8 characters long!');
+        showErrorModal('Password must be at least 8 characters long!');
         document.getElementById('password').focus();
         return false;
     }
     
+    // Check for at least one number
     if (!/\d/.test(password)) {
         e.preventDefault();
-        alert('Password must contain at least one number!');
+        showErrorModal('Password must contain at least one number (0-9)!');
         document.getElementById('password').focus();
         return false;
     }
     
+    // Check for at least one special character
     if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
         e.preventDefault();
-        alert('Password must contain at least one symbol (!@#$%^&* etc.)!');
+        showErrorModal('Password must contain at least one special character (!@#$%^&* etc.)');
         document.getElementById('password').focus();
         return false;
     }
+    
+    // All validation passed
+    return true;
 });
 
+</script>
+
+<script>
 // Profile picture upload with crop modal
 const profilePicInput = document.getElementById('profile_pic');
 const profilePreview = document.getElementById('profilePreview');
@@ -837,5 +959,6 @@ cropModal.addEventListener('click', function(e) {
     }
 });
 </script>
+</main>
 
 <?php include 'includes/footer.php'; ?>

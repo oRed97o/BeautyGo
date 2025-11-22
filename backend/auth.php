@@ -28,6 +28,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // Register New Customer
 // ==========================
 function registerUser() {
+    error_log("=== REGISTRATION DEBUG ===");
+    error_log("cropped_image_data present: " . (!empty($_POST['cropped_image_data']) ? 'YES' : 'NO'));
+    error_log("cropped_image_data length: " . strlen($_POST['cropped_image_data'] ?? ''));
+    error_log("profile_pic file present: " . (isset($_FILES['profile_pic']) && $_FILES['profile_pic']['error'] === UPLOAD_ERR_OK ? 'YES' : 'NO'));
+    
+    $email = sanitize($_POST['cstmr_email'] ?? '');
     $email = sanitize($_POST['cstmr_email'] ?? '');
     $password = $_POST['password'] ?? '';
     $fname = sanitize($_POST['fname'] ?? '');
@@ -64,28 +70,47 @@ function registerUser() {
     }
 
     // Handle profile picture upload (still stored as BLOB)
-    $profilePic = null;
-    if (isset($_FILES['profile_pic']) && $_FILES['profile_pic']['error'] === UPLOAD_ERR_OK) {
-        $file = $_FILES['profile_pic'];
+        $profilePic = null;
 
-        // Validate file type and size
-        $allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-        $maxSize = 5 * 1024 * 1024; // 5MB limit
-
-        if (!in_array($file['type'], $allowedTypes)) {
-            $_SESSION['error'] = 'Invalid file type. Only JPG, PNG, GIF, and WebP are allowed.';
-            header('Location: ../register-user.php');
-            exit;
+        // Check for cropped image data first (from the crop modal)
+        if (!empty($_POST['cropped_image_data'])) {
+            // Cropped image is sent as base64 data URL
+            $croppedData = $_POST['cropped_image_data'];
+            
+            // Remove the data URL prefix (e.g., "data:image/jpeg;base64,")
+            if (preg_match('/^data:image\/(\w+);base64,/', $croppedData, $type)) {
+                $croppedData = substr($croppedData, strpos($croppedData, ',') + 1);
+                $croppedData = base64_decode($croppedData);
+                
+                if ($croppedData !== false) {
+                    $profilePic = $croppedData;
+                    error_log("Using cropped profile picture");
+                }
+            }
         }
+        // Fallback to regular file upload if no cropped data
+        elseif (isset($_FILES['profile_pic']) && $_FILES['profile_pic']['error'] === UPLOAD_ERR_OK) {
+            $file = $_FILES['profile_pic'];
 
-        if ($file['size'] > $maxSize) {
-            $_SESSION['error'] = 'Profile picture must be less than 5MB.';
-            header('Location: ../register-user.php');
-            exit;
+            // Validate file type and size
+            $allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+            $maxSize = 5 * 1024 * 1024; // 5MB limit
+
+            if (!in_array($file['type'], $allowedTypes)) {
+                $_SESSION['error'] = 'Invalid file type. Only JPG, PNG, GIF, and WebP are allowed.';
+                header('Location: ../register-user.php');
+                exit;
+            }
+
+            if ($file['size'] > $maxSize) {
+                $_SESSION['error'] = 'Profile picture must be less than 5MB.';
+                header('Location: ../register-user.php');
+                exit;
+            }
+
+            $profilePic = file_get_contents($file['tmp_name']);
+            error_log("Using uploaded file profile picture");
         }
-
-        $profilePic = file_get_contents($file['tmp_name']);
-    }
 
     // Build customer data array
     $userData = [
