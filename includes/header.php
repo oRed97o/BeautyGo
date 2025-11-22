@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo $pageTitle ?? 'BeautyGo - Beauty Services in Nasugbu, Batangas'; ?></title>
@@ -12,7 +15,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="styles.css?v=<?php echo time(); ?>">
+    <link rel="stylesheet" href="css/styles.css?v=<?php echo time(); ?>">
     
     <style>
         /* Notification bell styling */
@@ -103,6 +106,12 @@
             color: #6c757d;
         }
     </style>
+    
+    <link rel="stylesheet" href="css/styles.css?v=<?php echo time(); ?>">
+    
+    <!-- Bootstrap JS (moved to head for dropdown functionality) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
 </head>
 <body>
     <!-- Navigation -->
@@ -281,7 +290,7 @@
                             </li>
                         <?php else: ?>
                             <li class="nav-item dropdown">
-                                <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
+                                    <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
                                     <i class="bi bi-person-circle"></i> <?php echo htmlspecialchars($displayName); ?>
                                 </a>
                                 <ul class="dropdown-menu dropdown-menu-end">

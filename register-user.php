@@ -331,6 +331,97 @@ include 'includes/header.php';
                                 <input type="hidden" id="croppedImageData" name="cropped_image_data" value="">
                             </div>
                             
+
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <label for="fname" class="form-label">First Name *</label>
+                                    <input type="text" class="form-control" id="fname" name="fname" required>
+                                </div>
+                                
+                                <div class="col-md-4 mb-3">
+                                    <label for="mname" class="form-label">Middle Name</label>
+                                    <input type="text" class="form-control" id="mname" name="mname">
+                                </div>
+                                
+                                <div class="col-md-4 mb-3">
+                                    <label for="surname" class="form-label">Last Name *</label>
+                                    <input type="text" class="form-control" id="surname" name="surname" required>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="cstmr_email" class="form-label">Email Address *</label>
+                                    <input type="email" class="form-control" id="cstmr_email" name="cstmr_email" required>
+                                </div>
+                                
+                                <div class="col-md-6 mb-3">
+                                    <label for="cstmr_num" class="form-label">Phone Number *</label>
+                                    <input type="tel" class="form-control" id="cstmr_num" name="cstmr_num" required placeholder="+63 912 345 6789">
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="password" class="form-label">Password *</label>
+                                    <input type="password" class="form-control" id="password" name="password" minlength="8" required>
+                                    <small class="text-muted">Minimum 8 characters with numbers and symbols</small>
+                                </div>
+                                
+                                <div class="col-md-6 mb-3">
+                                    <label for="confirm_password" class="form-label">Confirm Password *</label>
+                                    <input type="password" class="form-control" id="confirm_password" name="confirm_password" minlength="8" required>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-12 mb-3">
+                                    <label for="cstmr_address" class="form-label">
+                                        <i class="bi bi-geo-alt-fill text-danger"></i> Barangay *
+                                    </label>
+                                    <select class="form-select" id="cstmr_address" name="cstmr_address" required>
+                                        <option value="">Select your barangay</option>
+                                        <option value="Aga">Aga</option>
+                                        <option value="Balaytigui">Balaytigui</option>
+                                        <option value="Banilad">Banilad</option>
+                                        <option value="Bilaran">Bilaran</option>
+                                        <option value="Bucana">Bucana</option>
+                                        <option value="Buhay">Buhay</option>
+                                        <option value="Bulihan">Bulihan</option>
+                                        <option value="Bunducan">Bunducan</option>
+                                        <option value="Butucan">Butucan</option>
+                                        <option value="Calayo">Calayo</option>
+                                        <option value="Catandaan">Catandaan</option>
+                                        <option value="Caybunga">Caybunga</option>
+                                        <option value="Cogunan">Cogunan</option>
+                                        <option value="Dayap">Dayap</option>
+                                        <option value="Kaylaway">Kaylaway</option>
+                                        <option value="Latag">Latag</option>
+                                        <option value="Looc">Looc</option>
+                                        <option value="Lumbangan">Lumbangan</option>
+                                        <option value="Malapad na Bato">Malapad na Bato</option>
+                                        <option value="Mataas na Pulo">Mataas na Pulo</option>
+                                        <option value="Munting Indan">Munting Indan</option>
+                                        <option value="Natipuan">Natipuan</option>
+                                        <option value="Pantalan">Pantalan</option>
+                                        <option value="Papaya">Papaya</option>
+                                        <option value="Poblacion">Poblacion</option>
+                                        <option value="Putat">Putat</option>
+                                        <option value="Reparo">Reparo</option>
+                                        <option value="San Diego">San Diego</option>
+                                        <option value="San Jose">San Jose</option>
+                                        <option value="San Juan">San Juan</option>
+                                        <option value="Talangan">Talangan</option>
+                                        <option value="Tumalim">Tumalim</option>
+                                        <option value="Utod">Utod</option>
+                                        <option value="Wawa">Wawa</option>
+                                    </select>
+                                    <small class="text-muted">Select your barangay in Nasugbu, Batangas</small>
+                                </div>
+                            </div>
+
+                            <hr class="my-4">
+
                             <!-- Beauty Profile (for personalized recommendations) -->
                             <h5 class="mb-3">Beauty Profile <small class="text-muted">(Optional - for personalized recommendations)</small></h5>
                             
@@ -490,15 +581,37 @@ include 'includes/header.php';
 </main>
 
 <script>
-// Password confirmation validation
 document.getElementById('userRegisterForm').addEventListener('submit', function(e) {
     const password = document.getElementById('password').value;
     const confirmPassword = document.getElementById('confirm_password').value;
     
+    // Check if passwords match
     if (password !== confirmPassword) {
         e.preventDefault();
         alert('Passwords do not match!');
         document.getElementById('confirm_password').focus();
+        return false;
+    }
+    
+    // Validate password requirements (8 chars, numbers, symbols)
+    if (password.length < 8) {
+        e.preventDefault();
+        alert('Password must be at least 8 characters long!');
+        document.getElementById('password').focus();
+        return false;
+    }
+    
+    if (!/\d/.test(password)) {
+        e.preventDefault();
+        alert('Password must contain at least one number!');
+        document.getElementById('password').focus();
+        return false;
+    }
+    
+    if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+        e.preventDefault();
+        alert('Password must contain at least one symbol (!@#$%^&* etc.)!');
+        document.getElementById('password').focus();
         return false;
     }
 });

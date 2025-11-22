@@ -3,6 +3,7 @@ require_once 'db_connection/config.php';
 require_once 'backend/function_utilities.php';
 require_once 'backend/function_customers.php';
 require_once 'backend/function_appointments.php';
+require_once 'backend/function_notifications.php';
 
 // Check if user is logged in
 if (!isCustomerLoggedIn()) {
@@ -303,15 +304,53 @@ include 'includes/header.php';
                             
                             <div class="row">
                                 <div class="col-md-6 mb-3">
-                                    <label for="cstmr_address" class="form-label">Address</label>
-                                    <input type="text" class="form-control" id="cstmr_address" name="cstmr_address" 
-                                           value="<?php echo htmlspecialchars($user['cstmr_address'] ?? ''); ?>">
+                                    <label for="cstmr_address" class="form-label">
+                                        <i class="bi bi-geo-alt-fill text-danger"></i> Barangay *
+                                    </label>
+                                    <select class="form-select" id="cstmr_address" name="cstmr_address" required>
+                                        <option value="">Select your barangay</option>
+                                        <option value="Aga" <?php echo ($user['cstmr_address'] ?? '') == 'Aga' ? 'selected' : ''; ?>>Aga</option>
+                                        <option value="Balaytigui" <?php echo ($user['cstmr_address'] ?? '') == 'Balaytigui' ? 'selected' : ''; ?>>Balaytigui</option>
+                                        <option value="Banilad" <?php echo ($user['cstmr_address'] ?? '') == 'Banilad' ? 'selected' : ''; ?>>Banilad</option>
+                                        <option value="Bilaran" <?php echo ($user['cstmr_address'] ?? '') == 'Bilaran' ? 'selected' : ''; ?>>Bilaran</option>
+                                        <option value="Bucana" <?php echo ($user['cstmr_address'] ?? '') == 'Bucana' ? 'selected' : ''; ?>>Bucana</option>
+                                        <option value="Buhay" <?php echo ($user['cstmr_address'] ?? '') == 'Buhay' ? 'selected' : ''; ?>>Buhay</option>
+                                        <option value="Bulihan" <?php echo ($user['cstmr_address'] ?? '') == 'Bulihan' ? 'selected' : ''; ?>>Bulihan</option>
+                                        <option value="Bunducan" <?php echo ($user['cstmr_address'] ?? '') == 'Bunducan' ? 'selected' : ''; ?>>Bunducan</option>
+                                        <option value="Butucan" <?php echo ($user['cstmr_address'] ?? '') == 'Butucan' ? 'selected' : ''; ?>>Butucan</option>
+                                        <option value="Calayo" <?php echo ($user['cstmr_address'] ?? '') == 'Calayo' ? 'selected' : ''; ?>>Calayo</option>
+                                        <option value="Catandaan" <?php echo ($user['cstmr_address'] ?? '') == 'Catandaan' ? 'selected' : ''; ?>>Catandaan</option>
+                                        <option value="Caybunga" <?php echo ($user['cstmr_address'] ?? '') == 'Caybunga' ? 'selected' : ''; ?>>Caybunga</option>
+                                        <option value="Cogunan" <?php echo ($user['cstmr_address'] ?? '') == 'Cogunan' ? 'selected' : ''; ?>>Cogunan</option>
+                                        <option value="Dayap" <?php echo ($user['cstmr_address'] ?? '') == 'Dayap' ? 'selected' : ''; ?>>Dayap</option>
+                                        <option value="Kaylaway" <?php echo ($user['cstmr_address'] ?? '') == 'Kaylaway' ? 'selected' : ''; ?>>Kaylaway</option>
+                                        <option value="Latag" <?php echo ($user['cstmr_address'] ?? '') == 'Latag' ? 'selected' : ''; ?>>Latag</option>
+                                        <option value="Looc" <?php echo ($user['cstmr_address'] ?? '') == 'Looc' ? 'selected' : ''; ?>>Looc</option>
+                                        <option value="Lumbangan" <?php echo ($user['cstmr_address'] ?? '') == 'Lumbangan' ? 'selected' : ''; ?>>Lumbangan</option>
+                                        <option value="Malapad na Bato" <?php echo ($user['cstmr_address'] ?? '') == 'Malapad na Bato' ? 'selected' : ''; ?>>Malapad na Bato</option>
+                                        <option value="Mataas na Pulo" <?php echo ($user['cstmr_address'] ?? '') == 'Mataas na Pulo' ? 'selected' : ''; ?>>Mataas na Pulo</option>
+                                        <option value="Munting Indan" <?php echo ($user['cstmr_address'] ?? '') == 'Munting Indan' ? 'selected' : ''; ?>>Munting Indan</option>
+                                        <option value="Natipuan" <?php echo ($user['cstmr_address'] ?? '') == 'Natipuan' ? 'selected' : ''; ?>>Natipuan</option>
+                                        <option value="Pantalan" <?php echo ($user['cstmr_address'] ?? '') == 'Pantalan' ? 'selected' : ''; ?>>Pantalan</option>
+                                        <option value="Papaya" <?php echo ($user['cstmr_address'] ?? '') == 'Papaya' ? 'selected' : ''; ?>>Papaya</option>
+                                        <option value="Poblacion" <?php echo ($user['cstmr_address'] ?? '') == 'Poblacion' ? 'selected' : ''; ?>>Poblacion</option>
+                                        <option value="Putat" <?php echo ($user['cstmr_address'] ?? '') == 'Putat' ? 'selected' : ''; ?>>Putat</option>
+                                        <option value="Reparo" <?php echo ($user['cstmr_address'] ?? '') == 'Reparo' ? 'selected' : ''; ?>>Reparo</option>
+                                        <option value="San Diego" <?php echo ($user['cstmr_address'] ?? '') == 'San Diego' ? 'selected' : ''; ?>>San Diego</option>
+                                        <option value="San Jose" <?php echo ($user['cstmr_address'] ?? '') == 'San Jose' ? 'selected' : ''; ?>>San Jose</option>
+                                        <option value="San Juan" <?php echo ($user['cstmr_address'] ?? '') == 'San Juan' ? 'selected' : ''; ?>>San Juan</option>
+                                        <option value="Talangan" <?php echo ($user['cstmr_address'] ?? '') == 'Talangan' ? 'selected' : ''; ?>>Talangan</option>
+                                        <option value="Tumalim" <?php echo ($user['cstmr_address'] ?? '') == 'Tumalim' ? 'selected' : ''; ?>>Tumalim</option>
+                                        <option value="Utod" <?php echo ($user['cstmr_address'] ?? '') == 'Utod' ? 'selected' : ''; ?>>Utod</option>
+                                        <option value="Wawa" <?php echo ($user['cstmr_address'] ?? '') == 'Wawa' ? 'selected' : ''; ?>>Wawa</option>
+                                    </select>
+                                    <small class="text-muted">Select your barangay in Nasugbu, Batangas</small>
                                 </div>
                                 
                                 <div class="col-md-6 mb-3">
                                     <label for="member_since" class="form-label">Member Since</label>
                                     <input type="text" class="form-control" 
-                                           value="<?php echo formatDate($user['registration_date']); ?>" disabled>
+                                        value="<?php echo formatDate($user['registration_date']); ?>" disabled>
                                 </div>
                             </div>
                             
