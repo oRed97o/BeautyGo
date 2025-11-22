@@ -13,222 +13,10 @@ $pageTitle = 'Business Registration - BeautyGo';
 include 'includes/header.php';
 ?>
 
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="css/register-business.css">
 <link rel="stylesheet" href="css/styles.css">
-
-<style>
-/* Logo Preview Styles */
-.logo-preview {
-    width: 200px;
-    height: 200px;
-    border-radius: 10px;
-    border: 3px dashed var(--color-burgundy);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0 auto 15px;
-    overflow: hidden;
-    background: #f8f9fa;
-    position: relative;
-}
-.logo-preview img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: none;
-}
-.logo-preview img.show {
-    display: block;
-}
-.logo-preview .placeholder {
-    text-align: center;
-    color: #999;
-}
-.logo-preview .placeholder.hide {
-    display: none;
-}
-.file-input-wrapper {
-    position: relative;
-    margin-bottom: 10px;
-}
-.file-input-wrapper input[type="file"] {
-    display: none;
-}
-.file-input-label {
-    display: inline-block;
-    padding: 10px 20px;
-    background: var(--color-burgundy);
-    color: white;
-    border-radius: 6px;
-    cursor: pointer;
-    text-align: center;
-    transition: all 0.3s ease;
-    font-size: 0.95rem;
-}
-.file-input-label:hover {
-    background: var(--color-rose);
-    transform: translateY(-2px);
-}
-#fileInfo {
-    margin-top: 10px;
-    padding: 10px;
-    background: #f8f9fa;
-    border-radius: 6px;
-    display: inline-block;
-}
-.remove-logo-btn {
-    margin-left: 10px;
-}
-
-/* Crop Modal Styles */
-.crop-modal-overlay {
-    display: none;
-    position: fixed;
-    z-index: 9999;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0,0,0,0.85);
-    align-items: center;
-    justify-content: center;
-    animation: fadeIn 0.3s ease;
-}
-
-.crop-modal-overlay.show {
-    display: flex;
-}
-
-.crop-modal-content {
-    background-color: white;
-    padding: 30px;
-    border-radius: 20px;
-    max-width: 600px;
-    width: 90%;
-    max-height: 90vh;
-    overflow-y: auto;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.3);
-    animation: slideUp 0.3s ease;
-}
-
-.crop-modal-header {
-    text-align: center;
-    margin-bottom: 25px;
-}
-
-.crop-modal-header h3 {
-    color: var(--color-burgundy);
-    margin-bottom: 10px;
-    font-size: 1.5rem;
-}
-
-.crop-modal-header p {
-    color: #666;
-    font-size: 0.9rem;
-    margin: 0;
-}
-
-.crop-preview-area {
-    position: relative;
-    width: 300px;
-    height: 300px;
-    margin: 0 auto 25px;
-    border-radius: 10px;
-    overflow: hidden;
-    background: #f0f0f0;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-    cursor: grab;
-}
-
-.crop-preview-area.dragging {
-    cursor: grabbing;
-}
-
-.crop-preview-image {
-    position: absolute;
-    max-width: none;
-    user-select: none;
-    -webkit-user-drag: none;
-}
-
-.crop-instructions {
-    text-align: center;
-    margin-bottom: 20px;
-    padding: 15px;
-    background: #f8f9fa;
-    border-radius: 10px;
-    border-left: 4px solid var(--color-burgundy);
-}
-
-.crop-instructions i {
-    color: var(--color-burgundy);
-    font-size: 1.2rem;
-    margin-right: 8px;
-}
-
-.crop-instructions p {
-    margin: 0;
-    color: #555;
-    font-size: 0.9rem;
-}
-
-.crop-modal-buttons {
-    display: flex;
-    gap: 15px;
-    justify-content: center;
-    margin-top: 25px;
-}
-
-.crop-modal-buttons button {
-    padding: 12px 30px;
-    border-radius: 25px;
-    font-size: 1rem;
-    font-weight: 500;
-    border: none;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.btn-cancel-crop {
-    background-color: #6c757d;
-    color: white;
-}
-
-.btn-cancel-crop:hover {
-    background-color: #5a6268;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-}
-
-.btn-confirm-crop {
-    background-color: var(--color-burgundy);
-    color: white;
-}
-
-.btn-confirm-crop:hover {
-    background: var(--color-rose);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
-
-@keyframes slideUp {
-    from { 
-        opacity: 0;
-        transform: translateY(30px);
-    }
-    to { 
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-</style>
 
 <main>
     <div class="container my-5">
@@ -243,6 +31,8 @@ include 'includes/header.php';
                         <form action="backend/auth.php" method="POST" enctype="multipart/form-data" id="businessRegisterForm">
                             <input type="hidden" name="action" value="register_business">
                             <input type="hidden" id="croppedLogoData" name="cropped_logo_data" value="">
+                            <input type="hidden" id="latitude" name="latitude" value="14.0697">
+                            <input type="hidden" id="longitude" name="longitude" value="120.6328">
                             
                             <!-- Business Logo -->
                             <h5 class="mb-3">Business Logo (Optional)</h5>
@@ -332,7 +122,7 @@ include 'includes/header.php';
                             <hr class="my-4">
                             
                             <!-- Location -->
-                            <h5 class="mb-3">Location</h5>
+                            <h5 class="mb-3">Business Location *</h5>
                             <div class="mb-3">
                                 <label for="business_address" class="form-label">Street Address *</label>
                                 <input type="text" class="form-control" id="business_address" name="business_address" required placeholder="Street, Barangay">
@@ -343,17 +133,18 @@ include 'includes/header.php';
                                 <input type="text" class="form-control" id="city" name="city" value="Nasugbu" required>
                             </div>
                             
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <label for="latitude" class="form-label">Latitude</label>
-                                    <input type="number" step="0.000001" class="form-control" id="latitude" name="latitude" value="14.0697">
-                                    <small class="text-muted">For location-based recommendations</small>
+                            <div class="mb-3">
+                                <label class="form-label">
+                                    <i class="bi bi-geo-alt-fill"></i> Pin Your Location on Map *
+                                </label>
+                                <div class="map-info-box">
+                                    <i class="bi bi-info-circle"></i>
+                                    <small>Click anywhere on the map to set your business location. The address will be automatically filled based on your selection.</small>
                                 </div>
-                                
-                                <div class="col-md-6 mb-3">
-                                    <label for="longitude" class="form-label">Longitude</label>
-                                    <input type="number" step="0.000001" class="form-control" id="longitude" name="longitude" value="120.6328">
-                                    <small class="text-muted">For location-based recommendations</small>
+                                <div id="locationMap"></div>
+                                <div class="coordinates-display">
+                                    <strong>Selected Coordinates:</strong><br>
+                                    Latitude: <span id="displayLat">14.0697</span> | Longitude: <span id="displayLng">120.6328</span>
                                 </div>
                             </div>
                             
@@ -407,8 +198,161 @@ include 'includes/header.php';
     </div>
 </main>
 
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
 <script>
-// Crop modal variables
+// MAP FUNCTIONALITY
+let map;
+let marker;
+const defaultLat = 14.0697;
+const defaultLng = 120.6328;
+
+// Initialize map
+function initMap() {
+    map = L.map('locationMap').setView([defaultLat, defaultLng], 14);
+    
+    // Add OpenStreetMap tiles
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 19
+    }).addTo(map);
+    
+    // Custom marker icon
+    const customIcon = L.divIcon({
+        html: '<i class="bi bi-geo-alt-fill" style="font-size: 2.5rem; color: #850E35;"></i>',
+        className: 'custom-marker',
+        iconSize: [40, 40],
+        iconAnchor: [20, 40]
+    });
+    
+    // Add default marker
+    marker = L.marker([defaultLat, defaultLng], { 
+        icon: customIcon,
+        draggable: true 
+    }).addTo(map);
+    
+    // Click to set location
+    map.on('click', function(e) {
+        const lat = e.latlng.lat;
+        const lng = e.latlng.lng;
+        updateLocation(lat, lng);
+    });
+    
+    // Drag marker to set location
+    marker.on('dragend', function(e) {
+        const lat = e.target.getLatLng().lat;
+        const lng = e.target.getLatLng().lng;
+        updateLocation(lat, lng);
+    });
+}
+
+function updateLocation(lat, lng) {
+    marker.setLatLng([lat, lng]);
+    document.getElementById('latitude').value = lat.toFixed(6);
+    document.getElementById('longitude').value = lng.toFixed(6);
+    document.getElementById('displayLat').textContent = lat.toFixed(6);
+    document.getElementById('displayLng').textContent = lng.toFixed(6);
+    
+    // Reverse geocode to get address
+    reverseGeocode(lat, lng);
+}
+
+// Reverse geocoding to get address from coordinates
+async function reverseGeocode(lat, lng) {
+    try {
+        const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1`,
+            {
+                headers: {
+                    'Accept-Language': 'en'
+                }
+            }
+        );
+        
+        const data = await response.json();
+        
+        if (data && data.address) {
+            const address = data.address;
+            
+            // Extract address components
+            const road = address.road || address.street || '';
+            const suburb = address.suburb || address.neighbourhood || address.village || '';
+            const barangay = address.suburb || address.neighbourhood || address.village || address.hamlet || '';
+            const city = address.city || address.town || address.municipality || 'Nasugbu';
+            
+            // Build street address (road + barangay/suburb)
+            let streetAddress = '';
+            if (road) {
+                streetAddress = road;
+                if (barangay && barangay !== road) {
+                    streetAddress += ', ' + barangay;
+                }
+            } else if (barangay) {
+                streetAddress = barangay;
+            }
+            
+            // Update form fields if we got valid data
+            if (streetAddress) {
+                document.getElementById('business_address').value = streetAddress;
+            }
+            
+            if (city) {
+                document.getElementById('city').value = city;
+            }
+            
+            // Show a small notification
+            showAddressNotification(streetAddress || 'Location selected');
+        }
+    } catch (error) {
+        console.error('Geocoding error:', error);
+    }
+}
+
+// Show temporary notification
+function showAddressNotification(message) {
+    // Remove existing notification if any
+    const existing = document.getElementById('addressNotification');
+    if (existing) {
+        existing.remove();
+    }
+    
+    // Create notification
+    const notification = document.createElement('div');
+    notification.id = 'addressNotification';
+    notification.style.cssText = `
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        background: #850E35;
+        color: white;
+        padding: 12px 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        z-index: 10000;
+        animation: slideInUp 0.3s ease;
+    `;
+    notification.innerHTML = `
+        <i class="bi bi-check-circle-fill"></i> ${message}
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Auto remove after 3 seconds
+    setTimeout(() => {
+        notification.style.animation = 'fadeOut 0.3s ease';
+        setTimeout(() => notification.remove(), 300);
+    }, 3000);
+}
+
+// Initialize map when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    initMap();
+});
+
+// ========================================
+// CROP MODAL FUNCTIONALITY
+// ========================================
 const cropModal = document.getElementById('cropModal');
 const cropPreviewArea = document.getElementById('cropPreviewArea');
 const cropPreviewImage = document.getElementById('cropPreviewImage');
@@ -422,7 +366,6 @@ let currentX = 0, currentY = 0;
 let currentFile = null;
 let originalImageSrc = '';
 
-// Handle logo selection
 function handleLogoSelect(input) {
     const file = input.files[0];
     
@@ -451,7 +394,6 @@ function handleLogoSelect(input) {
     }
 }
 
-// Open crop modal
 function openCropModal(imageSrc) {
     const img = new Image();
     img.onload = function() {
@@ -477,7 +419,6 @@ function openCropModal(imageSrc) {
     img.src = imageSrc;
 }
 
-// Close crop modal
 function closeCropModal() {
     cropModal.classList.remove('show');
     document.body.style.overflow = '';
@@ -488,7 +429,6 @@ function closeCropModal() {
     initialY = 0;
 }
 
-// Drag functionality
 cropPreviewArea.addEventListener('mousedown', startDrag);
 cropPreviewArea.addEventListener('touchstart', startDrag);
 
@@ -545,12 +485,10 @@ function endDrag() {
     }
 }
 
-// Cancel crop
 btnCancelCrop.addEventListener('click', function() {
     closeCropModal();
 });
 
-// Confirm crop
 btnConfirmCrop.addEventListener('click', function() {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
@@ -583,7 +521,6 @@ btnConfirmCrop.addEventListener('click', function() {
     img.src = originalImageSrc;
 });
 
-// Remove logo
 function removeLogo() {
     if (confirm('Remove this logo?')) {
         document.getElementById('business_logo').value = '';
@@ -597,14 +534,12 @@ function removeLogo() {
     }
 }
 
-// Close modal when clicking outside
 cropModal.addEventListener('click', function(e) {
     if (e.target === cropModal) {
         closeCropModal();
     }
 });
 
-// Password confirmation validation
 document.getElementById('businessRegisterForm').addEventListener('submit', function(e) {
     const password = document.getElementById('business_password').value;
     const confirmPassword = document.getElementById('confirm_password').value;
