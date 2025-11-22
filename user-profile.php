@@ -198,6 +198,242 @@ include 'includes/header.php';
     margin-top: 10px;
     font-weight: 500;
 }
+
+/* Crop Modal Styles */
+.crop-modal-overlay {
+    display: none;
+    position: fixed;
+    z-index: 9999;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.85);
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.3s ease;
+}
+
+.crop-modal-overlay.show {
+    display: flex;
+}
+
+.crop-modal-content {
+    background-color: white;
+    padding: 30px;
+    border-radius: 20px;
+    max-width: 600px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+    animation: slideUp 0.3s ease;
+}
+
+.crop-modal-header {
+    text-align: center;
+    margin-bottom: 25px;
+}
+
+.crop-modal-header h3 {
+    color: var(--color-burgundy);
+    margin-bottom: 10px;
+    font-size: 1.5rem;
+}
+
+.crop-modal-header p {
+    color: #666;
+    font-size: 0.9rem;
+    margin: 0;
+}
+
+.crop-preview-area {
+    position: relative;
+    width: 300px;
+    height: 300px;
+    margin: 0 auto 25px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: #f0f0f0;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    cursor: grab;
+}
+
+.crop-preview-area.dragging {
+    cursor: grabbing;
+}
+
+.crop-preview-image {
+    position: absolute;
+    max-width: none;
+    user-select: none;
+    -webkit-user-drag: none;
+}
+
+.crop-instructions {
+    text-align: center;
+    margin-bottom: 20px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 10px;
+    border-left: 4px solid var(--color-burgundy);
+}
+
+.crop-instructions i {
+    color: var(--color-burgundy);
+    font-size: 1.2rem;
+    margin-right: 8px;
+}
+
+.crop-instructions p {
+    margin: 0;
+    color: #555;
+    font-size: 0.9rem;
+}
+
+.crop-modal-buttons {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    margin-top: 25px;
+}
+
+.crop-modal-buttons button {
+    padding: 12px 30px;
+    border-radius: 25px;
+    font-size: 1rem;
+    font-weight: 500;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-cancel-crop {
+    background-color: #6c757d;
+    color: white;
+}
+
+.btn-cancel-crop:hover {
+    background-color: #5a6268;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+.btn-confirm-crop {
+    background-color: var(--color-burgundy);
+    color: white;
+}
+
+.btn-confirm-crop:hover {
+    background-color: var(--color-rose);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+/* Zoom Controls */
+.zoom-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.zoom-button {
+    background: var(--color-burgundy);
+    color: white;
+    border: none;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 1.2rem;
+}
+
+.zoom-button:hover {
+    background: var(--color-rose);
+    transform: scale(1.1);
+}
+
+.zoom-slider {
+    width: 200px;
+    height: 6px;
+    border-radius: 3px;
+    background: #e0e0e0;
+    outline: none;
+    -webkit-appearance: none;
+}
+
+.zoom-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--color-burgundy);
+    cursor: pointer;
+}
+
+.zoom-slider::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--color-burgundy);
+    cursor: pointer;
+    border: none;
+}
+
+.zoom-level {
+    font-size: 0.9rem;
+    color: #666;
+    min-width: 50px;
+    text-align: center;
+}
+
+/* Edit Photo Button */
+.edit-photo-btn {
+    background: var(--color-burgundy);
+    color: white;
+    border: none;
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-top: 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.edit-photo-btn:hover {
+    background: var(--color-rose);
+    transform: translateY(-2px);
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideUp {
+    from { 
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to { 
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
 </style>
 
 <main>
@@ -515,15 +751,73 @@ include 'includes/header.php';
             </div>
         </div>
     </div>
+    <div class="crop-modal-overlay" id="cropModal">
+    <div class="crop-modal-content">
+        <div class="crop-modal-header">
+            <h3><i class="bi bi-crop"></i> Adjust Your Photo</h3>
+            <p>Drag to reposition • Use zoom to adjust size</p>
+        </div>
+        
+        <div class="crop-preview-area" id="cropPreviewArea">
+            <img src="" alt="Crop Preview" class="crop-preview-image" id="cropPreviewImage">
+        </div>
+        
+        <!-- ZOOM CONTROLS -->
+        <div class="zoom-controls">
+            <button type="button" class="zoom-button" id="zoomOut">
+                <i class="bi bi-dash-lg"></i>
+            </button>
+            <input type="range" class="zoom-slider" id="zoomSlider" min="1" max="3" step="0.1" value="1">
+            <button type="button" class="zoom-button" id="zoomIn">
+                <i class="bi bi-plus-lg"></i>
+            </button>
+            <span class="zoom-level" id="zoomLevel">100%</span>
+        </div>
+        
+        <div class="crop-instructions">
+            <i class="bi bi-hand-index"></i>
+            <p>Drag to move • Zoom to resize • Your photo will be cropped to a circle</p>
+        </div>
+        
+        <div class="crop-modal-buttons">
+            <button type="button" class="btn-cancel-crop" id="btnCancelCrop">
+                <i class="bi bi-x-circle"></i> Cancel
+            </button>
+            <button type="button" class="btn-confirm-crop" id="btnConfirmCrop">
+                <i class="bi bi-check-circle"></i> Set as Profile Photo
+            </button>
+        </div>
+    </div>
+</div>
 </main>
 
 <script>
-// Image preview functionality
-document.getElementById('profile_pic').addEventListener('change', function(e) {
+// Crop modal elements
+const profilePicInput = document.getElementById('profile_pic');
+const cropModal = document.getElementById('cropModal');
+const cropPreviewArea = document.getElementById('cropPreviewArea');
+const cropPreviewImage = document.getElementById('cropPreviewImage');
+const btnCancelCrop = document.getElementById('btnCancelCrop');
+const btnConfirmCrop = document.getElementById('btnConfirmCrop');
+
+// Zoom elements
+const zoomSlider = document.getElementById('zoomSlider');
+const zoomIn = document.getElementById('zoomIn');
+const zoomOut = document.getElementById('zoomOut');
+const zoomLevel = document.getElementById('zoomLevel');
+
+let isDragging = false;
+let startX, startY;
+let initialX = 0, initialY = 0;
+let currentX = 0, currentY = 0;
+let currentZoom = 1;
+let currentFile = null;
+let originalImageSrc = '';
+let hasCroppedImage = false;
+
+// When user selects a file
+profilePicInput.addEventListener('change', function(e) {
     const file = e.target.files[0];
-    const preview = document.getElementById('profilePreview');
-    const previewName = document.getElementById('imagePreviewName');
-    const removeInput = document.getElementById('remove_profile_pic');
     
     if (file) {
         // Validate file type
@@ -541,28 +835,244 @@ document.getElementById('profile_pic').addEventListener('change', function(e) {
             return;
         }
         
-        // Reset remove flag when new file is selected
-        removeInput.value = '0';
+        currentFile = file;
         
-        // Show preview
         const reader = new FileReader();
         reader.onload = function(e) {
-            if (preview.tagName === 'IMG') {
-                preview.src = e.target.result;
-            } else {
-                // Replace default avatar with image
-                const img = document.createElement('img');
-                img.src = e.target.result;
-                img.className = 'profile-image';
-                img.alt = 'Profile Picture';
-                img.id = 'profilePreview';
-                preview.parentNode.replaceChild(img, preview);
-            }
+            originalImageSrc = e.target.result;
+            openCropModal(originalImageSrc);
         };
         reader.readAsDataURL(file);
-        
-        previewName.textContent = `Selected: ${file.name}`;
     }
+});
+
+// Open crop modal
+function openCropModal(imageSrc) {
+    const img = new Image();
+    img.onload = function() {
+        const containerSize = 300;
+        currentZoom = 1;
+        zoomSlider.value = 1;
+        updateZoomLevel();
+        
+        const scale = Math.max(containerSize / img.width, containerSize / img.height);
+        
+        const baseWidth = img.width * scale;
+        const baseHeight = img.height * scale;
+        
+        // Store base dimensions for zoom calculation
+        cropPreviewImage.setAttribute('data-base-width', baseWidth);
+        cropPreviewImage.setAttribute('data-base-height', baseHeight);
+        
+        cropPreviewImage.style.width = baseWidth + 'px';
+        cropPreviewImage.style.height = baseHeight + 'px';
+        
+        currentX = (containerSize - baseWidth) / 2;
+        currentY = (containerSize - baseHeight) / 2;
+        
+        cropPreviewImage.style.left = currentX + 'px';
+        cropPreviewImage.style.top = currentY + 'px';
+        
+        initialX = currentX;
+        initialY = currentY;
+        
+        cropPreviewImage.src = imageSrc;
+        cropModal.classList.add('show');
+        document.body.style.overflow = 'hidden';
+    };
+    img.src = imageSrc;
+}
+
+// Zoom functionality - Modified to change actual size instead of transform
+function updateZoom(newZoom) {
+    currentZoom = Math.max(1, Math.min(3, newZoom));
+    zoomSlider.value = currentZoom;
+    
+    // Get the base dimensions
+    const baseWidth = parseFloat(cropPreviewImage.getAttribute('data-base-width'));
+    const baseHeight = parseFloat(cropPreviewImage.getAttribute('data-base-height'));
+    
+    // Apply zoom by changing actual dimensions
+    cropPreviewImage.style.width = (baseWidth * currentZoom) + 'px';
+    cropPreviewImage.style.height = (baseHeight * currentZoom) + 'px';
+    
+    updateZoomLevel();
+}
+
+function updateZoomLevel() {
+    zoomLevel.textContent = Math.round(currentZoom * 100) + '%';
+}
+
+zoomSlider.addEventListener('input', function() {
+    updateZoom(parseFloat(this.value));
+});
+
+zoomIn.addEventListener('click', function() {
+    updateZoom(currentZoom + 0.2);
+});
+
+zoomOut.addEventListener('click', function() {
+    updateZoom(currentZoom - 0.2);
+});
+
+// Close crop modal
+function closeCropModal() {
+    cropModal.classList.remove('show');
+    document.body.style.overflow = '';
+    if (!hasCroppedImage) {
+        profilePicInput.value = '';
+    }
+    currentX = 0;
+    currentY = 0;
+    initialX = 0;
+    initialY = 0;
+    currentZoom = 1;
+}
+
+// Drag functionality
+cropPreviewArea.addEventListener('mousedown', startDrag);
+cropPreviewArea.addEventListener('touchstart', startDrag);
+
+function startDrag(e) {
+    isDragging = true;
+    cropPreviewArea.classList.add('dragging');
+    
+    if (e.type === 'touchstart') {
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+    } else {
+        startX = e.clientX;
+        startY = e.clientY;
+        e.preventDefault();
+    }
+    
+    initialX = currentX;
+    initialY = currentY;
+}
+
+document.addEventListener('mousemove', drag);
+document.addEventListener('touchmove', drag);
+
+function drag(e) {
+    if (!isDragging) return;
+    
+    let clientX, clientY;
+    
+    if (e.type === 'touchmove') {
+        clientX = e.touches[0].clientX;
+        clientY = e.touches[0].clientY;
+    } else {
+        clientX = e.clientX;
+        clientY = e.clientY;
+    }
+    
+    const deltaX = clientX - startX;
+    const deltaY = clientY - startY;
+    
+    currentX = initialX + deltaX;
+    currentY = initialY + deltaY;
+    
+    cropPreviewImage.style.left = currentX + 'px';
+    cropPreviewImage.style.top = currentY + 'px';
+}
+
+document.addEventListener('mouseup', endDrag);
+document.addEventListener('touchend', endDrag);
+
+function endDrag() {
+    if (isDragging) {
+        isDragging = false;
+        cropPreviewArea.classList.remove('dragging');
+    }
+}
+
+// Cancel crop
+btnCancelCrop.addEventListener('click', closeCropModal);
+
+// Confirm crop and set as profile picture
+btnConfirmCrop.addEventListener('click', function() {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const outputSize = 400; // Final output size
+    
+    canvas.width = outputSize;
+    canvas.height = outputSize;
+    
+    // Create circular clipping path
+    ctx.beginPath();
+    ctx.arc(outputSize / 2, outputSize / 2, outputSize / 2, 0, Math.PI * 2);
+    ctx.closePath();
+    ctx.clip();
+    
+    const img = new Image();
+    img.onload = function() {
+        const previewSize = 300; // Preview container size
+        const scale = outputSize / previewSize; // Scale factor
+        
+        // Get current image dimensions and position
+        const imgWidth = parseFloat(cropPreviewImage.style.width);
+        const imgHeight = parseFloat(cropPreviewImage.style.height);
+        
+        // Calculate the portion of the image visible in the preview circle
+        // Scale everything up to the output canvas size
+        const scaledX = currentX * scale;
+        const scaledY = currentY * scale;
+        const scaledWidth = imgWidth * scale;
+        const scaledHeight = imgHeight * scale;
+        
+        // Draw the image
+        ctx.drawImage(img, scaledX, scaledY, scaledWidth, scaledHeight);
+        
+        canvas.toBlob(function(blob) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const preview = document.getElementById('profilePreview');
+                const previewName = document.getElementById('imagePreviewName');
+                const removeInput = document.getElementById('remove_profile_pic');
+                
+                // Reset remove flag
+                removeInput.value = '0';
+                
+                // Show preview
+                if (preview.tagName === 'IMG') {
+                    preview.src = e.target.result;
+                } else {
+                    // Replace default avatar with image
+                    const imgElement = document.createElement('img');
+                    imgElement.src = e.target.result;
+                    imgElement.className = 'profile-image';
+                    imgElement.alt = 'Profile Picture';
+                    imgElement.id = 'profilePreview';
+                    preview.parentNode.replaceChild(imgElement, preview);
+                }
+                
+                previewName.innerHTML = `Selected: ${currentFile.name} <button type="button" class="edit-photo-btn" id="editPhotoBtnDynamic"><i class="bi bi-pencil-fill"></i> Re-crop Photo</button>`;
+                
+                // Show remove button if it exists
+                const removeBtn = document.getElementById('removePhotoBtn');
+                if (removeBtn) {
+                    removeBtn.style.display = 'inline-block';
+                }
+                
+                hasCroppedImage = true;
+                closeCropModal();
+                
+                // Add event listener to the dynamically created edit button
+                setTimeout(() => {
+                    const editBtn = document.getElementById('editPhotoBtnDynamic');
+                    if (editBtn) {
+                        editBtn.addEventListener('click', function() {
+                            if (originalImageSrc) {
+                                openCropModal(originalImageSrc);
+                            }
+                        });
+                    }
+                }, 100);
+            };
+            reader.readAsDataURL(blob);
+        }, 'image/jpeg', 0.95);
+    };
+    img.src = originalImageSrc;
 });
 
 // Remove photo button functionality
@@ -573,7 +1083,9 @@ if (removePhotoBtn) {
             document.getElementById('remove_profile_pic').value = '1';
             
             // Clear file input
-            document.getElementById('profile_pic').value = '';
+            profilePicInput.value = '';
+            hasCroppedImage = false;
+            originalImageSrc = '';
             
             // Replace image with default avatar
             const preview = document.getElementById('profilePreview');
@@ -591,6 +1103,13 @@ if (removePhotoBtn) {
         }
     });
 }
+
+// Close modal when clicking outside
+cropModal.addEventListener('click', function(e) {
+    if (e.target === cropModal) {
+        closeCropModal();
+    }
+});
 </script>
 
 <?php include 'includes/footer.php'; ?>

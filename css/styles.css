@@ -661,6 +661,97 @@ main {
     margin-bottom: 2rem;
 }
 
+/* Zoom Controls */
+.zoom-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.zoom-button {
+    background: var(--color-burgundy);
+    color: white;
+    border: none;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 1.2rem;
+}
+
+.zoom-button:hover {
+    background: var(--color-rose);
+    transform: scale(1.1);
+}
+
+.zoom-slider {
+    width: 200px;
+    height: 6px;
+    border-radius: 3px;
+    background: #e0e0e0;
+    outline: none;
+    -webkit-appearance: none;
+}
+
+.zoom-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--color-burgundy);
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.zoom-slider::-webkit-slider-thumb:hover {
+    background: var(--color-rose);
+    transform: scale(1.2);
+}
+
+.zoom-slider::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--color-burgundy);
+    cursor: pointer;
+    border: none;
+}
+
+.zoom-level {
+    font-size: 0.9rem;
+    color: #666;
+    min-width: 50px;
+    text-align: center;
+}
+
+/* Edit Photo Button */
+.edit-photo-btn {
+    background: var(--color-burgundy);
+    color: white;
+    border: none;
+    padding: 8px 20px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-top: 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.edit-photo-btn:hover {
+    background: var(--color-rose);
+    transform: translateY(-2px);
+}
+
 @media (max-width: 767px) {
     .business-listing-grid {
         grid-template-columns: 1fr;
