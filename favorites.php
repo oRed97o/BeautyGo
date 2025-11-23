@@ -19,6 +19,9 @@ if (!isCustomerLoggedIn()) {
 $pageTitle = 'My Favorites - BeautyGo';
 $favorites = getCustomerFavorites($_SESSION['customer_id']);
 
+// Mark all favorites as seen when visiting this page
+markFavoritesAsSeen($_SESSION['customer_id']);
+
 include 'includes/header.php';
 ?>
 

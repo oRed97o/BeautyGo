@@ -148,12 +148,12 @@
     overflow-y: auto;
     box-shadow: 0 10px 40px rgba(0,0,0,0.3);
     animation: slideUp 0.3s ease;
-    scrollbar-width: none; /* Firefox */
-    -ms-overflow-style: none; /* IE/Edge */
+    scrollbar-width: none;
+    -ms-overflow-style: none;
 }
 
 .crop-modal-content::-webkit-scrollbar {
-    display: none; /* Chrome/Safari/Opera */
+    display: none;
 }
 .crop-modal-header { text-align: center; margin-bottom: 25px; }
 .crop-modal-header h3 { color: var(--color-burgundy); margin-bottom: 10px; }

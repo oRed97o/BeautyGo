@@ -22,7 +22,7 @@
 .hero-carousel-wrapper {
     position: relative;
     width: 100%;
-    height: 600px;
+    height: 500px;
     overflow: hidden;
 }
 
@@ -68,15 +68,15 @@
 }
 
 .carousel-content h1 {
-    font-size: 3.5rem;
+    font-size: 3rem;
     font-weight: 700;
-    margin-bottom: 1rem;
+    margin-bottom: 0.75rem;
     text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
 }
 
 .carousel-content p {
-    font-size: 1.5rem;
-    margin-bottom: 2rem;
+    font-size: 1.25rem;
+    margin-bottom: 1.5rem;
     text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
 }
 
@@ -160,7 +160,7 @@
 /* Hero Section with Search */
 .hero-section-new {
     background: linear-gradient(135deg, var(--color-burgundy) 0%, var(--color-rose) 100%);
-    padding: 4rem 0 3rem 0;
+    padding: 3rem 0 2rem 0;
     color: white;
 }
 
@@ -256,11 +256,11 @@
 /* Business Card Base */
 .business-card {
     position: relative;
-    width: 280px;
+    width: 260px;
     background: #fff;
-    border-radius: 15px;
+    border-radius: 12px;
     overflow: hidden;
-    box-shadow: 0 6px 16px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
     transition: all 0.3s ease;
     cursor: pointer;
 }
@@ -273,7 +273,7 @@
 /* Image Section */
 .business-card-img {
     position: relative;
-    height: 220px;
+    height: 200px;
     overflow: hidden;
 }
 
@@ -294,9 +294,9 @@
     top: 12px;
     left: 12px;
     background: white;
-    padding: 6px 12px;
-    border-radius: 20px;
-    font-size: 0.85rem;
+    padding: 5px 10px;
+    border-radius: 16px;
+    font-size: 0.8rem;
     font-weight: 600;
     color: var(--color-burgundy);
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
@@ -307,9 +307,9 @@
     bottom: 12px;
     left: 12px;
     background: rgba(255, 255, 255, 0.95);
-    padding: 6px 12px;
-    border-radius: 20px;
-    font-size: 0.85rem;
+    padding: 5px 10px;
+    border-radius: 16px;
+    font-size: 0.8rem;
     font-weight: 600;
     color: var(--color-burgundy);
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
@@ -340,14 +340,14 @@
 
 /* Card Content */
 .business-card-content {
-    padding: 15px;
+    padding: 12px;
 }
 
 .business-name {
     font-weight: 600;
-    font-size: 1.1rem;
+    font-size: 1rem;
     color: var(--color-burgundy);
-    margin-bottom: 8px;
+    margin-bottom: 6px;
     display: -webkit-box;
     -webkit-line-clamp: 1;
     line-clamp: 1;
@@ -357,17 +357,17 @@
 
 .business-type-location {
     color: #717171;
-    font-size: 0.9rem;
-    margin-bottom: 8px;
+    font-size: 0.85rem;
+    margin-bottom: 6px;
 }
 
 /* Rating */
 .airbnb-rating {
     display: flex;
     align-items: center;
-    gap: 5px;
+    gap: 4px;
     color: #222;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
 }
 
 .airbnb-rating i {
@@ -396,8 +396,8 @@
     display: flex;
     justify-content: center;
     flex-wrap: wrap;
-    gap: 2rem;
-    padding: 2rem 0;
+    gap: 1.5rem;
+    padding: 1rem 0;
 }
 
 /* Favorite button states */
@@ -411,6 +411,305 @@
 
 .airbnb-favorite-btn i {
     transition: all 0.3s ease;
+}
+
+/* Compact Section Headers */
+.section-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.section-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--color-burgundy);
+    margin-bottom: 0.25rem;
+}
+
+.section-subtitle {
+    font-size: 0.95rem;
+    color: #717171;
+}
+
+/* Compact Featured Section */
+.featured-section {
+    background: linear-gradient(135deg, #fff5e4 0%, #ffe8e8 100%);
+    padding: 2.5rem 0;
+    margin-bottom: 2rem;
+}
+
+/* Compact Section spacing */
+.businesses-section {
+    padding: 2rem 0;
+}
+
+/* Compact Category Grid */
+.category-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem;
+    margin: 2rem 0;
+}
+
+.category-card {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem 1rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.category-card:hover,
+.category-card.active {
+    transform: translateY(-8px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+    background: linear-gradient(135deg, var(--color-burgundy), var(--color-rose));
+    color: white;
+}
+
+/* Category Icon with Custom Images */
+.category-icon {
+    margin-bottom: 0.75rem;
+    transition: all 0.3s ease;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 80px;
+}
+
+.category-icon-img {
+    width: 60px;
+    height: 60px;
+    object-fit: contain;
+    transition: all 0.3s ease;
+    /* Color the burgundy icons */
+    filter: brightness(0) saturate(100%) invert(13%) sepia(85%) saturate(3000%) hue-rotate(330deg) brightness(90%) contrast(95%);
+}
+
+/* Hover AND Active effect - changes to white and scales up */
+.category-card:hover .category-icon-img,
+.category-card.active .category-icon-img {
+    filter: brightness(0) invert(1);
+    transform: scale(1.15) rotate(5deg);
+}
+
+/* Alternative: White icons on hover when background changes */
+.category-card:hover .category-icon-img {
+    filter: brightness(0) invert(1);
+    transform: scale(1.15) rotate(5deg);
+}
+
+.category-card:hover .category-icon {
+    color: white;
+}
+
+.category-name {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+    color: var(--color-burgundy);
+    transition: color 0.3s ease;
+}
+
+.category-card:hover .category-name,
+.category-card.active .category-name {
+    color: white;
+}
+
+.category-count {
+    font-size: 0.85rem;
+    color: #717171;
+    transition: color 0.3s ease;
+}
+
+.category-card:hover .category-count,
+.category-card.active .category-count {
+    color: rgba(255,255,255,0.9);
+}
+
+/* Badge variations */
+.new-badge {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    background: linear-gradient(135deg, #4CAF50, #8BC34A);
+    color: white;
+    padding: 5px 10px;
+    border-radius: 16px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.popular-badge {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    background: linear-gradient(135deg, #FF9800, #FF5722);
+    color: white;
+    padding: 5px 10px;
+    border-radius: 16px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+/* View All Button */
+.view-all-btn {
+    display: inline-block;
+    margin-top: 2rem;
+    padding: 0.75rem 2rem;
+    background: white;
+    color: var(--color-burgundy);
+    border: 2px solid var(--color-burgundy);
+    border-radius: 50px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.3s ease;
+}
+
+.view-all-btn:hover {
+    background: var(--color-burgundy);
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(133, 14, 53, 0.3);
+}
+
+/* Divider */
+.section-divider {
+    height: 1px;
+    background: linear-gradient(to right, transparent, var(--color-pink), transparent);
+    margin: 2.5rem 0;
+}
+
+.back-to-top-btn {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    width: 60px;
+    height: 60px;
+    background: linear-gradient(135deg, var(--color-burgundy), var(--color-rose));
+    color: white;
+    border: none;
+    border-radius: 50%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(100px);
+    transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    box-shadow: 0 6px 20px rgba(133, 14, 53, 0.4);
+    z-index: 1000;
+    overflow: hidden;
+}
+
+.back-to-top-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, var(--color-rose), var(--color-pink));
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.back-to-top-btn:hover::before {
+    opacity: 1;
+}
+
+.back-to-top-btn i {
+    font-size: 1.8rem;
+    position: relative;
+    z-index: 1;
+    transition: transform 0.3s ease;
+}
+
+.back-to-top-text {
+    font-size: 0.7rem;
+    font-weight: 700;
+    margin-top: -2px;
+    position: relative;
+    z-index: 1;
+    letter-spacing: 0.5px;
+}
+
+.back-to-top-btn:hover {
+    transform: translateY(0) scale(1.1);
+    box-shadow: 0 8px 30px rgba(238, 105, 131, 0.6);
+}
+
+.back-to-top-btn:hover i {
+    transform: translateY(-3px);
+}
+
+.back-to-top-btn.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+/* Empty State for Individual Sections */
+.section-empty-state {
+    display: none;
+    width: 100%;
+    padding: 2rem 0;
+}
+
+.empty-state-mini {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: #717171;
+}
+
+.empty-state-mini i {
+    font-size: 4rem;
+    color: var(--color-burgundy);
+    margin-bottom: 1rem;
+}
+
+.empty-state-mini p {
+    margin: 0;
+    font-size: 1rem;
+    color: #717171;
+}
+
+/* Pulse animation when first appearing */
+@keyframes pulse-button {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+}
+
+.back-to-top-btn.show {
+    animation: pulse-button 1s ease-in-out;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+    .back-to-top-btn {
+        width: 50px;
+        height: 50px;
+        bottom: 20px;
+        right: 20px;
+    }
+    
+    .back-to-top-btn i {
+        font-size: 1.5rem;
+    }
+    
+    .back-to-top-text {
+        font-size: 0.6rem;
+    }
 }
 
 /* Heart fill animation */
@@ -430,52 +729,34 @@
     animation: heartBeat 0.4s ease;
 }
 
-/* Responsive */
 @media (max-width: 768px) {
     .hero-carousel-wrapper {
-        height: 500px;
+        height: 400px;
     }
-
+    
     .carousel-content h1 {
         font-size: 2rem;
     }
-
+    
     .carousel-content p {
-        font-size: 1.1rem;
+        font-size: 1rem;
     }
-
-    .carousel-arrow {
-        width: 40px;
-        height: 40px;
-        font-size: 1.2rem;
+    
+    .section-title {
+        font-size: 1.5rem;
     }
-
-    .carousel-arrow.left {
-        left: 1rem;
-    }
-
-    .carousel-arrow.right {
-        right: 1rem;
-    }
-
-    .hero-title {
-        font-size: 1.75rem;
-    }
-
+    
     .business-card {
         width: 100%;
-        max-width: 400px;
+        max-width: 350px;
     }
-
-    .search-bar-container {
-        flex-direction: column;
-        border-radius: 20px;
+    
+    .category-grid {
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
     }
-
-    .search-divider {
-        width: 100%;
-        height: 1px;
-        margin: 0.5rem 0;
+    
+    .category-icon {
+        font-size: 2rem;
     }
 }
 
@@ -508,3 +789,135 @@
     .airbnb-favorite-btn.favorited i {
         animation: heartBeat 0.4s ease;
     }
+
+    /* Show More Functionality */
+    .business-row {
+        display: flex;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 1.5rem;
+        padding: 1rem 0;
+    }
+
+    .business-row.collapsed .business-card:nth-child(n+5) {
+        display: none;
+    }
+
+    .show-more-container {
+        text-align: center;
+        margin-top: 1.5rem;
+    }
+
+    .show-more-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 2rem;
+        background: white;
+        color: var(--color-burgundy);
+        border: 2px solid var(--color-burgundy);
+        border-radius: 50px;
+        font-weight: 600;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .show-more-btn:hover {
+        background: var(--color-burgundy);
+        color: white;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(133, 14, 53, 0.3);
+    }
+
+    .show-more-btn i {
+        transition: transform 0.3s ease;
+    }
+
+    .show-more-btn.expanded i {
+        transform: rotate(180deg);
+    }
+
+    /* Keep grid for All Businesses */
+    #allBusinessesGrid {
+        display: flex;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 1.5rem;
+        padding: 1rem 0;
+    }
+
+    /* Pagination for All Businesses */
+    .business-grid-paginated {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        gap: 1.5rem;
+        padding: 1rem 0;
+        justify-content: center;
+        max-width: 100%;
+    }
+
+    .business-grid-paginated .business-card {
+        width: 260px;
+        justify-self: center;
+    }
+
+    .business-grid-paginated .business-card:nth-child(n+21) {
+        display: none;
+    }
+
+    .business-grid-paginated.show-more-40 .business-card:nth-child(n+21):nth-child(-n+40) {
+        display: block;
+    }
+
+    .business-grid-paginated.show-more-60 .business-card:nth-child(n+41):nth-child(-n+60) {
+        display: block;
+    }
+
+    .business-grid-paginated.show-all .business-card {
+        display: block;
+    }
+
+    .load-more-container {
+        text-align: center;
+        margin-top: 2rem;
+        padding: 2rem 0;
+    }
+
+    .load-more-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 1rem 2.5rem;
+        background: linear-gradient(135deg, var(--color-burgundy), var(--color-rose));
+        color: white;
+        border: none;
+        border-radius: 50px;
+        font-weight: 600;
+        font-size: 1.05rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 12px rgba(133, 14, 53, 0.3);
+    }
+
+    .load-more-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(133, 14, 53, 0.4);
+    }
+
+    .load-more-btn i {
+        font-size: 1.2rem;
+    }
+
+    .businesses-count {
+        color: #717171;
+        font-size: 0.95rem;
+        margin-top: 1rem;
+    }
+
+    @media (max-width: 768px) {
+        .business-grid-paginated {
+            grid-template-columns: 1fr;
+        }
+    }
+

@@ -171,7 +171,7 @@
                         <!-- Favorites Button (Only for Customers) -->
                         <?php if (isCustomerLoggedIn()): ?>
                             <?php 
-                            $favoriteCount = function_exists('getCustomerFavorites') ? count(getCustomerFavorites($currentUser['customer_id'])) : 0;
+                            $favoriteCount = function_exists('getNewFavoritesCount') ? getNewFavoritesCount($currentUser['customer_id']) : 0;
                             ?>
                             <li class="nav-item me-3">
                                 <a class="nav-link position-relative" href="favorites.php" title="My Favorites">

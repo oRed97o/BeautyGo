@@ -82,39 +82,7 @@ function formatDateTime(?string $datetime): string {
 // LOCATION & DISTANCE
 // ---------------------------
 
-// Get businesses with distance using POINT datatype
-function getBusinessesWithDistance($userLat = null, $userLon = null) {
-    $businesses = getAllBusinesses();
-    
-    if ($userLat && $userLon) {
-        $conn = getDbConnection();
-        $userPoint = "POINT($userLon $userLat)";
-        
-        $stmt = $conn->prepare("SELECT business_id, ST_Distance_Sphere(location, ST_GeomFromText(?)) / 1000 AS distance_km FROM businesses");
-        $stmt->bind_param("s", $userPoint);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $distances = [];
-        
-        while ($row = $result->fetch_assoc()) {
-            $distances[$row['business_id']] = round($row['distance_km'], 1);
-        }
-        
-        $stmt->close();
-        
-        foreach ($businesses as &$business) {
-            $business['distance'] = $distances[$business['business_id']] ?? 999;
-        }
-        
-        usort($businesses, function($a, $b) {
-            return ($a['distance'] ?? 999) <=> ($b['distance'] ?? 999);
-        });
-    }
-    
-    return $businesses;
-}
-
-// Calculate distance between two coordinates (Haversine formula) - LEGACY
+// Calculate distance between two coordinates (Haversine formula)
 function calculateDistance($lat1, $lon1, $lat2, $lon2) {
     $earthRadius = 6371; // km
     

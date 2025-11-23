@@ -8,8 +8,8 @@ function addFavorite($customerId, $businessId) {
     $conn = getDbConnection();
     
     $stmt = $conn->prepare("
-        INSERT INTO favorites (customer_id, business_id) 
-        VALUES (?, ?)
+        INSERT INTO favorites (customer_id, business_id, is_new) 
+        VALUES (?, ?, 1)
         ON DUPLICATE KEY UPDATE customer_id = customer_id
     ");
     $stmt->bind_param("ii", $customerId, $businessId);
@@ -58,6 +58,7 @@ function getCustomerFavorites($customerId) {
         SELECT 
             b.*,
             f.created_at as favorited_at,
+            f.is_new,
             ST_X(b.location) AS longitude, 
             ST_Y(b.location) AS latitude
         FROM favorites f
@@ -71,6 +72,39 @@ function getCustomerFavorites($customerId) {
     $data = $result->fetch_all(MYSQLI_ASSOC);
     $stmt->close();
     return $data;
+}
+
+// Get count of NEW favorites only (unseen)
+function getNewFavoritesCount($customerId) {
+    $conn = getDbConnection();
+    
+    $stmt = $conn->prepare("
+        SELECT COUNT(*) as count 
+        FROM favorites 
+        WHERE customer_id = ? AND is_new = 1
+    ");
+    $stmt->bind_param("i", $customerId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $row = $result->fetch_assoc();
+    $stmt->close();
+    
+    return $row['count'] ?? 0;
+}
+
+// Mark all favorites as seen/viewed
+function markFavoritesAsSeen($customerId) {
+    $conn = getDbConnection();
+    
+    $stmt = $conn->prepare("
+        UPDATE favorites 
+        SET is_new = 0 
+        WHERE customer_id = ? AND is_new = 1
+    ");
+    $stmt->bind_param("i", $customerId);
+    $success = $stmt->execute();
+    $stmt->close();
+    return $success;
 }
 
 // Get count of favorites for a business
@@ -131,8 +165,8 @@ function toggleFavorite($customerId, $businessId) {
     } else {
         error_log("Adding favorite");
         $stmt = $conn->prepare("
-            INSERT INTO favorites (customer_id, business_id) 
-            VALUES (?, ?)
+            INSERT INTO favorites (customer_id, business_id, is_new) 
+            VALUES (?, ?, 1)
         ");
         $stmt->bind_param("ii", $customerId, $businessId);
         $success = $stmt->execute();

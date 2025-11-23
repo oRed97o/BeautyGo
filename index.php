@@ -14,10 +14,39 @@ require_once 'backend/function_notifications.php';
 
 $pageTitle = 'BeautyGo - Beauty Services in Nasugbu, Batangas';
 
+// Get user location if available
 $userLat = $_SESSION['user_latitude'] ?? null;
 $userLon = $_SESSION['user_longitude'] ?? null;
 
-$businesses = getBusinessesWithDistance($userLat, $userLon);
+// Get categorized businesses
+$topRatedBusinesses = getTopRatedBusinesses(4);
+$newBusinesses = getNewBusinesses(4);
+$popularBusinesses = getPopularBusinesses(4);
+
+// Collect IDs of featured businesses to exclude from "All Businesses"
+$featuredIds = [];
+foreach ($topRatedBusinesses as $b) $featuredIds[] = $b['business_id'];
+foreach ($newBusinesses as $b) $featuredIds[] = $b['business_id'];
+foreach ($popularBusinesses as $b) $featuredIds[] = $b['business_id'];
+$featuredIds = array_unique($featuredIds);
+
+// Get remaining businesses
+$allBusinesses = getAllBusinesses();
+
+// Get category counts
+$allBiz = getAllBusinesses();
+$categoryCounts = [
+    'Hair Salon' => 0,
+    'Spa & Wellness' => 0,
+    'Barbershop' => 0,
+    'Nail Salon' => 0,
+    'Beauty Clinic' => 0
+];
+foreach ($allBiz as $biz) {
+    if (isset($categoryCounts[$biz['business_type']])) {
+        $categoryCounts[$biz['business_type']]++;
+    }
+}
 
 include 'includes/header.php';
 ?>
@@ -28,38 +57,35 @@ include 'includes/header.php';
 <main>
     <!-- Hero Carousel -->
     <div class="hero-carousel-wrapper">
-        <!-- Slide 1 -->
         <div class="carousel-slide active">
             <img src="https://images.unsplash.com/photo-1522337360788-8b13dee7a37e" alt="Beauty Services">
             <div class="carousel-overlay">
                 <div class="carousel-content">
                     <h1>Discover Your Beauty</h1>
                     <p>Premium beauty services in Nasugbu, Batangas</p>
-                    <a href="#business-section" class="carousel-btn">Explore Services</a>
+                    <a href="#featured-section" class="carousel-btn">Explore Services</a>
                 </div>
             </div>
         </div>
 
-        <!-- Slide 2 -->
         <div class="carousel-slide">
             <img src="https://images.unsplash.com/photo-1544161515-4ab6ce6db874" alt="Spa & Wellness">
             <div class="carousel-overlay">
                 <div class="carousel-content">
                     <h1>Relax & Rejuvenate</h1>
                     <p>Experience world-class spa treatments</p>
-                    <a href="#business-section" class="carousel-btn">Book Now</a>
+                    <a href="#featured-section" class="carousel-btn">Book Now</a>
                 </div>
             </div>
         </div>
 
-        <!-- Slide 3 -->
         <div class="carousel-slide">
             <img src="https://images.unsplash.com/photo-1503951914875-452162b0f3f1" alt="Professional Care">
             <div class="carousel-overlay">
                 <div class="carousel-content">
                     <h1>Expert Beauty Care</h1>
                     <p>Transform your look with our professionals</p>
-                    <a href="#business-section" class="carousel-btn">Get Started</a>
+                    <a href="#featured-section" class="carousel-btn">Get Started</a>
                 </div>
             </div>
         </div>
@@ -78,7 +104,7 @@ include 'includes/header.php';
         </div>
     </div>
 
-    <!-- Hero Section with Search -->
+    <!-- Search Section -->
     <section class="hero-section-new">
         <div class="container">
             <div class="search-bar-wrapper">
@@ -91,10 +117,11 @@ include 'includes/header.php';
                     <div class="search-category-group">
                         <select class="search-category-select" id="typeFilter" onchange="filterBusinesses()">
                             <option value="">All Categories</option>
-                            <option value="salon">Salon</option>
-                            <option value="spa">Spa</option>
+                            <option value="hair salon">Hair Salon</option>
+                            <option value="spa & wellness">Spa & Wellness</option>
                             <option value="barbershop">Barbershop</option>
-                            <option value="clinic">Clinic</option>
+                            <option value="nail salon">Nail Salon</option>
+                            <option value="beauty clinic">Beauty Clinic</option>
                         </select>
                         <i class="bi bi-chevron-down category-arrow"></i>
                     </div>
@@ -102,12 +129,148 @@ include 'includes/header.php';
             </div>
         </div>
     </section>
-    
-    <!-- Business Listings Section -->
-    <div class="container my-5 text-center" id="business-section">
-        <h4 class="mb-4">Featured Beauty Services in Nasugbu</h4>
 
-        <?php if (empty($businesses)): ?>
+    <!-- Browse by Category -->
+    <div class="container my-4">
+        <div class="section-header">
+            <h2 class="section-title">Browse by Category</h2>
+            <p class="section-subtitle">Find the perfect service for you</p>
+        </div>
+        
+        <div class="category-grid">
+            <div class="category-card" onclick="filterByCategory('hair salon', this)">
+                <div class="category-icon">
+                    <img src="resources/icon_salon.png" alt="Hair Salon" class="category-icon-img">
+                </div>
+                <div class="category-name">Hair Salon</div>
+                <div class="category-count"><?php echo $categoryCounts['Hair Salon']; ?> businesses</div>
+            </div>
+            
+            <div class="category-card" onclick="filterByCategory('spa & wellness', this)">
+                <div class="category-icon">
+                    <img src="resources/icon_spa.png" alt="Spa & Wellness" class="category-icon-img">
+                </div>
+                <div class="category-name">Spa & Wellness</div>
+                <div class="category-count"><?php echo $categoryCounts['Spa & Wellness']; ?> businesses</div>
+            </div>
+            
+            <div class="category-card" onclick="filterByCategory('barbershop', this)">
+                <div class="category-icon">
+                    <img src="resources/icon_barbers.png" alt="Barbershop" class="category-icon-img">
+                </div>
+                <div class="category-name">Barbershop</div>
+                <div class="category-count"><?php echo $categoryCounts['Barbershop']; ?> businesses</div>
+            </div>
+            
+            <div class="category-card" onclick="filterByCategory('nail salon', this)">
+                <div class="category-icon">
+                    <img src="resources/icon_nails.png" alt="Nail Salon" class="category-icon-img">
+                </div>
+                <div class="category-name">Nail Salon</div>
+                <div class="category-count"><?php echo $categoryCounts['Nail Salon']; ?> businesses</div>
+            </div>
+            
+            <div class="category-card" onclick="filterByCategory('beauty clinic', this)">
+                <div class="category-icon">
+                    <img src="resources/icon_clinic.png" alt="Beauty Clinic" class="category-icon-img">
+                </div>
+                <div class="category-name">Beauty Clinic</div>
+                <div class="category-count"><?php echo $categoryCounts['Beauty Clinic']; ?> businesses</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="section-divider"></div>
+
+    <!-- Top Rated Section -->
+    <?php if (!empty($topRatedBusinesses)): ?>
+    <section class="featured-section" id="featured-section">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title"><i class="bi bi-award-fill"></i> Top Rated</h2>
+                <p class="section-subtitle">Excellence in beauty services with 4.5+ star ratings</p>
+            </div>
+            
+            <div class="business-row collapsed" id="topRatedRow">
+                <?php foreach ($topRatedBusinesses as $business): ?>
+                    <?php echo renderBusinessCard($business, 'top-rated'); ?>
+                <?php endforeach; ?>
+            </div>
+            
+            <?php if (count($topRatedBusinesses) > 4): ?>
+            <div class="show-more-container">
+                <button class="show-more-btn" onclick="toggleSection('topRatedRow', this)">
+                    <span class="btn-text">Show More</span>
+                    <i class="bi bi-chevron-down"></i>
+                </button>
+            </div>
+            <?php endif; ?>
+        </div>
+    </section>
+    <?php endif; ?>
+
+    <!-- Popular This Month Section -->
+    <?php if (!empty($popularBusinesses)): ?>
+    <div class="container businesses-section">
+        <div class="section-header">
+            <h2 class="section-title"><i class="bi bi-fire"></i> Popular This Month</h2>
+            <p class="section-subtitle">Most booked services in the last 30 days</p>
+        </div>
+        
+        <div class="business-row collapsed" id="popularRow">
+            <?php foreach ($popularBusinesses as $business): ?>
+                <?php echo renderBusinessCard($business, 'popular'); ?>
+            <?php endforeach; ?>
+        </div>
+        
+        <?php if (count($popularBusinesses) > 4): ?>
+        <div class="show-more-container">
+            <button class="show-more-btn" onclick="toggleSection('popularRow', this)">
+                <span class="btn-text">Show More</span>
+                <i class="bi bi-chevron-down"></i>
+            </button>
+        </div>
+        <?php endif; ?>
+    </div>
+
+    <div class="section-divider"></div>
+    <?php endif; ?>
+
+    <!-- New Businesses Section -->
+    <?php if (!empty($newBusinesses)): ?>
+    <div class="container businesses-section">
+        <div class="section-header">
+            <h2 class="section-title"><i class="bi bi-star-fill"></i> New to BeautyGo</h2>
+            <p class="section-subtitle">Welcome our newest beauty partners</p>
+        </div>
+        
+        <div class="business-row collapsed" id="newRow">
+            <?php foreach ($newBusinesses as $business): ?>
+                <?php echo renderBusinessCard($business, 'new'); ?>
+            <?php endforeach; ?>
+        </div>
+        
+        <?php if (count($newBusinesses) > 4): ?>
+        <div class="show-more-container">
+            <button class="show-more-btn" onclick="toggleSection('newRow', this)">
+                <span class="btn-text">Show More</span>
+                <i class="bi bi-chevron-down"></i>
+            </button>
+        </div>
+        <?php endif; ?>
+    </div>
+
+    <div class="section-divider"></div>
+    <?php endif; ?>
+
+    <!-- All Businesses Section -->
+    <div class="container businesses-section" id="all-businesses-section">
+        <div class="section-header">
+            <h2 class="section-title">All Beauty Services</h2>
+            <p class="section-subtitle">Explore all available services in Nasugbu</p>
+        </div>
+        
+        <?php if (empty($allBusinesses) && empty($topRatedBusinesses) && empty($newBusinesses) && empty($popularBusinesses)): ?>
             <div class="empty-state">
                 <i class="bi bi-shop"></i>
                 <h4>No Businesses Found</h4>
@@ -115,100 +278,142 @@ include 'includes/header.php';
                 <a href="register-business.php" class="btn btn-primary">Register Business</a>
             </div>
         <?php else: ?>
-            <div class="business-grid">
-                <?php foreach ($businesses as $business): ?>
-            <?php 
-            $album = getBusinessAlbum($business['business_id']);
-            $businessImage = null;
+            <div class="business-grid-paginated" id="allBusinessesGrid">
+                <?php foreach ($allBusinesses as $business): ?>
+                    <?php echo renderBusinessCard($business, 'regular'); ?>
+                <?php endforeach; ?>
+            </div>
             
-            if ($album && !empty($album['logo'])) {
-                $businessImage = 'data:image/jpeg;base64,' . base64_encode($album['logo']);
-            }
-            
-            if (!$businessImage) {
-                $defaultImages = [
-                    'hair salon' => 'resources/salon.png',
-                    'spa & wellness' => 'resources/spa.png',
-                    'barbershop' => 'resources/barbers.png',
-                    'beauty clinic' => 'resources/clinic.png',
-                    'nail salon' => 'resources/nails.png'
-                ];
-                $businessType = strtolower($business['business_type'] ?? 'salon');
-                $businessImage = $defaultImages[$businessType] ?? 'resources/default.png';
-            }
-            
-            $avgRating = calculateAverageRating($business['business_id']);
-            $reviews = getBusinessReviews($business['business_id']);
-            $reviewCount = count($reviews);
-            
-            $location = $business['city'] ?? 'Nasugbu';
-            if (!empty($business['business_address'])) {
-                $addressParts = explode(',', $business['business_address']);
-                $location = trim($addressParts[0]);
-            }
-            
-            $isFavorited = false;
-            if (isCustomerLoggedIn()) {
-                $isFavorited = isFavorite($_SESSION['customer_id'], $business['business_id']);
-            }
-            ?>
-
-            <div class="business-card" 
-                data-type="<?php echo strtolower($business['business_type'] ?? 'salon'); ?>"
-                data-name="<?php echo htmlspecialchars($business['business_name']); ?>"
-                data-business-id="<?php echo $business['business_id']; ?>">
-
-                <div class="business-card-img" onclick="window.location.href='business-detail.php?id=<?php echo $business['business_id']; ?>'">
-                    <img src="<?php echo $businessImage; ?>" 
-                        alt="<?php echo htmlspecialchars($business['business_name']); ?>">
-
-                    <?php if ($avgRating >= 4.5): ?>
-                        <span class="airbnb-badge">
-                            <i class="bi bi-award-fill"></i> Top Rated
-                        </span>
-                    <?php endif; ?>
-
-                    <?php if (isset($business['distance']) && $business['distance'] < 999): ?>
-                        <span class="distance-badge">
-                            <i class="bi bi-geo-alt-fill"></i> <?php echo $business['distance']; ?> km
-                        </span>
-                    <?php endif; ?>
-
-                    <!-- Heart Favorite Button -->
-                    <button class="airbnb-favorite-btn favorite-btn-<?php echo $business['business_id']; ?> <?php echo $isFavorited ? 'favorited' : ''; ?>" 
-                            data-business-id="<?php echo $business['business_id']; ?>"
-                            <?php if (!isCustomerLoggedIn()): ?>
-                            onclick="event.stopPropagation(); alert('Please login to add favorites'); window.location.href='login.php';"
-                            <?php endif; ?>>
-                        <i class="bi bi-heart<?php echo $isFavorited ? '-fill' : ''; ?>"></i>
-                    </button>
-                </div>
-
-                <div class="business-card-content" onclick="window.location.href='business-detail.php?id=<?php echo $business['business_id']; ?>'">
-                    <h5 class="business-name"><?php echo htmlspecialchars($business['business_name']); ?></h5>
-                    
-                    <p class="business-type-location">
-                        <?php echo ucfirst($business['business_type'] ?? 'Salon'); ?> • <?php echo htmlspecialchars($location); ?>
-                    </p>
-
-                    <div class="airbnb-rating">
-                        <i class="bi bi-star-fill"></i>
-                        <strong><?php echo number_format($avgRating, 1); ?></strong>
-                        <?php if ($reviewCount > 0): ?>
-                            <span class="rating-count">(<?php echo $reviewCount; ?> <?php echo $reviewCount === 1 ? 'review' : 'reviews'; ?>)</span>
-                        <?php else: ?>
-                            <span class="rating-count">(New)</span>
-                        <?php endif; ?>
-                    </div>
+            <?php if (count($allBusinesses) > 20): ?>
+            <div class="load-more-container" id="loadMoreContainer">
+                <button class="load-more-btn" id="loadMoreBtn" onclick="loadMoreBusinesses()">
+                    <span id="loadMoreText">Load More</span>
+                    <i class="bi bi-arrow-down-circle"></i>
+                </button>
+                <div class="businesses-count">
+                    Showing <span id="currentCount">20</span> of <span id="totalCount"><?php echo count($allBusinesses); ?></span> businesses
                 </div>
             </div>
-        <?php endforeach; ?>
+            <?php endif; ?>
+            
+            <div class="text-center" id="noResultsMessage" style="display: none;">
+                <div class="empty-state">
+                    <i class="bi bi-search"></i>
+                    <h4>No Results Found</h4>
+                    <p>Try adjusting your search or filters</p>
+                </div>
             </div>
         <?php endif; ?>
     </div>
+
+    <!-- Back to Top Button - Add before closing </main> tag -->
+    <button id="backToTop" class="back-to-top-btn" onclick="scrollToTop()">
+        <i class="bi bi-arrow-up-circle-fill"></i>
+        <span class="back-to-top-text">Top</span>
+    </button>
 </main>
 
+<?php
+// Helper function to render business cards
+function renderBusinessCard($business, $type = 'regular') {
+    $album = getBusinessAlbum($business['business_id']);
+    $businessImage = null;
+    
+    if ($album && !empty($album['logo'])) {
+        $businessImage = 'data:image/jpeg;base64,' . base64_encode($album['logo']);
+    }
+    
+    if (!$businessImage) {
+        $defaultImages = [
+            'hair salon' => 'resources/salon.png',
+            'spa & wellness' => 'resources/spa.png',
+            'barbershop' => 'resources/barbers.png',
+            'beauty clinic' => 'resources/clinic.png',
+            'nail salon' => 'resources/nails.png'
+        ];
+        $businessType = strtolower($business['business_type'] ?? 'salon');
+        $businessImage = $defaultImages[$businessType] ?? 'resources/default.png';
+    }
+    
+    $avgRating = calculateAverageRating($business['business_id']);
+    $reviews = getBusinessReviews($business['business_id']);
+    $reviewCount = count($reviews);
+    
+    $location = $business['city'] ?? 'Nasugbu';
+    if (!empty($business['business_address'])) {
+        $addressParts = explode(',', $business['business_address']);
+        $location = trim($addressParts[0]);
+    }
+    
+    $isFavorited = false;
+    if (isCustomerLoggedIn()) {
+        $isFavorited = isFavorite($_SESSION['customer_id'], $business['business_id']);
+    }
+    
+    // Determine badge based on type
+    $badge = '';
+    if ($type === 'top-rated' && $avgRating >= 4.5) {
+        $badge = '<span class="airbnb-badge"><i class="bi bi-award-fill"></i> Top Rated</span>';
+    } elseif ($type === 'popular') {
+        $badge = '<span class="popular-badge"><i class="bi bi-fire"></i> Popular</span>';
+    } elseif ($type === 'new') {
+        $badge = '<span class="new-badge"><i class="bi bi-star-fill"></i> New</span>';
+    }
+    
+    $distanceBadge = '';
+    if (isset($business['distance']) && $business['distance'] < 999) {
+        $distanceBadge = '<span class="distance-badge"><i class="bi bi-geo-alt-fill"></i> ' . $business['distance'] . ' km</span>';
+    }
+    
+    ob_start();
+    ?>
+    <div class="business-card" 
+        data-type="<?php echo strtolower($business['business_type'] ?? 'salon'); ?>"
+        data-name="<?php echo htmlspecialchars($business['business_name']); ?>"
+        data-business-id="<?php echo $business['business_id']; ?>">
+
+        <div class="business-card-img" onclick="window.location.href='business-detail.php?id=<?php echo $business['business_id']; ?>'">
+            <img src="<?php echo $businessImage; ?>" 
+                alt="<?php echo htmlspecialchars($business['business_name']); ?>">
+
+            <?php echo $badge; ?>
+            <?php echo $distanceBadge; ?>
+            
+            <!-- Favorite Heart Button -->
+            <button class="airbnb-favorite-btn favorite-btn-<?php echo $business['business_id']; ?> <?php echo $isFavorited ? 'favorited' : ''; ?>" 
+                    data-business-id="<?php echo $business['business_id']; ?>"
+                    <?php if (!isCustomerLoggedIn()): ?>
+                    onclick="event.stopPropagation(); alert('Please login to add favorites'); window.location.href='login.php';"
+                    <?php endif; ?>>
+                <i class="bi bi-heart<?php echo $isFavorited ? '-fill' : ''; ?>"></i>
+            </button>
+        </div>
+
+        <div class="business-card-content" onclick="window.location.href='business-detail.php?id=<?php echo $business['business_id']; ?>'">
+            <h5 class="business-name"><?php echo htmlspecialchars($business['business_name']); ?></h5>
+            
+            <p class="business-type-location">
+                <?php echo ucfirst($business['business_type'] ?? 'Salon'); ?> • <?php echo htmlspecialchars($location); ?>
+            </p>
+
+            <div class="airbnb-rating">
+                <i class="bi bi-star-fill"></i>
+                <strong><?php echo number_format($avgRating, 1); ?></strong>
+                <?php if ($reviewCount > 0): ?>
+                    <span class="rating-count">(<?php echo $reviewCount; ?> <?php echo $reviewCount === 1 ? 'review' : 'reviews'; ?>)</span>
+                <?php else: ?>
+                    <span class="rating-count">(New)</span>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+    <?php
+    return ob_get_clean();
+}
+?>
+
 <script>
+// Carousel functionality
 let currentSlide = 0;
 const slides = document.querySelectorAll('.carousel-slide');
 const dots = document.querySelectorAll('.carousel-dot');
@@ -254,7 +459,7 @@ function resetAutoSlide() {
 document.querySelectorAll('.carousel-btn').forEach(btn => {
     btn.addEventListener('click', function(e) {
         e.preventDefault();
-        document.querySelector('#business-section').scrollIntoView({
+        document.querySelector('#featured-section').scrollIntoView({
             behavior: 'smooth',
             block: 'start'
         });
@@ -263,6 +468,53 @@ document.querySelectorAll('.carousel-btn').forEach(btn => {
 
 startAutoSlide();
 
+// Filter by category - NO SCROLL VERSION
+function filterByCategory(category, clickedCard) {
+    const typeFilter = document.getElementById('typeFilter');
+    const categoryCards = document.querySelectorAll('.category-card');
+    
+    // If clicking the same category, turn off filter
+    if (typeFilter.value === category) {
+        typeFilter.value = '';
+        // Remove active state from all cards
+        categoryCards.forEach(card => card.classList.remove('active'));
+    } else {
+        typeFilter.value = category;
+        
+        // Update active state on category cards
+        categoryCards.forEach(card => {
+            card.classList.remove('active');
+        });
+        
+        // Add active to clicked card
+        if (clickedCard) {
+            clickedCard.classList.add('active');
+        }
+    }
+    
+    filterBusinesses();
+}
+
+// Back to Top functionality
+function scrollToTop() {
+    window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+    });
+}
+
+// Show/hide back to top button on scroll
+window.addEventListener('scroll', function() {
+    const backToTopBtn = document.getElementById('backToTopBtn');
+    
+    if (window.pageYOffset > 300) {
+        backToTopBtn.classList.add('show');
+    } else {
+        backToTopBtn.classList.remove('show');
+    }
+});
+
+// Filter businesses
 function filterBusinesses() {
     const searchTerm = document.getElementById('searchInput').value.toLowerCase();
     const typeFilter = document.getElementById('typeFilter').value.toLowerCase();
@@ -285,28 +537,205 @@ function filterBusinesses() {
         }
     });
     
-    const businessGrid = document.querySelector('.business-grid');
-    const emptyState = document.querySelector('.empty-state');
+    // Show/hide no results message
+    const noResults = document.getElementById('noResultsMessage');
+    const allGrid = document.getElementById('allBusinessesGrid');
     
-    if (visibleCount === 0 && businessCards.length > 0) {
-        if (businessGrid) businessGrid.style.display = 'none';
-        if (!emptyState) {
-            const section = document.querySelector('#business-section');
-            const newEmptyState = document.createElement('div');
-            newEmptyState.className = 'empty-state';
-            newEmptyState.innerHTML = `
-                <i class="bi bi-search"></i>
-                <h4>No Results Found</h4>
-                <p>Try adjusting your search or filters</p>
-            `;
-            section.appendChild(newEmptyState);
-        }
+    if (visibleCount === 0) {
+        if (noResults) noResults.style.display = 'block';
     } else {
-        if (businessGrid) businessGrid.style.display = 'flex';
-        if (emptyState && businessCards.length > 0) {
-            emptyState.remove();
+        if (noResults) noResults.style.display = 'none';
+    }
+}
+
+// Request user location
+if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(function(position) {
+        fetch('backend/api/update-location.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude
+            })
+        }).catch(err => console.log('Location update failed:', err));
+    });
+}
+
+// Toggle Show More/Less
+function toggleSection(rowId, button) {
+    const row = document.getElementById(rowId);
+    const btnText = button.querySelector('.btn-text');
+    const icon = button.querySelector('i');
+    
+    if (row.classList.contains('collapsed')) {
+        row.classList.remove('collapsed');
+        btnText.textContent = 'Show Less';
+        button.classList.add('expanded');
+    } else {
+        row.classList.add('collapsed');
+        btnText.textContent = 'Show More';
+        button.classList.remove('expanded');
+        
+        // Scroll back to section header
+        row.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+}
+
+// Load More Businesses functionality
+let currentLoadLevel = 0;
+const totalBusinesses = <?php echo count($allBusinesses); ?>;
+
+function loadMoreBusinesses() {
+    const grid = document.getElementById('allBusinessesGrid');
+    const btn = document.getElementById('loadMoreBtn');
+    const loadMoreText = document.getElementById('loadMoreText');
+    const currentCountSpan = document.getElementById('currentCount');
+    const loadMoreContainer = document.getElementById('loadMoreContainer');
+    
+    currentLoadLevel++;
+    
+    if (currentLoadLevel === 1) {
+        // Show next 20 (21-40)
+        grid.classList.add('show-more-40');
+        currentCountSpan.textContent = Math.min(40, totalBusinesses);
+    } else if (currentLoadLevel === 2) {
+        // Show next 20 (41-60)
+        grid.classList.add('show-more-60');
+        currentCountSpan.textContent = Math.min(60, totalBusinesses);
+    } else {
+        // Show all remaining
+        grid.classList.add('show-all');
+        currentCountSpan.textContent = totalBusinesses;
+        loadMoreContainer.style.display = 'none';
+    }
+    
+    // Update button text
+    const remaining = totalBusinesses - (currentLoadLevel * 20 + 20);
+    if (remaining > 20) {
+        loadMoreText.textContent = 'Load More';
+    } else if (remaining > 0) {
+        loadMoreText.textContent = `Load ${remaining} More`;
+    }
+    
+    // Smooth scroll to newly loaded content
+    setTimeout(() => {
+        const newlyVisible = grid.querySelectorAll('.business-card:not([style*="display: none"])');
+        if (newlyVisible.length > 20 * currentLoadLevel) {
+            newlyVisible[20 * currentLoadLevel].scrollIntoView({ 
+                behavior: 'smooth', 
+                block: 'center' 
+            });
+        }
+    }, 100);
+}
+
+// Update filter function to respect pagination and show empty states for each section
+function filterBusinesses() {
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+    const typeFilter = document.getElementById('typeFilter').value.toLowerCase();
+    const businessCards = document.querySelectorAll('#allBusinessesGrid .business-card');
+    const loadMoreContainer = document.getElementById('loadMoreContainer');
+    
+    let visibleCount = 0;
+    let totalMatches = 0;
+    
+    businessCards.forEach((card, index) => {
+        const businessName = card.getAttribute('data-name').toLowerCase();
+        const businessType = card.getAttribute('data-type').toLowerCase();
+        
+        const matchesSearch = businessName.includes(searchTerm);
+        const matchesType = typeFilter === '' || businessType === typeFilter;
+        
+        if (matchesSearch && matchesType) {
+            totalMatches++;
+            // Check if this card should be visible based on current load level
+            const grid = document.getElementById('allBusinessesGrid');
+            if (grid.classList.contains('show-all') || 
+                (grid.classList.contains('show-more-60') && index < 60) ||
+                (grid.classList.contains('show-more-40') && index < 40) ||
+                index < 20) {
+                card.style.display = 'block';
+                visibleCount++;
+            }
+        } else {
+            card.style.display = 'none';
+        }
+    });
+    
+    // Hide load more button when filtering
+    if (searchTerm || typeFilter) {
+        if (loadMoreContainer) loadMoreContainer.style.display = 'none';
+    } else {
+        if (loadMoreContainer && totalBusinesses > 20) {
+            loadMoreContainer.style.display = 'block';
         }
     }
+    
+    // Show/hide no results message for All Businesses section
+    const noResults = document.getElementById('noResultsMessage');
+    const allGrid = document.getElementById('allBusinessesGrid');
+    if (totalMatches === 0) {
+        if (noResults) noResults.style.display = 'block';
+        if (allGrid) allGrid.style.display = 'none';
+    } else {
+        if (noResults) noResults.style.display = 'none';
+        if (allGrid) allGrid.style.display = 'grid';
+    }
+    
+    // Filter and show empty states for OTHER sections (Top Rated, Popular, New)
+    const sections = [
+        { id: 'topRatedRow', name: 'Top Rated' },
+        { id: 'popularRow', name: 'Popular This Month' },
+        { id: 'newRow', name: 'New to BeautyGo' }
+    ];
+    
+    sections.forEach(section => {
+        const sectionElement = document.getElementById(section.id);
+        if (!sectionElement) return;
+        
+        const sectionCards = sectionElement.querySelectorAll('.business-card');
+        let sectionVisibleCount = 0;
+        
+        sectionCards.forEach(card => {
+            const businessName = card.getAttribute('data-name').toLowerCase();
+            const businessType = card.getAttribute('data-type').toLowerCase();
+            
+            const matchesSearch = businessName.includes(searchTerm);
+            const matchesType = typeFilter === '' || businessType === typeFilter;
+            
+            if (matchesSearch && matchesType) {
+                card.style.display = 'block';
+                sectionVisibleCount++;
+            } else {
+                card.style.display = 'none';
+            }
+        });
+        
+        // Get or create empty state for this section
+        let emptyState = sectionElement.querySelector('.section-empty-state');
+        
+        if (sectionVisibleCount === 0) {
+            // Show empty state
+            if (!emptyState) {
+                emptyState = document.createElement('div');
+                emptyState.className = 'section-empty-state';
+                emptyState.innerHTML = `
+                    <div class="empty-state-mini">
+                        <i class="bi bi-search"></i>
+                        <p>No ${section.name.toLowerCase()} businesses match your filter</p>
+                    </div>
+                `;
+                sectionElement.appendChild(emptyState);
+            }
+            emptyState.style.display = 'block';
+        } else {
+            // Hide empty state
+            if (emptyState) {
+                emptyState.style.display = 'none';
+            }
+        }
+    });
 }
 
 // Initialize favorite buttons when page loads
@@ -363,11 +792,14 @@ function updateFavoritesCount(change) {
     }
 }
 
-// Toggle favorite function with better error handling
+// Toggle favorite function with BeautyGo colors - SYNCS ALL BUTTONS
 async function toggleFavorite(businessId, button) {
-    // Disable button during request
-    button.disabled = true;
-    button.style.opacity = '0.6';
+    // Disable ALL buttons for this business during request
+    const allButtons = document.querySelectorAll(`.favorite-btn-${businessId}`);
+    allButtons.forEach(btn => {
+        btn.disabled = true;
+        btn.style.opacity = '0.6';
+    });
     
     try {
         const response = await fetch('backend/ajax/ajax-favorites.php', {
@@ -397,16 +829,24 @@ async function toggleFavorite(businessId, button) {
         }
         
         if (data.success) {
-            const icon = button.querySelector('i');
+            // Update ALL buttons for this business across all sections
+            allButtons.forEach(btn => {
+                const icon = btn.querySelector('i');
+                
+                if (data.is_favorite) {
+                    icon.className = 'bi bi-heart-fill';
+                    btn.classList.add('favorited');
+                } else {
+                    icon.className = 'bi bi-heart';
+                    btn.classList.remove('favorited');
+                }
+            });
             
+            // Show toast notification
             if (data.is_favorite) {
-                icon.className = 'bi bi-heart-fill';
-                button.classList.add('favorited');
                 showToast('❤️ Added to favorites!', 'success');
                 updateFavoritesCount(1); // Increment count
             } else {
-                icon.className = 'bi bi-heart';
-                button.classList.remove('favorited');
                 showToast('💔 Removed from favorites', 'info');
                 updateFavoritesCount(-1); // Decrement count
             }
@@ -424,13 +864,15 @@ async function toggleFavorite(businessId, button) {
         console.error('Fetch Error:', error);
         showToast('❌ Connection error. Please try again.', 'error');
     } finally {
-        // Re-enable button
-        button.disabled = false;
-        button.style.opacity = '1';
+        // Re-enable ALL buttons for this business
+        allButtons.forEach(btn => {
+            btn.disabled = false;
+            btn.style.opacity = '1';
+        });
     }
 }
 
-// Improved toast notification function
+// BeautyGo toast notification function
 function showToast(message, type = 'success') {
     // Remove any existing toasts
     const existingToast = document.querySelector('.toast-notification');
@@ -442,12 +884,20 @@ function showToast(message, type = 'success') {
     toast.className = 'toast-notification toast-' + type;
     toast.textContent = message;
     
-    // Colors based on type
+    // BeautyGo Colors based on type
     const colors = {
-        success: '#28a745',
-        error: '#dc3545',
-        warning: '#ffc107',
-        info: '#17a2b8'
+        success: '#850E35',  // Burgundy - for adding favorites
+        error: '#dc3545',    // Keep red for errors
+        warning: '#EE6983',  // Rose - for warnings
+        info: '#FFC4C4'      // Pink - for removal/info
+    };
+    
+    // Text color adjustments
+    const textColors = {
+        success: 'white',
+        error: 'white',
+        warning: 'white',
+        info: '#850E35'  // Burgundy text on pink background
     };
     
     toast.style.cssText = `
@@ -455,10 +905,10 @@ function showToast(message, type = 'success') {
         bottom: 20px;
         right: 20px;
         background: ${colors[type] || colors.success};
-        color: white;
+        color: ${textColors[type] || 'white'};
         padding: 15px 25px;
         border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        box-shadow: 0 4px 12px rgba(133, 14, 53, 0.3);
         z-index: 9999;
         font-size: 14px;
         font-weight: 500;
@@ -474,6 +924,50 @@ function showToast(message, type = 'success') {
         setTimeout(() => toast.remove(), 300);
     }, 3000);
 }
+
+// Helper function to get category from card
+function getCategoryFromCard(card) {
+    const categoryName = card.querySelector('.category-name').textContent.trim().toLowerCase();
+    
+    // Map display names to filter values
+    const categoryMap = {
+        'hair salon': 'hair salon',
+        'spa & wellness': 'spa & wellness',
+        'barbershop': 'barbershop',
+        'nail salon': 'nail salon',
+        'beauty clinic': 'beauty clinic'
+    };
+    
+    return categoryMap[categoryName] || '';
+}
+
+// Also update the search filter to clear active states when manually changing dropdown
+document.getElementById('typeFilter').addEventListener('change', function() {
+    const categoryCards = document.querySelectorAll('.category-card');
+    const selectedValue = this.value.toLowerCase();
+    
+    // Update active states to match dropdown selection
+    categoryCards.forEach(card => {
+        card.classList.remove('active');
+        
+        // Add active to matching card
+        const cardCategory = getCategoryFromCard(card);
+        if (cardCategory === selectedValue) {
+            card.classList.add('active');
+        }
+    });
+});
+
+// Clear active states when search input is used
+document.getElementById('searchInput').addEventListener('input', function() {
+    if (this.value.trim() !== '') {
+        // If user is searching, clear category filter and active states
+        document.getElementById('typeFilter').value = '';
+        document.querySelectorAll('.category-card').forEach(card => {
+            card.classList.remove('active');
+        });
+    }
+});
 
 // Add CSS for toast animations if not already present
 if (!document.getElementById('toast-animations')) {
@@ -521,6 +1015,28 @@ document.addEventListener('click', function(e) {
         setTimeout(() => e.target.remove(), 300);
     }
 });
+
+// Back to Top Button Functionality
+const backToTopBtn = document.getElementById('backToTop');
+
+// Show/hide button on scroll
+window.addEventListener('scroll', function() {
+    if (window.pageYOffset > 300) {
+        backToTopBtn.classList.add('show');
+    } else {
+        backToTopBtn.classList.remove('show');
+    }
+});
+
+// Smooth scroll to top
+function scrollToTop() {
+    window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+    });
+}
 </script>
+
+
 
 <?php include 'includes/footer.php'; ?>
