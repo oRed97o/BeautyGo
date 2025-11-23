@@ -258,9 +258,30 @@ include 'includes/header.php';
 <!-- Crop Modal -->
 <div class="crop-modal-overlay" id="cropModal">
     <div class="crop-modal-content">
-        <div class="crop-modal-header"><h3><i class="bi bi-crop"></i> Adjust Your Logo</h3><p>Drag the image to position it</p></div>
-        <div class="crop-preview-area" id="cropPreviewArea"><img src="" class="crop-preview-image" id="cropPreviewImage"></div>
-        <div class="crop-instructions"><i class="bi bi-hand-index"></i><p>Drag to reposition • Logo will be cropped to fit</p></div>
+        <div class="crop-modal-header">
+            <h3><i class="bi bi-crop"></i> Adjust Your Logo</h3>
+            <p>Drag to reposition • Use zoom to adjust size</p>
+        </div>
+        <div class="crop-preview-area" id="cropPreviewArea">
+            <img src="" class="crop-preview-image" id="cropPreviewImage">
+        </div>
+        
+        <!-- ZOOM CONTROLS -->
+        <div class="zoom-controls">
+            <button type="button" class="zoom-button" id="zoomOut">
+                <i class="bi bi-dash-lg"></i>
+            </button>
+            <input type="range" class="zoom-slider" id="zoomSlider" min="1" max="3" step="0.1" value="1">
+            <button type="button" class="zoom-button" id="zoomIn">
+                <i class="bi bi-plus-lg"></i>
+            </button>
+            <span class="zoom-level" id="zoomLevel">100%</span>
+        </div>
+        
+        <div class="crop-instructions">
+            <i class="bi bi-hand-index"></i>
+            <p>Drag to move • Zoom to resize • Logo will be cropped to fit</p>
+        </div>
         <div class="crop-modal-buttons">
             <button type="button" class="btn-cancel-crop" id="btnCancelCrop"><i class="bi bi-x-circle"></i> Cancel</button>
             <button type="button" class="btn-confirm-crop" id="btnConfirmCrop"><i class="bi bi-check-circle"></i> Set as Logo</button>
@@ -338,10 +359,17 @@ const cropModal = document.getElementById('cropModal');
 const cropPreviewArea = document.getElementById('cropPreviewArea');
 const cropPreviewImage = document.getElementById('cropPreviewImage');
 
+// Zoom elements
+const zoomSlider = document.getElementById('zoomSlider');
+const zoomIn = document.getElementById('zoomIn');
+const zoomOut = document.getElementById('zoomOut');
+const zoomLevel = document.getElementById('zoomLevel');
+
 let isDragging = false;
 let startX, startY;
 let initialX = 0, initialY = 0;
 let currentX = 0, currentY = 0;
+let currentZoom = 1;
 let currentFile = null;
 let originalImageSrc = '';
 
@@ -375,13 +403,24 @@ function openCropModal(imageSrc) {
     const img = new Image();
     img.onload = function() {
         const containerSize = 300;
+        currentZoom = 1;
+        zoomSlider.value = 1;
+        updateZoomLevel();
+        
         const scale = Math.max(containerSize / img.width, containerSize / img.height);
         
-        cropPreviewImage.style.width = (img.width * scale) + 'px';
-        cropPreviewImage.style.height = (img.height * scale) + 'px';
+        const baseWidth = img.width * scale;
+        const baseHeight = img.height * scale;
         
-        currentX = (containerSize - img.width * scale) / 2;
-        currentY = (containerSize - img.height * scale) / 2;
+        // Store base dimensions for zoom calculation
+        cropPreviewImage.setAttribute('data-base-width', baseWidth);
+        cropPreviewImage.setAttribute('data-base-height', baseHeight);
+        
+        cropPreviewImage.style.width = baseWidth + 'px';
+        cropPreviewImage.style.height = baseHeight + 'px';
+        
+        currentX = (containerSize - baseWidth) / 2;
+        currentY = (containerSize - baseHeight) / 2;
         
         cropPreviewImage.style.left = currentX + 'px';
         cropPreviewImage.style.top = currentY + 'px';
@@ -396,11 +435,44 @@ function openCropModal(imageSrc) {
     img.src = imageSrc;
 }
 
+// Zoom functionality
+function updateZoom(newZoom) {
+    currentZoom = Math.max(1, Math.min(3, newZoom));
+    zoomSlider.value = currentZoom;
+    
+    // Get the base dimensions
+    const baseWidth = parseFloat(cropPreviewImage.getAttribute('data-base-width'));
+    const baseHeight = parseFloat(cropPreviewImage.getAttribute('data-base-height'));
+    
+    // Apply zoom by changing actual dimensions
+    cropPreviewImage.style.width = (baseWidth * currentZoom) + 'px';
+    cropPreviewImage.style.height = (baseHeight * currentZoom) + 'px';
+    
+    updateZoomLevel();
+}
+
+function updateZoomLevel() {
+    zoomLevel.textContent = Math.round(currentZoom * 100) + '%';
+}
+
+zoomSlider.addEventListener('input', function() {
+    updateZoom(parseFloat(this.value));
+});
+
+zoomIn.addEventListener('click', function() {
+    updateZoom(currentZoom + 0.2);
+});
+
+zoomOut.addEventListener('click', function() {
+    updateZoom(currentZoom - 0.2);
+});
+
 function closeCropModal() {
     cropModal.classList.remove('show');
     document.body.style.overflow = '';
     document.getElementById('logo').value = '';
     currentX = currentY = initialX = initialY = 0;
+    currentZoom = 1;
 }
 
 // Mouse/Touch events for dragging
@@ -466,7 +538,18 @@ document.getElementById('btnConfirmCrop').addEventListener('click', function() {
     
     const img = new Image();
     img.onload = function() {
-        ctx.drawImage(img, currentX, currentY, parseFloat(cropPreviewImage.style.width), parseFloat(cropPreviewImage.style.height));
+        const previewSize = 300;
+        const scale = size / previewSize;
+        
+        const imgWidth = parseFloat(cropPreviewImage.style.width);
+        const imgHeight = parseFloat(cropPreviewImage.style.height);
+        
+        const scaledX = currentX * scale;
+        const scaledY = currentY * scale;
+        const scaledWidth = imgWidth * scale;
+        const scaledHeight = imgHeight * scale;
+        
+        ctx.drawImage(img, scaledX, scaledY, scaledWidth, scaledHeight);
         
         canvas.toBlob(function(blob) {
             const reader = new FileReader();

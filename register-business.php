@@ -70,21 +70,23 @@ include 'includes/header.php';
                             
                             <!-- Business Information -->
                             <h5 class="mb-3">Business Information</h5>
-                            <div class="mb-3">
-                                <label for="business_name" class="form-label">Business Name *</label>
-                                <input type="text" class="form-control" id="business_name" name="business_name" required>
-                            </div>
-                            
-                            <div class="mb-3">
-                                <label for="business_type" class="form-label">Business Type *</label>
-                                <select class="form-select" id="business_type" name="business_type" required>
-                                    <option value="">Select a type...</option>
-                                    <option value="Hair Salon">Hair Salon</option>
-                                    <option value="Spa & Wellness">Spa & Wellness</option>
-                                    <option value="Barbershop">Barbershop</option>
-                                    <option value="Nail Salon">Nail Salon</option>
-                                    <option value="Beauty Clinic">Beauty Clinic</option>
-                                </select>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="business_name" class="form-label">Business Name *</label>
+                                    <input type="text" class="form-control" id="business_name" name="business_name" required>
+                                </div>
+                                
+                                <div class="col-md-6 mb-3">
+                                    <label for="business_type" class="form-label">Business Type *</label>
+                                    <select class="form-select" id="business_type" name="business_type" required>
+                                        <option value="">Select a type...</option>
+                                        <option value="Hair Salon">Hair Salon</option>
+                                        <option value="Spa & Wellness">Spa & Wellness</option>
+                                        <option value="Barbershop">Barbershop</option>
+                                        <option value="Nail Salon">Nail Salon</option>
+                                        <option value="Beauty Clinic">Beauty Clinic</option>
+                                    </select>
+                                </div>
                             </div>
                             
                             <div class="mb-3">
@@ -110,13 +112,13 @@ include 'includes/header.php';
                             
                             <div class="mb-3">
                                 <label for="business_password" class="form-label">Password *</label>
-                                <input type="password" class="form-control" id="business_password" name="business_password" minlength="6" required>
-                                <small class="text-muted">Minimum 6 characters</small>
+                                <input type="password" class="form-control" id="business_password" name="business_password" minlength="8" required>
+                                <small class="text-muted">Minimum 8 characters with numbers and symbols</small>
                             </div>
                             
                             <div class="mb-3">
                                 <label for="confirm_password" class="form-label">Confirm Password *</label>
-                                <input type="password" class="form-control" id="confirm_password" name="confirm_password" minlength="6" required>
+                                <input type="password" class="form-control" id="confirm_password" name="confirm_password" minlength="8" required>
                             </div>
                             
                             <hr class="my-4">
@@ -148,13 +150,6 @@ include 'includes/header.php';
                                 </div>
                             </div>
                             
-                            <div class="mb-3 form-check">
-                                <input type="checkbox" class="form-check-input" id="terms" required>
-                                <label class="form-check-label" for="terms">
-                                    I agree to the Terms of Service and confirm that I have the authority to register this business
-                                </label>
-                            </div>
-                            
                             <button type="submit" class="btn btn-primary w-100 mb-3">
                                 <i class="bi bi-building-check"></i> Register Business
                             </button>
@@ -174,16 +169,28 @@ include 'includes/header.php';
         <div class="crop-modal-content">
             <div class="crop-modal-header">
                 <h3><i class="bi bi-crop"></i> Adjust Your Logo</h3>
-                <p>Drag the image to position it perfectly</p>
+                <p>Drag to reposition • Use zoom to adjust size</p>
             </div>
             
             <div class="crop-preview-area" id="cropPreviewArea">
                 <img src="" alt="Crop Preview" class="crop-preview-image" id="cropPreviewImage">
             </div>
             
+            <!-- ZOOM CONTROLS -->
+            <div class="zoom-controls">
+                <button type="button" class="zoom-button" id="zoomOut">
+                    <i class="bi bi-dash-lg"></i>
+                </button>
+                <input type="range" class="zoom-slider" id="zoomSlider" min="1" max="3" step="0.1" value="1">
+                <button type="button" class="zoom-button" id="zoomIn">
+                    <i class="bi bi-plus-lg"></i>
+                </button>
+                <span class="zoom-level" id="zoomLevel">100%</span>
+            </div>
+            
             <div class="crop-instructions">
                 <i class="bi bi-hand-index"></i>
-                <p>Click and drag the image to reposition • Your logo will be cropped to fit</p>
+                <p>Drag to move • Zoom to resize • Your logo will be cropped to fit</p>
             </div>
             
             <div class="crop-modal-buttons">
@@ -196,13 +203,98 @@ include 'includes/header.php';
             </div>
         </div>
     </div>
+
+    <!-- Error Modal -->
+    <div class="error-modal-overlay" id="errorModal">
+        <div class="error-modal-content">
+            <div class="error-modal-icon">
+                <i class="bi bi-exclamation-triangle-fill"></i>
+            </div>
+            <h3 class="error-modal-title">Oops!</h3>
+            <p class="error-modal-message" id="errorModalMessage">Something went wrong.</p>
+            <button type="button" class="error-modal-button" onclick="closeErrorModal()">Got it</button>
+        </div>
+    </div>
 </main>
 
 <!-- Leaflet JS -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
+// ========================================
+// ERROR MODAL FUNCTIONALITY
+// ========================================
+function showErrorModal(message) {
+    document.getElementById('errorModalMessage').textContent = message;
+    document.getElementById('errorModal').classList.add('show');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeErrorModal() {
+    document.getElementById('errorModal').classList.remove('show');
+    document.body.style.overflow = '';
+}
+
+// Close modal when clicking outside
+document.getElementById('errorModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeErrorModal();
+    }
+});
+
+// Close modal with Escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeErrorModal();
+    }
+});
+
+// ========================================
+// FORM VALIDATION WITH PASSWORD CHECKS
+// ========================================
+document.getElementById('businessRegisterForm').addEventListener('submit', function(e) {
+    const password = document.getElementById('business_password').value;
+    const confirmPassword = document.getElementById('confirm_password').value;
+    
+    // Check if passwords match
+    if (password !== confirmPassword) {
+        e.preventDefault();
+        showErrorModal('Passwords do not match! Please make sure both password fields are identical.');
+        document.getElementById('confirm_password').focus();
+        return false;
+    }
+    
+    // Validate password length
+    if (password.length < 8) {
+        e.preventDefault();
+        showErrorModal('Password must be at least 8 characters long!');
+        document.getElementById('business_password').focus();
+        return false;
+    }
+    
+    // Check for at least one number
+    if (!/\d/.test(password)) {
+        e.preventDefault();
+        showErrorModal('Password must contain at least one number (0-9)!');
+        document.getElementById('business_password').focus();
+        return false;
+    }
+    
+    // Check for at least one special character
+    if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+        e.preventDefault();
+        showErrorModal('Password must contain at least one special character (!@#$%^&* etc.)');
+        document.getElementById('business_password').focus();
+        return false;
+    }
+    
+    // All validation passed
+    return true;
+});
+
+// ========================================
 // MAP FUNCTIONALITY
+// ========================================
 let map;
 let marker;
 const defaultLat = 14.0697;
@@ -351,7 +443,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // ========================================
-// CROP MODAL FUNCTIONALITY
+// CROP MODAL FUNCTIONALITY WITH ZOOM
 // ========================================
 const cropModal = document.getElementById('cropModal');
 const cropPreviewArea = document.getElementById('cropPreviewArea');
@@ -359,10 +451,17 @@ const cropPreviewImage = document.getElementById('cropPreviewImage');
 const btnCancelCrop = document.getElementById('btnCancelCrop');
 const btnConfirmCrop = document.getElementById('btnConfirmCrop');
 
+// Zoom elements
+const zoomSlider = document.getElementById('zoomSlider');
+const zoomIn = document.getElementById('zoomIn');
+const zoomOut = document.getElementById('zoomOut');
+const zoomLevel = document.getElementById('zoomLevel');
+
 let isDragging = false;
 let startX, startY;
 let initialX = 0, initialY = 0;
 let currentX = 0, currentY = 0;
+let currentZoom = 1;
 let currentFile = null;
 let originalImageSrc = '';
 
@@ -371,14 +470,14 @@ function handleLogoSelect(input) {
     
     if (file) {
         if (file.size > 5 * 1024 * 1024) {
-            alert('File is too large. Maximum size is 5MB.');
+            showErrorModal('File size must be less than 5MB');
             input.value = '';
             return;
         }
         
         const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
         if (!allowedTypes.includes(file.type)) {
-            alert('Invalid file type. Only JPG, PNG, GIF, and WebP are allowed.');
+            showErrorModal('Only JPG, PNG, GIF, and WebP images are allowed');
             input.value = '';
             return;
         }
@@ -398,13 +497,24 @@ function openCropModal(imageSrc) {
     const img = new Image();
     img.onload = function() {
         const containerSize = 300;
+        currentZoom = 1;
+        zoomSlider.value = 1;
+        updateZoomLevel();
+        
         const scale = Math.max(containerSize / img.width, containerSize / img.height);
         
-        cropPreviewImage.style.width = (img.width * scale) + 'px';
-        cropPreviewImage.style.height = (img.height * scale) + 'px';
+        const baseWidth = img.width * scale;
+        const baseHeight = img.height * scale;
         
-        currentX = (containerSize - img.width * scale) / 2;
-        currentY = (containerSize - img.height * scale) / 2;
+        // Store base dimensions for zoom calculation
+        cropPreviewImage.setAttribute('data-base-width', baseWidth);
+        cropPreviewImage.setAttribute('data-base-height', baseHeight);
+        
+        cropPreviewImage.style.width = baseWidth + 'px';
+        cropPreviewImage.style.height = baseHeight + 'px';
+        
+        currentX = (containerSize - baseWidth) / 2;
+        currentY = (containerSize - baseHeight) / 2;
         
         cropPreviewImage.style.left = currentX + 'px';
         cropPreviewImage.style.top = currentY + 'px';
@@ -419,6 +529,38 @@ function openCropModal(imageSrc) {
     img.src = imageSrc;
 }
 
+// Zoom functionality
+function updateZoom(newZoom) {
+    currentZoom = Math.max(1, Math.min(3, newZoom));
+    zoomSlider.value = currentZoom;
+    
+    // Get the base dimensions
+    const baseWidth = parseFloat(cropPreviewImage.getAttribute('data-base-width'));
+    const baseHeight = parseFloat(cropPreviewImage.getAttribute('data-base-height'));
+    
+    // Apply zoom by changing actual dimensions
+    cropPreviewImage.style.width = (baseWidth * currentZoom) + 'px';
+    cropPreviewImage.style.height = (baseHeight * currentZoom) + 'px';
+    
+    updateZoomLevel();
+}
+
+function updateZoomLevel() {
+    zoomLevel.textContent = Math.round(currentZoom * 100) + '%';
+}
+
+zoomSlider.addEventListener('input', function() {
+    updateZoom(parseFloat(this.value));
+});
+
+zoomIn.addEventListener('click', function() {
+    updateZoom(currentZoom + 0.2);
+});
+
+zoomOut.addEventListener('click', function() {
+    updateZoom(currentZoom - 0.2);
+});
+
 function closeCropModal() {
     cropModal.classList.remove('show');
     document.body.style.overflow = '';
@@ -427,6 +569,7 @@ function closeCropModal() {
     currentY = 0;
     initialX = 0;
     initialY = 0;
+    currentZoom = 1;
 }
 
 cropPreviewArea.addEventListener('mousedown', startDrag);
@@ -499,7 +642,18 @@ btnConfirmCrop.addEventListener('click', function() {
     
     const img = new Image();
     img.onload = function() {
-        ctx.drawImage(img, currentX, currentY, parseFloat(cropPreviewImage.style.width), parseFloat(cropPreviewImage.style.height));
+        const previewSize = 300;
+        const scale = size / previewSize;
+        
+        const imgWidth = parseFloat(cropPreviewImage.style.width);
+        const imgHeight = parseFloat(cropPreviewImage.style.height);
+        
+        const scaledX = currentX * scale;
+        const scaledY = currentY * scale;
+        const scaledWidth = imgWidth * scale;
+        const scaledHeight = imgHeight * scale;
+        
+        ctx.drawImage(img, scaledX, scaledY, scaledWidth, scaledHeight);
         
         canvas.toBlob(function(blob) {
             const reader = new FileReader();
@@ -537,18 +691,6 @@ function removeLogo() {
 cropModal.addEventListener('click', function(e) {
     if (e.target === cropModal) {
         closeCropModal();
-    }
-});
-
-document.getElementById('businessRegisterForm').addEventListener('submit', function(e) {
-    const password = document.getElementById('business_password').value;
-    const confirmPassword = document.getElementById('confirm_password').value;
-    
-    if (password !== confirmPassword) {
-        e.preventDefault();
-        alert('Passwords do not match!');
-        document.getElementById('confirm_password').focus();
-        return false;
     }
 });
 </script>

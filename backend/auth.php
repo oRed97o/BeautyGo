@@ -154,7 +154,7 @@ function registerBusiness() {
     $email = sanitize($_POST['business_email']);
     $password = $_POST['business_password'] ?? '';
     $businessName = sanitize($_POST['business_name'] ?? '');
-    $businessType = sanitize($_POST['business_type'] ?? '');
+    $businessType = $_POST['business_type'] ?? '';
     $city = sanitize($_POST['city'] ?? 'Nasugbu');
 
     // Validate required fields
@@ -201,22 +201,41 @@ function registerBusiness() {
     $businessId = createBusiness($businessData);
 
     if ($businessId) {
-        // ===== ADD THIS SECTION HERE =====
         // Handle logo upload if provided
-        if (isset($_FILES['business_logo']) && $_FILES['business_logo']['error'] === UPLOAD_ERR_OK) {
+        $logoData = null;
+        
+        // Check for cropped logo data first (from the crop modal)
+        if (!empty($_POST['cropped_logo_data'])) {
+            $croppedData = $_POST['cropped_logo_data'];
+            
+            // Remove the data URL prefix (e.g., "data:image/jpeg;base64,")
+            if (preg_match('/^data:image\/(\w+);base64,/', $croppedData)) {
+                $croppedData = substr($croppedData, strpos($croppedData, ',') + 1);
+                $croppedData = base64_decode($croppedData);
+                
+                if ($croppedData !== false) {
+                    $logoData = $croppedData;
+                    error_log("Using cropped business logo");
+                }
+            }
+        }
+        // Fallback to regular file upload if no cropped data
+        elseif (isset($_FILES['business_logo']) && $_FILES['business_logo']['error'] === UPLOAD_ERR_OK) {
             $allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
             
             if (in_array($_FILES['business_logo']['type'], $allowedTypes) && 
                 $_FILES['business_logo']['size'] <= 5 * 1024 * 1024) {
                 
-                $imageData = file_get_contents($_FILES['business_logo']['tmp_name']);
-                $compressedLogo = compressImage($imageData, 800, 800, 85);
-                
-                // Update the album with the logo
-                updateSingleAlbumImage($businessId, 'logo', $compressedLogo);
+                $logoData = file_get_contents($_FILES['business_logo']['tmp_name']);
+                error_log("Using uploaded file business logo");
             }
         }
-        // ===== END OF NEW SECTION =====
+        
+        // If we have logo data, compress and save it
+        if ($logoData !== null) {
+            $compressedLogo = compressImage($logoData, 800, 800, 85);
+            updateSingleAlbumImage($businessId, 'logo', $compressedLogo);
+        }
         
         $_SESSION['business_id'] = $businessId;
         $_SESSION['user_type'] = 'business';
