@@ -1,4 +1,4 @@
-    <!-- Footer -->
+<!-- Footer -->
     <footer class="footer mt-5">
         <div class="container py-4">
             <div class="row">
@@ -10,7 +10,10 @@
                     <h6>Quick Links</h6>
                     <ul class="list-unstyled">
                         <li><a href="index.php" class="text-muted">Home</a></li>
-                        <li><a href="services.php" class="text-muted">Browse Services</a></li>
+                        <?php if (isCustomerLoggedIn()): ?>
+                            <li><a href="my-bookings.php" class="text-muted">My Bookings</a></li>
+                            <li><a href="favorites.php" class="text-muted">Favorites</a></li>
+                        <?php endif; ?>
                         <?php if (!isLoggedIn()): ?>
                             <li><a href="register-business.php" class="text-muted">Register Your Business</a></li>
                         <?php endif; ?>
@@ -29,6 +32,42 @@
             </div>
         </div>
     </footer>
+    
+    <!-- Bootstrap Bundle with Popper (Required for Dropdowns) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Initialize Bootstrap Dropdowns -->
+    <script>
+        // Ensure all dropdowns are properly initialized
+        document.addEventListener('DOMContentLoaded', function() {
+            // Get all dropdown toggle elements
+            const dropdownElementList = document.querySelectorAll('[data-bs-toggle="dropdown"]');
+            
+            // Initialize each dropdown
+            const dropdownList = Array.from(dropdownElementList).map(function (dropdownToggleEl) {
+                return new bootstrap.Dropdown(dropdownToggleEl, {
+                    autoClose: true,
+                    boundary: 'viewport'
+                });
+            });
+            
+            // Debug log
+            console.log('✅ Bootstrap dropdowns initialized:', dropdownList.length);
+            
+            // Fix for dropdowns not closing when clicking outside
+            document.addEventListener('click', function(event) {
+                const dropdowns = document.querySelectorAll('.dropdown-menu.show');
+                dropdowns.forEach(dropdown => {
+                    if (!dropdown.contains(event.target) && !dropdown.previousElementSibling.contains(event.target)) {
+                        const bsDropdown = bootstrap.Dropdown.getInstance(dropdown.previousElementSibling);
+                        if (bsDropdown) {
+                            bsDropdown.hide();
+                        }
+                    }
+                });
+            });
+        });
+    </script>
     
     <!-- Custom JavaScript -->
     <script src="script.js"></script>

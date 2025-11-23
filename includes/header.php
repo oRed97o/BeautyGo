@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo $pageTitle ?? 'BeautyGo - Beauty Services in Nasugbu, Batangas'; ?></title>
@@ -22,6 +21,7 @@
             font-size: 1.3rem;
             color: var(--color-burgundy);
             transition: all 0.3s ease;
+            cursor: pointer;
         }
         
         .notification-bell:hover {
@@ -29,7 +29,21 @@
             transform: scale(1.1);
         }
         
-        .notification-badge {
+        /* Favorites heart styling */
+        .favorites-heart {
+            position: relative;
+            font-size: 1.3rem;
+            color: var(--color-burgundy);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .favorites-heart:hover {
+            color: #dc3545;
+            transform: scale(1.1);
+        }
+        
+        .notification-badge, .favorites-badge {
             position: absolute;
             top: -8px;
             right: -8px;
@@ -62,7 +76,7 @@
         }
         
         .notification-item:hover {
-            background-color: var(--color-cream);
+            background-color: #f8f9fa;
         }
         
         .notification-item.unread {
@@ -103,13 +117,13 @@
             font-size: 0.75rem;
             color: #6c757d;
         }
+        
+        /* Fix dropdown menu positioning */
+        .dropdown-menu {
+            position: absolute !important;
+            z-index: 1050;
+        }
     </style>
-    
-    <link rel="stylesheet" href="css/styles.css?v=<?php echo time(); ?>">
-    
-    <!-- Bootstrap JS (moved to head for dropdown functionality) -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
 </head>
 <body>
     <!-- Navigation -->
@@ -154,12 +168,27 @@
                         }
                         ?>
                         
+                        <!-- Favorites Button (Only for Customers) -->
+                        <?php if (isCustomerLoggedIn()): ?>
+                            <?php 
+                            $favoriteCount = function_exists('getCustomerFavorites') ? count(getCustomerFavorites($currentUser['customer_id'])) : 0;
+                            ?>
+                            <li class="nav-item me-3">
+                                <a class="nav-link position-relative" href="favorites.php" title="My Favorites">
+                                    <i class="bi bi-heart-fill favorites-heart"></i>
+                                    <?php if ($favoriteCount > 0): ?>
+                                        <span class="favorites-badge"><?php echo $favoriteCount; ?></span>
+                                    <?php endif; ?>
+                                </a>
+                            </li>
+                        <?php endif; ?>
+                        
                         <!-- Notification Bell for BOTH Customer and Business -->
                         <?php if (isCustomerLoggedIn()): ?>
                             <!-- CUSTOMER NOTIFICATIONS -->
                             <?php 
-                            $notifications = getCustomerNotifications($currentUser['customer_id']);
-                            $unreadCount = countUnreadNotifications($currentUser['customer_id']);
+                            $notifications = function_exists('getCustomerNotifications') ? getCustomerNotifications($currentUser['customer_id']) : [];
+                            $unreadCount = function_exists('countUnreadNotifications') ? countUnreadNotifications($currentUser['customer_id']) : 0;
                             ?>
                             <li class="nav-item dropdown me-3">
                                 <a class="nav-link position-relative" href="#" id="notificationDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -184,7 +213,7 @@
                                     <?php else: ?>
                                         <?php foreach (array_slice($notifications, 0, 5) as $notif): ?>
                                             <li>
-                                                <a href="my-bookings.php" class="notification-item d-flex text-decoration-none text-dark">
+                                                <a href="notifications.php" class="notification-item d-flex text-decoration-none text-dark <?php echo $notif['read_status'] == 0 ? 'unread' : ''; ?>">
                                                     <div class="notification-icon <?php echo strpos(strtolower($notif['notif_title']), 'confirmed') !== false ? 'confirmed' : (strpos(strtolower($notif['notif_title']), 'completed') !== false ? 'completed' : 'cancelled'); ?> flex-shrink-0">
                                                         <i class="bi <?php 
                                                             if (strpos(strtolower($notif['notif_title']), 'confirmed') !== false) {
@@ -200,7 +229,7 @@
                                                         <div class="fw-semibold"><?php echo htmlspecialchars($notif['notif_title']); ?></div>
                                                         <div class="small text-muted"><?php echo htmlspecialchars($notif['notif_text']); ?></div>
                                                         <div class="notification-time mt-1">
-                                                            <i class="bi bi-clock"></i> <?php echo timeAgo($notif['notif_creation']); ?>
+                                                            <i class="bi bi-clock"></i> <?php echo function_exists('timeAgo') ? timeAgo($notif['notif_creation']) : date('M j, Y', strtotime($notif['notif_creation'])); ?>
                                                         </div>
                                                     </div>
                                                 </a>
@@ -218,8 +247,8 @@
                         <?php elseif (isBusinessLoggedIn()): ?>
                             <!-- BUSINESS NOTIFICATIONS -->
                             <?php 
-                            $businessNotifications = getBusinessNotifications($currentUser['business_id'], 10);
-                            $businessUnreadCount = countRecentBusinessNotifications($currentUser['business_id']);
+                            $businessNotifications = function_exists('getBusinessNotifications') ? getBusinessNotifications($currentUser['business_id'], 10) : [];
+                            $businessUnreadCount = function_exists('countRecentBusinessNotifications') ? countRecentBusinessNotifications($currentUser['business_id']) : 0;
                             ?>
                             <li class="nav-item dropdown me-3">
                                 <a class="nav-link position-relative" href="#" id="businessNotificationDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -252,7 +281,7 @@
                                                         <div class="fw-semibold"><?php echo htmlspecialchars($notif['notif_title']); ?></div>
                                                         <div class="small text-muted"><?php echo htmlspecialchars($notif['notif_text']); ?></div>
                                                         <div class="notification-time mt-1">
-                                                            <i class="bi bi-clock"></i> <?php echo timeAgo($notif['notif_creation']); ?>
+                                                            <i class="bi bi-clock"></i> <?php echo function_exists('timeAgo') ? timeAgo($notif['notif_creation']) : date('M j, Y', strtotime($notif['notif_creation'])); ?>
                                                         </div>
                                                     </div>
                                                 </a>
@@ -269,36 +298,38 @@
                             </li>
                         <?php endif; ?>
                         
+                        <!-- User/Business Profile Dropdown -->
                         <?php if (isBusinessLoggedIn()): ?>
                             <li class="nav-item dropdown">
-                                <a class="nav-link dropdown-toggle" href="#" id="businessDropdown" role="button" data-bs-toggle="dropdown">
+                                <a class="nav-link dropdown-toggle" href="#" id="businessDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                     <i class="bi bi-buildings"></i> <?php echo htmlspecialchars($displayName); ?>
                                 </a>
-                                <ul class="dropdown-menu dropdown-menu-end">
-                                    <li><a class="dropdown-item" href="business-dashboard.php">Dashboard</a></li>
-                                    <li><a class="dropdown-item" href="business-profile.php">Profile</a></li>
+                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="businessDropdown">
+                                    <li><a class="dropdown-item" href="business-dashboard.php"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
+                                    <li><a class="dropdown-item" href="business-profile.php"><i class="bi bi-person-circle"></i> Profile</a></li>
                                     <li><hr class="dropdown-divider"></li>
                                     <li>
                                         <form action="backend/auth.php" method="POST" class="d-inline">
                                             <input type="hidden" name="action" value="logout">
-                                            <button type="submit" class="dropdown-item">Logout</button>
+                                            <button type="submit" class="dropdown-item text-danger"><i class="bi bi-box-arrow-right"></i> Logout</button>
                                         </form>
                                     </li>
                                 </ul>
                             </li>
                         <?php else: ?>
                             <li class="nav-item dropdown">
-                                    <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
+                                <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                     <i class="bi bi-person-circle"></i> <?php echo htmlspecialchars($displayName); ?>
                                 </a>
-                                <ul class="dropdown-menu dropdown-menu-end">
-                                    <li><a class="dropdown-item" href="user-profile.php">Profile</a></li>
-                                    <li><a class="dropdown-item" href="my-bookings.php">My Bookings</a></li>
+                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                                    <li><a class="dropdown-item" href="user-profile.php"><i class="bi bi-person"></i> Profile</a></li>
+                                    <li><a class="dropdown-item" href="my-bookings.php"><i class="bi bi-calendar-check"></i> My Bookings</a></li>
+                                    <li><a class="dropdown-item" href="favorites.php"><i class="bi bi-heart-fill"></i> My Favorites</a></li>
                                     <li><hr class="dropdown-divider"></li>
                                     <li>
                                         <form action="backend/auth.php" method="POST" class="d-inline">
                                             <input type="hidden" name="action" value="logout">
-                                            <button type="submit" class="dropdown-item">Logout</button>
+                                            <button type="submit" class="dropdown-item text-danger"><i class="bi bi-box-arrow-right"></i> Logout</button>
                                         </form>
                                     </li>
                                 </ul>

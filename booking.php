@@ -8,6 +8,8 @@ require_once 'backend/function_services.php';       // for getBusinessServices()
 require_once 'backend/function_employees.php';      // for getBusinessEmployees()
 require_once 'backend/function_appointments.php';   // for createAppointment()
 require_once 'backend/function_notifications.php';  // for notifications (used by header.php)
+require_once 'backend/function_favorites.php';      // for header.php getCustomerFavorites()
+
 
 $businessId = $_GET['business_id'] ?? '';
 

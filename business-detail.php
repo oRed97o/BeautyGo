@@ -9,6 +9,8 @@ require_once 'backend/function_reviews.php';        // for getBusinessReviews(),
 require_once 'backend/function_albums.php';         // for getBusinessAlbum()
 require_once 'backend/function_notifications.php';  // for header.php notifications
 require_once 'backend/function_customers.php';      // for header.php getCurrentCustomer()
+require_once 'backend/function_favorites.php';      // for header.php getCustomerFavorites()
+
 
 
 $businessId = $_GET['id'] ?? '';

@@ -7,6 +7,8 @@ require_once 'backend/function_customers.php';      // for getCurrentCustomer()
 require_once 'backend/function_businesses.php';     // for header.php getCurrentBusiness()
 require_once 'backend/function_appointments.php';   // for getCustomerAppointments()
 require_once 'backend/function_notifications.php';  // for header.php notifications
+require_once 'backend/function_favorites.php';      // for header.php getCustomerFavorites()
+
 
 // Check if user is logged in
 if (!isCustomerLoggedIn()) {

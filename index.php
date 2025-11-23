@@ -1,5 +1,5 @@
 <?php
-header("Cache-Control: no-cache, no-store, must-revalidate"); // Prevent caching
+header("Cache-Control: no-cache, no-store, must-revalidate");
 header("Pragma: no-cache");
 header("Expires: 0");
 
@@ -14,13 +14,10 @@ require_once 'backend/function_notifications.php';
 
 $pageTitle = 'BeautyGo - Beauty Services in Nasugbu, Batangas';
 
-// Get user location if available (for distance calculation)
 $userLat = $_SESSION['user_latitude'] ?? null;
 $userLon = $_SESSION['user_longitude'] ?? null;
 
-// Get all businesses with distance calculation
 $businesses = getBusinessesWithDistance($userLat, $userLon);
-
 
 include 'includes/header.php';
 ?>
@@ -67,7 +64,6 @@ include 'includes/header.php';
             </div>
         </div>
 
-        <!-- Navigation Arrows -->
         <button class="carousel-arrow left" onclick="changeSlide(-1)">
             <i class="bi bi-chevron-left"></i>
         </button>
@@ -75,7 +71,6 @@ include 'includes/header.php';
             <i class="bi bi-chevron-right"></i>
         </button>
 
-        <!-- Navigation Dots -->
         <div class="carousel-nav">
             <div class="carousel-dot active" onclick="goToSlide(0)"></div>
             <div class="carousel-dot" onclick="goToSlide(1)"></div>
@@ -86,7 +81,6 @@ include 'includes/header.php';
     <!-- Hero Section with Search -->
     <section class="hero-section-new">
         <div class="container">
-            <!-- Search Bar -->
             <div class="search-bar-wrapper">
                 <div class="search-bar-container">
                     <div class="search-input-group">
@@ -124,41 +118,35 @@ include 'includes/header.php';
             <div class="business-grid">
                 <?php foreach ($businesses as $business): ?>
             <?php 
-            // Get business album/logo
             $album = getBusinessAlbum($business['business_id']);
             $businessImage = null;
             
-            // Try to get logo from album
             if ($album && !empty($album['logo'])) {
                 $businessImage = 'data:image/jpeg;base64,' . base64_encode($album['logo']);
             }
             
-            // Fallback to default images based on type
             if (!$businessImage) {
                 $defaultImages = [
-                    'hair salon' => 'resources\salon.png',
-                    'spa & wellness' => 'resources\spa.png',
-                    'barbershop' => 'resources\barbers.png',
-                    'beauty clinic' => 'resources\clinic.png',
-                    'nail salon' => 'resources\nails.png'
+                    'hair salon' => 'resources/salon.png',
+                    'spa & wellness' => 'resources/spa.png',
+                    'barbershop' => 'resources/barbers.png',
+                    'beauty clinic' => 'resources/clinic.png',
+                    'nail salon' => 'resources/nails.png'
                 ];
                 $businessType = strtolower($business['business_type'] ?? 'salon');
                 $businessImage = $defaultImages[$businessType] ?? 'resources/default.png';
             }
             
-            // Calculate average rating
             $avgRating = calculateAverageRating($business['business_id']);
             $reviews = getBusinessReviews($business['business_id']);
             $reviewCount = count($reviews);
             
-            // Get location info
             $location = $business['city'] ?? 'Nasugbu';
             if (!empty($business['business_address'])) {
                 $addressParts = explode(',', $business['business_address']);
                 $location = trim($addressParts[0]);
             }
             
-            // Check if this business is favorited by current user
             $isFavorited = false;
             if (isCustomerLoggedIn()) {
                 $isFavorited = isFavorite($_SESSION['customer_id'], $business['business_id']);
@@ -174,25 +162,26 @@ include 'includes/header.php';
                     <img src="<?php echo $businessImage; ?>" 
                         alt="<?php echo htmlspecialchars($business['business_name']); ?>">
 
-                    <!-- Top Rated Badge -->
                     <?php if ($avgRating >= 4.5): ?>
                         <span class="airbnb-badge">
                             <i class="bi bi-award-fill"></i> Top Rated
                         </span>
                     <?php endif; ?>
 
-                    <!-- Distance Badge -->
                     <?php if (isset($business['distance']) && $business['distance'] < 999): ?>
                         <span class="distance-badge">
                             <i class="bi bi-geo-alt-fill"></i> <?php echo $business['distance']; ?> km
                         </span>
                     <?php endif; ?>
 
-                    <!-- Heart Favorite Button - NO onclick in HTML -->
-                    <!--<button class="airbnb-favorite-btn favorite-btn-<?php echo $business['business_id']; ?> <?php echo $isFavorited ? 'favorited' : ''; ?>" 
-                            data-business-id="<?php echo $business['business_id']; ?>">
+                    <!-- Heart Favorite Button -->
+                    <button class="airbnb-favorite-btn favorite-btn-<?php echo $business['business_id']; ?> <?php echo $isFavorited ? 'favorited' : ''; ?>" 
+                            data-business-id="<?php echo $business['business_id']; ?>"
+                            <?php if (!isCustomerLoggedIn()): ?>
+                            onclick="event.stopPropagation(); alert('Please login to add favorites'); window.location.href='login.php';"
+                            <?php endif; ?>>
                         <i class="bi bi-heart<?php echo $isFavorited ? '-fill' : ''; ?>"></i>
-                    </button>  -->
+                    </button>
                 </div>
 
                 <div class="business-card-content" onclick="window.location.href='business-detail.php?id=<?php echo $business['business_id']; ?>'">
@@ -220,8 +209,6 @@ include 'includes/header.php';
 </main>
 
 <script>
-// FINAL VERSION - Replace your <script> section with this:
-
 let currentSlide = 0;
 const slides = document.querySelectorAll('.carousel-slide');
 const dots = document.querySelectorAll('.carousel-dot');
@@ -264,7 +251,6 @@ function resetAutoSlide() {
     startAutoSlide();
 }
 
-// Smooth scroll for carousel buttons
 document.querySelectorAll('.carousel-btn').forEach(btn => {
     btn.addEventListener('click', function(e) {
         e.preventDefault();
@@ -275,10 +261,8 @@ document.querySelectorAll('.carousel-btn').forEach(btn => {
     });
 });
 
-// Start automatic sliding
 startAutoSlide();
 
-// Filter businesses function
 function filterBusinesses() {
     const searchTerm = document.getElementById('searchInput').value.toLowerCase();
     const typeFilter = document.getElementById('typeFilter').value.toLowerCase();
@@ -301,7 +285,6 @@ function filterBusinesses() {
         }
     });
     
-    // Show/hide empty state
     const businessGrid = document.querySelector('.business-grid');
     const emptyState = document.querySelector('.empty-state');
     
@@ -331,6 +314,11 @@ window.addEventListener('load', function() {
     const favoriteButtons = document.querySelectorAll('.airbnb-favorite-btn');
     
     favoriteButtons.forEach(function(button) {
+        // Skip if button already has login check (for non-logged users)
+        if (button.hasAttribute('onclick')) {
+            return;
+        }
+        
         button.addEventListener('click', function(e) {
             e.stopPropagation();
             e.preventDefault();
@@ -341,8 +329,46 @@ window.addEventListener('load', function() {
     });
 });
 
-// Toggle favorite function
+// Function to update favorites count in header
+function updateFavoritesCount(change) {
+    const favoriteBadge = document.querySelector('.favorites-badge');
+    const favoritesHeartLink = document.querySelector('.favorites-heart');
+    
+    if (!favoritesHeartLink) {
+        return; // User not logged in or no favorites section
+    }
+    
+    let currentCount = 0;
+    if (favoriteBadge) {
+        currentCount = parseInt(favoriteBadge.textContent) || 0;
+    }
+    
+    const newCount = Math.max(0, currentCount + change);
+    
+    if (newCount > 0) {
+        if (favoriteBadge) {
+            favoriteBadge.textContent = newCount;
+        } else {
+            // Create badge if it doesn't exist
+            const badge = document.createElement('span');
+            badge.className = 'favorites-badge';
+            badge.textContent = newCount;
+            favoritesHeartLink.parentElement.appendChild(badge);
+        }
+    } else {
+        // Remove badge if count is 0
+        if (favoriteBadge) {
+            favoriteBadge.remove();
+        }
+    }
+}
+
+// Toggle favorite function with better error handling
 async function toggleFavorite(businessId, button) {
+    // Disable button during request
+    button.disabled = true;
+    button.style.opacity = '0.6';
+    
     try {
         const response = await fetch('backend/ajax/ajax-favorites.php', {
             method: 'POST',
@@ -352,46 +378,149 @@ async function toggleFavorite(businessId, button) {
             body: 'action=toggle&business_id=' + businessId
         });
         
+        // Check if response is OK
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        
+        // Get response text first
         const text = await response.text();
-        const data = JSON.parse(text);
+        
+        // Try to parse as JSON
+        let data;
+        try {
+            data = JSON.parse(text);
+        } catch (parseError) {
+            console.error('JSON Parse Error:', parseError);
+            console.error('Response text:', text);
+            throw new Error('Invalid JSON response from server');
+        }
         
         if (data.success) {
-            // Update the heart icon
             const icon = button.querySelector('i');
+            
             if (data.is_favorite) {
                 icon.className = 'bi bi-heart-fill';
                 button.classList.add('favorited');
+                showToast('❤️ Added to favorites!', 'success');
+                updateFavoritesCount(1); // Increment count
             } else {
                 icon.className = 'bi bi-heart';
                 button.classList.remove('favorited');
+                showToast('💔 Removed from favorites', 'info');
+                updateFavoritesCount(-1); // Decrement count
             }
         } else {
             if (data.message === 'Please login first') {
-                alert('Please login to add favorites');
-                window.location.href = 'login.php';
+                showToast('⚠️ Please login to add favorites', 'warning');
+                setTimeout(() => {
+                    window.location.href = 'login.php';
+                }, 1500);
             } else {
-                alert(data.message || 'Failed to update favorite');
+                showToast('❌ ' + (data.message || 'Failed to update favorite'), 'error');
             }
         }
     } catch (error) {
-        console.error('Error:', error);
-        alert('An error occurred. Please try again.');
+        console.error('Fetch Error:', error);
+        showToast('❌ Connection error. Please try again.', 'error');
+    } finally {
+        // Re-enable button
+        button.disabled = false;
+        button.style.opacity = '1';
     }
 }
 
-// Request user location for distance calculation (optional)
-if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(function(position) {
-        fetch('backend/api/update-location.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                latitude: position.coords.latitude,
-                longitude: position.coords.longitude
-            })
-        }).catch(err => console.log('Location update failed:', err));
-    });
+// Improved toast notification function
+function showToast(message, type = 'success') {
+    // Remove any existing toasts
+    const existingToast = document.querySelector('.toast-notification');
+    if (existingToast) {
+        existingToast.remove();
+    }
+    
+    const toast = document.createElement('div');
+    toast.className = 'toast-notification toast-' + type;
+    toast.textContent = message;
+    
+    // Colors based on type
+    const colors = {
+        success: '#28a745',
+        error: '#dc3545',
+        warning: '#ffc107',
+        info: '#17a2b8'
+    };
+    
+    toast.style.cssText = `
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        background: ${colors[type] || colors.success};
+        color: white;
+        padding: 15px 25px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 9999;
+        font-size: 14px;
+        font-weight: 500;
+        animation: slideIn 0.3s ease;
+        max-width: 300px;
+    `;
+    
+    document.body.appendChild(toast);
+    
+    // Auto remove after 3 seconds
+    setTimeout(() => {
+        toast.style.animation = 'slideOut 0.3s ease';
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
 }
+
+// Add CSS for toast animations if not already present
+if (!document.getElementById('toast-animations')) {
+    const style = document.createElement('style');
+    style.id = 'toast-animations';
+    style.textContent = `
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        @keyframes slideOut {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+        }
+        
+        .toast-notification {
+            cursor: pointer;
+        }
+        
+        .toast-notification:hover {
+            transform: scale(1.05);
+            transition: transform 0.2s;
+        }
+    `;
+    document.head.appendChild(style);
+}
+
+// Allow clicking toast to dismiss
+document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('toast-notification')) {
+        e.target.style.animation = 'slideOut 0.3s ease';
+        setTimeout(() => e.target.remove(), 300);
+    }
+});
 </script>
 
 <?php include 'includes/footer.php'; ?>
