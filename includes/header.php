@@ -111,10 +111,64 @@
             50% { transform: scale(1.1); }
         }
         
+        /* Style Recommendations Button */
+        .style-recommendations-btn {
+            border: 2px solid var(--color-burgundy);
+            color: var(--color-burgundy);
+            background: transparent;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .style-recommendations-btn:hover {
+            background-color: var(--color-burgundy);
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(139, 0, 0, 0.3);
+        }
+        
+        .style-recommendations-btn i {
+            font-size: 1.1rem;
+        }
+        
+        /* Shine Animation */
+        @keyframes shine {
+            0% {
+                left: -100%;
+            }
+            20%, 100% {
+                left: 100%;
+            }
+        }
+        
+        .style-recommendations-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 50%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
+            animation: shine 3s infinite;
+            animation-delay: 2s;
+        }
+        
         .notification-dropdown {
             width: 350px;
             max-height: 400px;
             overflow-y: auto;
+            border: 2px solid #ffc0cb;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(255, 192, 203, 0.3);
         }
         
         .notification-item {
@@ -154,6 +208,11 @@
         .notification-icon.completed {
             background-color: #d1ecf1;
             color: #0c5460;
+        }
+        
+        .notification-icon.reminder {
+            background-color: #fff3cd;
+            color: #856404;
         }
         
         .notification-icon.new-booking {
@@ -212,6 +271,7 @@
             padding: 8px 16px;
             border-radius: 8px;
             transition: all 0.3s ease;
+            color: var(--color-burgundy);
         }
         
         .nav-item.profile-dropdown .nav-link i {
@@ -319,6 +379,16 @@
                         }
                         ?>
                         
+                        <!-- Style Recommendations Button (Only for Customers) -->
+                        <?php if (isCustomerLoggedIn()): ?>
+                            <li class="nav-item me-3 d-flex align-items-center">
+                                <a class="style-recommendations-btn" href="https://www.youtube.com" target="_blank" title="Style Recommendations">
+                                    <i class="bi bi-stars"></i>
+                                    <span>Style Recommendations</span>
+                                </a>
+                            </li>
+                        <?php endif; ?>
+                        
                         <!-- My Bookings Icon (Only for Customers) -->
                         <?php if (isCustomerLoggedIn()): ?>
                             <?php 
@@ -381,12 +451,24 @@
                                         <?php foreach (array_slice($notifications, 0, 5) as $notif): ?>
                                             <li>
                                                 <a href="notifications.php" class="notification-item d-flex text-decoration-none text-dark <?php echo $notif['read_status'] == 0 ? 'unread' : ''; ?>">
-                                                    <div class="notification-icon <?php echo strpos(strtolower($notif['notif_title']), 'confirmed') !== false ? 'confirmed' : (strpos(strtolower($notif['notif_title']), 'completed') !== false ? 'completed' : 'cancelled'); ?> flex-shrink-0">
+                                                    <div class="notification-icon <?php 
+                                                        if (strpos(strtolower($notif['notif_title']), 'confirmed') !== false) {
+                                                            echo 'confirmed';
+                                                        } elseif (strpos(strtolower($notif['notif_title']), 'completed') !== false) {
+                                                            echo 'completed';
+                                                        } elseif (strpos(strtolower($notif['notif_title']), 'reminder') !== false) {
+                                                            echo 'reminder';
+                                                        } else {
+                                                            echo 'cancelled';
+                                                        }
+                                                    ?> flex-shrink-0">
                                                         <i class="bi <?php 
                                                             if (strpos(strtolower($notif['notif_title']), 'confirmed') !== false) {
                                                                 echo 'bi-check-circle-fill';
                                                             } elseif (strpos(strtolower($notif['notif_title']), 'completed') !== false) {
                                                                 echo 'bi-star-fill';
+                                                            } elseif (strpos(strtolower($notif['notif_title']), 'reminder') !== false) {
+                                                                echo 'bi-exclamation-circle-fill';
                                                             } else {
                                                                 echo 'bi-x-circle-fill';
                                                             }
