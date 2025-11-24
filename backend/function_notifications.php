@@ -58,6 +58,7 @@ function countUnreadNotifications($customerId) {
 }
 
 // Create notification for appointment status change
+// Create notification for appointment status change
 function createAppointmentNotification($customerId, $businessId, $appointmentId, $status) {
     $conn = getDbConnection();
     
@@ -67,13 +68,15 @@ function createAppointmentNotification($customerId, $businessId, $appointmentId,
     $titles = [
         'confirmed' => 'Appointment Confirmed',
         'cancelled' => 'Appointment Cancelled',
-        'completed' => 'Appointment Completed'
+        'completed' => 'Appointment Completed',
+        'unavailable' => 'Time Slot Unavailable'  // NEW
     ];
     
     $texts = [
         'confirmed' => 'Your appointment has been confirmed! We look forward to seeing you.',
         'cancelled' => 'Your appointment has been cancelled. Please contact us if you have any questions.',
-        'completed' => 'Thank you for visiting us! We hope you enjoyed your service.'
+        'completed' => 'Thank you for visiting us! We hope you enjoyed your service.',
+        'unavailable' => 'Sorry, your requested time slot is no longer available. Another customer was confirmed first. Please book a different time slot.'  // NEW
     ];
     
     $title = $titles[$status] ?? 'Appointment Update';

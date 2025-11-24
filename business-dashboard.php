@@ -24,6 +24,7 @@ if (isset($business['business_id'])) {
 }
 
 // Handle appointment status update with notification
+// Handle appointment status update with notification
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
     $appointmentId = intval($_POST['appointment_id']);
     $newStatus = sanitize($_POST['status']);
@@ -39,7 +40,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
         );
         
         $statusText = ucfirst($newStatus);
-        $_SESSION['success'] = "Appointment {$statusText} successfully! Customer has been notified.";
+        
+        if ($newStatus === 'confirmed') {
+            $_SESSION['success'] = "Appointment {$statusText} successfully! Customer has been notified. Conflicting appointments have been marked as unavailable.";
+        } else {
+            $_SESSION['success'] = "Appointment {$statusText} successfully! Customer has been notified.";
+        }
     } else {
         $_SESSION['error'] = 'Failed to update appointment status';
     }
@@ -209,6 +215,41 @@ $pendingBookings = array_filter($bookings, function($b) {
     return $b['appoint_status'] == 'pending';
 });
 
+// Prepare analytics data for selected month (default to current month)
+$selectedMonth = isset($_GET['month']) ? $_GET['month'] : date('Y-m');
+$monthStart = $selectedMonth . '-01';
+$monthEnd = date('Y-m-t', strtotime($monthStart));
+
+// Get bookings for selected month
+$monthBookings = array_filter($bookings, function($b) use ($monthStart, $monthEnd) {
+    $bookingDate = date('Y-m-d', strtotime($b['appoint_date']));
+    return $bookingDate >= $monthStart && $bookingDate <= $monthEnd;
+});
+
+// Prepare data for chart - group by day
+$bookingsByDay = [];
+$daysInMonth = date('t', strtotime($monthStart));
+for ($day = 1; $day <= $daysInMonth; $day++) {
+    $bookingsByDay[$day] = 0;
+}
+
+foreach ($monthBookings as $booking) {
+    $day = intval(date('d', strtotime($booking['appoint_date'])));
+    $bookingsByDay[$day]++;
+}
+
+// Convert to JSON for JavaScript
+$chartLabels = json_encode(array_keys($bookingsByDay));
+$chartData = json_encode(array_values($bookingsByDay));
+
+// Calculate monthly statistics
+$monthlyStats = [
+    'total' => count($monthBookings),
+    'confirmed' => count(array_filter($monthBookings, fn($b) => $b['appoint_status'] == 'confirmed')),
+    'completed' => count(array_filter($monthBookings, fn($b) => $b['appoint_status'] == 'completed')),
+    'cancelled' => count(array_filter($monthBookings, fn($b) => $b['appoint_status'] == 'cancelled'))
+];
+
 $pageTitle = 'Business Dashboard - BeautyGo';
 include 'includes/header.php';
 ?>
@@ -275,6 +316,88 @@ include 'includes/header.php';
     border-left: 3px solid #e0e0e0;
     margin-top: 1rem;
 }
+
+/* Analytics styling - UPDATED COLORS */
+.analytics-stat-card {
+    background: var(--color-burgundy);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 12px;
+    box-shadow: 0 4px 12px rgba(128, 0, 32, 0.2);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.analytics-stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(128, 0, 32, 0.3);
+}
+
+.analytics-stat-card.total-bookings {
+    background: linear-gradient(135deg, var(--color-burgundy) 0%, #a5002a 100%);
+}
+
+.analytics-stat-card.completed-bookings {
+    background: linear-gradient(135deg, var(--color-rose) 0%, #e75480 100%);
+}
+
+.analytics-stat-card.confirmed-bookings {
+    background: linear-gradient(135deg, var(--color-pink) 0%, #ff85a2 100%);
+}
+
+.analytics-stat-card h6 {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.8rem;
+    font-weight: 500;
+    margin-bottom: 5px;
+}
+
+.analytics-stat-card h3 {
+    color: white;
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 0;
+}
+
+/* Add to your existing CSS */
+.chart-container {
+    position: relative;
+    height: 300px;
+    background: white;
+    border-radius: 10px;
+    padding: 15px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    border: 1px solid var(--color-cream);
+    min-height: 300px; /* Prevent jumping */
+    overflow: hidden; /* Prevent content shift */
+}
+
+/* Prevent layout shift during chart loading */
+.chart-container:not(:has(canvas)) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+}
+
+.chart-container:not(:has(canvas))::before {
+    content: "Loading chart...";
+    color: #6c757d;
+    font-style: italic;
+}
+
+.month-selector {
+    max-width: 180px;
+}
+
+/* Chart color variables */
+:root {
+    --chart-primary: var(--color-burgundy);
+    --chart-secondary: var(--color-rose);
+    --chart-accent: var(--color-pink);
+    --chart-background: var(--color-cream);
+}
 </style>
 
 <main>
@@ -291,7 +414,7 @@ include 'includes/header.php';
             </a>
         </div>
         
-        <!-- Stats Cards -->
+        <!-- Stats Cards - ORIGINAL COLORS -->
         <div class="row mb-4">
             <div class="col-md-4">
                 <div class="card stat-card">
@@ -342,6 +465,11 @@ include 'includes/header.php';
                     <?php if (count($pendingBookings) > 0): ?>
                         <span class="badge bg-danger ms-1"><?php echo count($pendingBookings); ?></span>
                     <?php endif; ?>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="analytics-tab" data-bs-toggle="tab" data-bs-target="#analytics" type="button">
+                    <i class="bi bi-graph-up"></i> Analytics
                 </button>
             </li>
             <li class="nav-item" role="presentation">
@@ -407,8 +535,9 @@ include 'includes/header.php';
                                                 <td>
                                                     <span class="badge status-<?php echo $booking['appoint_status']; ?> bg-<?php 
                                                         echo $booking['appoint_status'] === 'confirmed' ? 'success' : 
-                                                             ($booking['appoint_status'] === 'cancelled' ? 'danger' : 
-                                                             ($booking['appoint_status'] === 'completed' ? 'info' : 'warning')); 
+                                                            ($booking['appoint_status'] === 'cancelled' ? 'danger' : 
+                                                            ($booking['appoint_status'] === 'completed' ? 'info' : 
+                                                            ($booking['appoint_status'] === 'unavailable' ? 'secondary' : 'warning'))); 
                                                     ?>">
                                                         <?php echo ucfirst($booking['appoint_status']); ?>
                                                     </span>
@@ -449,6 +578,65 @@ include 'includes/header.php';
                                 </table>
                             </div>
                         <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Analytics Tab -->
+            <div class="tab-pane fade" id="analytics" role="tabpanel">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <h4 class="mb-0"><i class="bi bi-graph-up"></i> Booking Analytics</h4>
+                            <div class="month-selector">
+                                <label for="monthSelect" class="form-label mb-1 small">Select Month:</label>
+                                <input type="month" id="monthSelect" class="form-control" value="<?php echo $selectedMonth; ?>" max="<?php echo date('Y-m'); ?>">
+                            </div>
+                        </div>
+
+            <!-- Monthly Statistics Cards - KEEP DARK RED FOR ANALYTICS ONLY -->
+            <div class="row mb-3">
+                <div class="col-md-3">
+                    <div class="analytics-stat-card" style="background: linear-gradient(135deg, #800020 0%, #a5002a 100%);">
+                        <h6>Total Bookings</h6>
+                        <h3><?php echo $monthlyStats['total']; ?></h3>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="analytics-stat-card" style="background: linear-gradient(135deg, #800020 0%, #a5002a 100%);">
+                        <h6>Completed</h6>
+                        <h3><?php echo $monthlyStats['completed']; ?></h3>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="analytics-stat-card" style="background: linear-gradient(135deg, #800020 0%, #a5002a 100%);">
+                        <h6>Confirmed</h6>
+                        <h3><?php echo $monthlyStats['confirmed']; ?></h3>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="analytics-stat-card" style="background: linear-gradient(135deg, #800020 0%, #a5002a 100%);">
+                        <h6>Cancelled</h6>
+                        <h3><?php echo $monthlyStats['cancelled']; ?></h3>
+                    </div>
+                </div>
+            </div>
+
+                        <!-- Line Chart -->
+                        <div class="chart-container">
+                            <canvas id="bookingsChart"></canvas>
+                        </div>
+
+                        <!-- Additional Info -->
+                        <div class="alert alert-info mt-3" role="alert">
+                            <i class="bi bi-info-circle"></i> 
+                            Showing booking trends for <strong><?php echo date('F Y', strtotime($monthStart)); ?></strong>. 
+                            <?php if ($monthlyStats['total'] > 0): ?>
+                                Average bookings per day: <strong><?php echo number_format($monthlyStats['total'] / $daysInMonth, 1); ?></strong>
+                            <?php else: ?>
+                                No bookings recorded for this month.
+                            <?php endif; ?>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -896,6 +1084,9 @@ include 'includes/header.php';
     </div>
 </div>
 
+<!-- Include Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
 <script>
 // Auto-dismiss alerts after 5 seconds
 setTimeout(function() {
@@ -947,6 +1138,95 @@ function showReplyForm(reviewId) {
 function hideReplyForm(reviewId) {
     document.getElementById('replyForm' + reviewId).style.display = 'none';
 }
+
+// Initialize Chart
+// Initialize Chart with better loading handling
+const ctx = document.getElementById('bookingsChart');
+let bookingsChart = null;
+
+// Pre-define chart dimensions to prevent jumping
+if (ctx) {
+    // Set fixed dimensions
+    ctx.style.width = '100%';
+    ctx.style.height = '300px';
+    
+    // Small delay to ensure DOM is fully ready
+    setTimeout(() => {
+        bookingsChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: <?php echo $chartLabels; ?>,
+                datasets: [{
+                    label: 'Total Bookings',
+                    data: <?php echo $chartData; ?>,
+                    borderColor: '#800020',
+                    backgroundColor: 'rgba(128, 0, 32, 0.1)',
+                    tension: 0.4,
+                    fill: true,
+                    pointBackgroundColor: '#800020',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2,
+                    pointRadius: 5,
+                    pointHoverRadius: 7
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                    },
+                    title: {
+                        display: true,
+                        text: 'Daily Booking Trends',
+                        font: {
+                            size: 16,
+                            weight: 'bold'
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        padding: 12,
+                        cornerRadius: 8,
+                        callbacks: {
+                            label: function(context) {
+                                return 'Bookings: ' + context.parsed.y;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1,
+                            precision: 0
+                        },
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.05)'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        },
+                        ticks: {
+                            maxTicksLimit: 15
+                        }
+                    }
+                }
+            }
+        });
+    }, 100);
+}
+
+// Month selector change handler
+document.getElementById('monthSelect').addEventListener('change', function() {
+    const selectedMonth = this.value;
+    window.location.href = 'business-dashboard.php?month=' + selectedMonth + '#analytics';
+});
 
 // Handle multi-select for skills (convert to comma-separated string)
 document.addEventListener('DOMContentLoaded', function() {
@@ -1000,6 +1280,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             }
         });
+    }
+    
+    // Activate analytics tab if hash is present
+    if (window.location.hash === '#analytics') {
+        const analyticsTab = document.getElementById('analytics-tab');
+        if (analyticsTab) {
+            const tab = new bootstrap.Tab(analyticsTab);
+            tab.show();
+        }
     }
 });
 </script>

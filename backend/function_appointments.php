@@ -1,6 +1,6 @@
 <?php
 // ============================================================
-// APPOINTMENT FUNCTIONS
+// APPOINTMENT FUNCTIONS - UPDATED WITH BUSINESS HOURS
 // ============================================================
 
 // Get appointments for a specific customer
@@ -53,7 +53,7 @@ function getBusinessAppointments($businessId) {
         LEFT JOIN customers c ON a.customer_id = c.customer_id
         LEFT JOIN employees e ON a.employ_id = e.employ_id
         LEFT JOIN services s ON a.service_id = s.service_id
-        WHERE e.business_id = ?
+        WHERE s.business_id = ?
         ORDER BY a.appoint_date DESC
     ");
     $stmt->bind_param("i", $businessId);
@@ -115,6 +115,12 @@ function createAppointment($data) {
     $appointDate = $data['appoint_date'] 
         ?? (($data['booking_date'] ?? '') . ' ' . ($data['booking_time'] ?? ''));
 
+    // CHECK AVAILABILITY BEFORE CREATING
+    if (!isTimeSlotAvailable($data['service_id'], $employeeId, $appointDate)) {
+        error_log("Time slot not available: " . $appointDate);
+        return ['error' => 'time_slot_unavailable'];
+    }
+
     $customerId = $data['customer_id'];
     $serviceId = !empty($data['service_id']) ? $data['service_id'] : null;
     $status = $data['appoint_status'] ?? 'pending';
@@ -153,6 +159,12 @@ function createAppointment($data) {
 // Update appointment status
 function updateAppointmentStatus($id, $status) {
     $conn = getDbConnection();
+    
+    // If confirming an appointment, mark conflicting ones as unavailable
+    if ($status === 'confirmed') {
+        markConflictingAppointments($id);
+    }
+    
     $stmt = $conn->prepare("UPDATE appointments SET appoint_status = ? WHERE appointment_id = ?");
     $stmt->bind_param("si", $status, $id);
     $success = $stmt->execute();
@@ -205,4 +217,302 @@ function cancelAppointment($appointmentId) {
     $stmt->close();
     return false;
 }
+
+function isTimeSlotAvailable($serviceId, $employId, $appointDate, $excludeAppointmentId = null) {
+    $conn = getDbConnection();
+    
+    // Get service duration and business hours
+    $service = getServiceById($serviceId);
+    if (!$service) return false;
+    
+    $duration = $service['duration'];
+    $businessId = $service['business_id'];
+    
+    // Get business hours
+    $business = getBusinessById($businessId);
+    if (!$business) return false;
+    
+    $openingHour = $business['opening_hour'] ?? '09:00:00';
+    $closingHour = $business['closing_hour'] ?? '18:00:00';
+    
+    // Calculate time range for the new appointment
+    $newStart = new DateTime($appointDate);
+    $newEnd = clone $newStart;
+    $newEnd->modify("+{$duration} minutes");
+    
+    // Check if appointment is within business hours
+    $appointmentDate = $newStart->format('Y-m-d');
+    $businessOpen = new DateTime($appointmentDate . ' ' . $openingHour);
+    $businessClose = new DateTime($appointmentDate . ' ' . $closingHour);
+    
+    if ($newStart < $businessOpen || $newEnd > $businessClose) {
+        return false; // Outside business hours
+    }
+    
+    // Check for conflicting appointments
+    if ($employId) {
+        // Check specific staff member
+        $sql = "SELECT a.appointment_id, a.appoint_date, s.duration
+                FROM appointments a
+                JOIN services s ON a.service_id = s.service_id
+                WHERE a.employ_id = ?
+                AND a.appoint_status IN ('confirmed', 'pending')
+                AND DATE(a.appoint_date) = DATE(?)";
+        
+        if ($excludeAppointmentId) {
+            $sql .= " AND a.appointment_id != ?";
+        }
+        
+        $stmt = $conn->prepare($sql);
+        if ($excludeAppointmentId) {
+            $stmt->bind_param("isi", $employId, $appointDate, $excludeAppointmentId);
+        } else {
+            $stmt->bind_param("is", $employId, $appointDate);
+        }
+    } else {
+        // Check ALL staff for this business (for "Any Available" bookings)
+        $sql = "SELECT a.appointment_id, a.appoint_date, s.duration, a.employ_id
+                FROM appointments a
+                JOIN services s ON a.service_id = s.service_id
+                WHERE s.business_id = ?
+                AND a.appoint_status IN ('confirmed', 'pending')
+                AND DATE(a.appoint_date) = DATE(?)";
+        
+        if ($excludeAppointmentId) {
+            $sql .= " AND a.appointment_id != ?";
+        }
+        
+        $stmt = $conn->prepare($sql);
+        if ($excludeAppointmentId) {
+            $stmt->bind_param("isi", $businessId, $appointDate, $excludeAppointmentId);
+        } else {
+            $stmt->bind_param("is", $businessId, $appointDate);
+        }
+    }
+    
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    // Check each existing appointment for time conflicts
+    while ($row = $result->fetch_assoc()) {
+        $existingStart = new DateTime($row['appoint_date']);
+        $existingEnd = clone $existingStart;
+        $existingEnd->modify("+{$row['duration']} minutes");
+        
+        // Check if times overlap
+        if ($newStart < $existingEnd && $newEnd > $existingStart) {
+            $stmt->close();
+            return false; // Conflict found
+        }
+    }
+    
+    $stmt->close();
+    return true; // No conflicts
+}
+
+// Get unavailable time slots for a specific date and service
+function getUnavailableTimeSlots($businessId, $date, $employId = null) {
+    $conn = getDbConnection();
+    
+    if ($employId) {
+        // Get unavailable slots for specific staff
+        $sql = "SELECT a.appoint_date, s.duration
+                FROM appointments a
+                JOIN services s ON a.service_id = s.service_id
+                WHERE a.employ_id = ?
+                AND a.appoint_status IN ('confirmed', 'pending')
+                AND DATE(a.appoint_date) = ?
+                ORDER BY a.appoint_date ASC";
+        
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param("is", $employId, $date);
+    } else {
+        // Get unavailable slots for all staff in the business
+        $sql = "SELECT a.appoint_date, s.duration, a.employ_id
+                FROM appointments a
+                JOIN services s ON a.service_id = s.service_id
+                JOIN employees e ON a.employ_id = e.employ_id
+                WHERE e.business_id = ?
+                AND a.appoint_status IN ('confirmed', 'pending')
+                AND DATE(a.appoint_date) = ?
+                ORDER BY a.appoint_date ASC";
+        
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param("is", $businessId, $date);
+    }
+    
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    $unavailableSlots = [];
+    while ($row = $result->fetch_assoc()) {
+        $start = new DateTime($row['appoint_date']);
+        $end = clone $start;
+        $end->modify("+{$row['duration']} minutes");
+        
+        $unavailableSlots[] = [
+            'start' => $start->format('H:i:s'),
+            'end' => $end->format('H:i:s'),
+            'employ_id' => $row['employ_id'] ?? null
+        ];
+    }
+    
+    $stmt->close();
+    return $unavailableSlots;
+}
+
+// Mark conflicting appointments as unavailable when one is confirmed
+function markConflictingAppointments($appointmentId) {
+    $conn = getDbConnection();
+    
+    // Get the confirmed appointment details
+    $appointment = getAppointmentById($appointmentId);
+    if (!$appointment) return false;
+    
+    $service = getServiceById($appointment['service_id']);
+    if (!$service) return false;
+    
+    $duration = $service['duration'];
+    
+    // Calculate time range
+    $confirmedStart = new DateTime($appointment['appoint_date']);
+    $confirmedEnd = clone $confirmedStart;
+    $confirmedEnd->modify("+{$duration} minutes");
+    
+    // Find conflicting appointments
+    if ($appointment['employ_id']) {
+        // Check same staff member
+        $sql = "SELECT a.appointment_id, a.appoint_date, s.duration, a.customer_id
+                FROM appointments a
+                JOIN services s ON a.service_id = s.service_id
+                WHERE a.employ_id = ?
+                AND a.appointment_id != ?
+                AND a.appoint_status = 'pending'
+                AND DATE(a.appoint_date) = DATE(?)";
+        
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param("iis", $appointment['employ_id'], $appointmentId, $appointment['appoint_date']);
+    } else {
+        // Check all staff in the business
+        $sql = "SELECT a.appointment_id, a.appoint_date, s.duration, a.customer_id
+                FROM appointments a
+                JOIN services s ON a.service_id = s.service_id
+                WHERE s.business_id = ?
+                AND a.appointment_id != ?
+                AND a.appoint_status = 'pending'
+                AND DATE(a.appoint_date) = DATE(?)";
+        
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param("iis", $service['business_id'], $appointmentId, $appointment['appoint_date']);
+    }
+    
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    $conflictingIds = [];
+    
+    while ($row = $result->fetch_assoc()) {
+        $existingStart = new DateTime($row['appoint_date']);
+        $existingEnd = clone $existingStart;
+        $existingEnd->modify("+{$row['duration']} minutes");
+        
+        // Check if times overlap
+        if ($confirmedStart < $existingEnd && $confirmedEnd > $existingStart) {
+            $conflictingIds[] = [
+                'appointment_id' => $row['appointment_id'],
+                'customer_id' => $row['customer_id']
+            ];
+        }
+    }
+    
+    $stmt->close();
+    
+    // Update conflicting appointments
+    if (!empty($conflictingIds)) {
+        $updateStmt = $conn->prepare("UPDATE appointments SET appoint_status = 'unavailable' WHERE appointment_id = ?");
+        
+        foreach ($conflictingIds as $conflict) {
+            $updateStmt->bind_param("i", $conflict['appointment_id']);
+            $updateStmt->execute();
+            
+            // Notify customers about unavailability
+            createAppointmentNotification(
+                $conflict['customer_id'],
+                $service['business_id'],
+                $conflict['appointment_id'],
+                'unavailable'
+            );
+        }
+        
+        $updateStmt->close();
+    }
+    
+    return count($conflictingIds);
+}
+
+// UPDATED: Get available time slots using business hours
+function getAvailableTimeSlotsForBooking($businessId, $date, $serviceIds = [], $employId = null) {
+    $conn = getDbConnection();
+    
+    // Get business hours from database
+    $business = getBusinessById($businessId);
+    if (!$business) {
+        return [];
+    }
+    
+    // Use business hours or default to 9 AM - 6 PM
+    $openingHour = !empty($business['opening_hour']) ? $business['opening_hour'] : '09:00:00';
+    $closingHour = !empty($business['closing_hour']) ? $business['closing_hour'] : '18:00:00';
+    
+    // Generate all possible time slots based on business hours
+    $allSlots = [];
+    $currentTime = new DateTime($date . ' ' . $openingHour);
+    $endTime = new DateTime($date . ' ' . $closingHour);
+    
+    // Generate hourly slots from opening to closing
+    while ($currentTime < $endTime) {
+        $slotTime = $currentTime->format('H:i');
+        $allSlots[] = [
+            'time' => $slotTime,
+            'display' => $currentTime->format('g:i A'),
+            'available' => true
+        ];
+        $currentTime->modify('+1 hour');
+    }
+    
+    // Check availability for each slot
+    foreach ($allSlots as &$slot) {
+        $slotDateTime = $date . ' ' . $slot['time'] . ':00';
+        
+        if (empty($serviceIds)) {
+            // No services selected - check general availability
+            $unavailableSlots = getUnavailableTimeSlots($businessId, $date, $employId);
+            $slotTime = new DateTime($slotDateTime);
+            $slot['available'] = true;
+            
+            foreach ($unavailableSlots as $bookedSlot) {
+                $bookedStart = new DateTime($date . ' ' . $bookedSlot['start']);
+                $bookedEnd = new DateTime($date . ' ' . $bookedSlot['end']);
+                
+                if ($slotTime >= $bookedStart && $slotTime < $bookedEnd) {
+                    $slot['available'] = false;
+                    break;
+                }
+            }
+        } else {
+            // Check if ANY selected service can be booked at this time
+            $anyServiceAvailable = false;
+            foreach ($serviceIds as $serviceId) {
+                if (isTimeSlotAvailable($serviceId, $employId, $slotDateTime)) {
+                    $anyServiceAvailable = true;
+                    break;
+                }
+            }
+            $slot['available'] = $anyServiceAvailable;
+        }
+    }
+    
+    return $allSlots;
+}
+
 ?>
