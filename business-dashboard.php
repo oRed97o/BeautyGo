@@ -402,10 +402,10 @@ include 'includes/header.php';
 
 <main>
     <div class="container my-4">
-        <a href="index.php" class="back-button">
+     <!--  <a href="index.php" class="back-button">
             <i class="bi bi-arrow-left-circle"></i>
             <span>Back to Home</span>
-        </a>
+        </a>   -->
 
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h2><i class="bi bi-speedometer2"></i> Business Dashboard</h2>
@@ -496,7 +496,6 @@ include 'includes/header.php';
                     <div class="card-body">
                         <h4 class="mb-3">
                             <i class="bi bi-calendar-check"></i> Manage Bookings
-                            <small class="text-muted">(Customer will be notified automatically)</small>
                         </h4>
                         <?php if (empty($bookings)): ?>
                             <div class="empty-state text-center py-5">

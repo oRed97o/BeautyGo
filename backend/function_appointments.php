@@ -449,6 +449,38 @@ function markConflictingAppointments($appointmentId) {
     
     return count($conflictingIds);
 }
+function getUpcomingBookingsCount($customer_id) {
+    // Use your shared DB connection
+    $conn = getDbConnection();
+
+    // Current date/time
+    $now = date("Y-m-d H:i:s");
+
+    $sql = "SELECT COUNT(*) AS total 
+            FROM appointments
+            WHERE customer_id = ?
+              AND appoint_status IN ('pending', 'confirmed')
+              AND appoint_date >= ?";
+
+    // Prepare statement
+    if (!$stmt = $conn->prepare($sql)) {
+        return 0; // Safety return if prepare fails
+    }
+
+    // Bind parameters: i = integer, s = string
+    $stmt->bind_param("is", $customer_id, $now);
+
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    if ($result && $row = $result->fetch_assoc()) {
+        return (int)$row['total'];
+    }
+
+    return 0; // Default fallback
+}
+
+
 
 // UPDATED: Get available time slots using business hours
 function getAvailableTimeSlotsForBooking($businessId, $date, $serviceIds = [], $employId = null) {
