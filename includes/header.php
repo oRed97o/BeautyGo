@@ -15,6 +15,40 @@
     <link rel="stylesheet" href="css/styles.css?v=<?php echo time(); ?>">
     
     <style>
+        /* Enhanced BeautyGo Logo Styling */
+        .navbar-brand.brand-logo-new {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--color-burgundy);
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .navbar-brand.brand-logo-new i {
+            font-size: 1.8rem;
+            transition: all 0.3s ease;
+        }
+        
+        .navbar-brand.brand-logo-new span {
+            transition: all 0.3s ease;
+        }
+        
+        .navbar-brand.brand-logo-new:hover {
+            color: var(--color-rose);
+            transform: translateY(-2px);
+        }
+        
+        .navbar-brand.brand-logo-new:hover i {
+            transform: rotate(15deg) scale(1.15);
+            color: var(--color-rose);
+        }
+        
+        .navbar-brand.brand-logo-new:hover span {
+            letter-spacing: 1px;
+        }
+        
         /* Notification bell styling */
         .notification-bell {
             position: relative;
@@ -43,7 +77,21 @@
             transform: scale(1.1);
         }
         
-        .notification-badge, .favorites-badge {
+        /* Bookings calendar styling */
+        .bookings-calendar {
+            position: relative;
+            font-size: 1.3rem;
+            color: var(--color-burgundy);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .bookings-calendar:hover {
+            color: var(--color-rose);
+            transform: scale(1.1);
+        }
+        
+        .notification-badge, .favorites-badge, .bookings-badge {
             position: absolute;
             top: -8px;
             right: -8px;
@@ -76,7 +124,7 @@
         }
         
         .notification-item:hover {
-            background-color: #f8f9fa;
+            background-color: #fff5f5;
         }
         
         .notification-item.unread {
@@ -123,6 +171,125 @@
             position: absolute !important;
             z-index: 1050;
         }
+
+        /* Custom Sign Up Dropdown Styling */
+        .signup-dropdown-menu {
+            min-width: 200px;
+            padding: 0.5rem 0;
+        }
+
+        .signup-dropdown-item {
+            padding: 0.75rem 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            transition: all 0.3s ease;
+        }
+
+        .signup-dropdown-item i {
+            font-size: 1.5rem;
+            width: 30px;
+            text-align: center;
+        }
+
+        .signup-dropdown-item:hover {
+            background-color: #fff5f5;
+            padding-left: 2rem;
+        }
+
+        .signup-dropdown-item.user-signup i {
+            color: var(--color-burgundy);
+        }
+
+        .signup-dropdown-item.business-signup i {
+            color: var(--color-rose);
+        }
+
+        /* Enhanced Profile Dropdown Styling */
+        .nav-item.profile-dropdown .nav-link {
+            font-size: 1.15rem;
+            font-weight: 600;
+            padding: 8px 16px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        
+        .nav-item.profile-dropdown .nav-link i {
+            font-size: 1.4rem;
+            margin-right: 6px;
+        }
+        
+        .nav-item.profile-dropdown .nav-link:hover {
+            background-color: #fff5f5;
+            color: var(--color-rose);
+            transform: translateY(-2px);
+        }
+        
+        /* Profile Dropdown Menu - Pink Theme */
+        .profile-dropdown .dropdown-menu {
+            min-width: 250px;
+            border: 2px solid #ffc0cb;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(255, 192, 203, 0.3);
+            padding: 0.75rem 0;
+        }
+        
+        .profile-dropdown .dropdown-item {
+            padding: 0.75rem 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+        
+        .profile-dropdown .dropdown-item i {
+            font-size: 1.3rem;
+            width: 25px;
+            text-align: center;
+            color: var(--color-burgundy);
+            transition: all 0.3s ease;
+        }
+        
+        .profile-dropdown .dropdown-item:hover {
+            background-color: #fff5f5;
+            color: var(--color-rose);
+            padding-left: 2rem;
+            transform: translateX(4px);
+        }
+        
+        .profile-dropdown .dropdown-item:hover i {
+            color: var(--color-rose);
+            transform: scale(1.15);
+        }
+        
+        .profile-dropdown .dropdown-divider {
+            border-top: 2px solid #ffe0e6;
+            margin: 0.5rem 0;
+        }
+        
+        .profile-dropdown .dropdown-item.text-danger {
+            color: #dc3545 !important;
+        }
+        
+        .profile-dropdown .dropdown-item.text-danger:hover {
+            background-color: #fff5f5;
+            color: #c82333 !important;
+        }
+        
+        .profile-dropdown .dropdown-item.text-danger i {
+            color: #dc3545;
+        }
+
+        /* Hover to show dropdown */
+        .nav-item.dropdown:hover > .dropdown-menu {
+            display: block;
+            margin-top: 0;
+        }
+
+        .nav-item.dropdown > .dropdown-toggle:active {
+            pointer-events: none;
+        }
     </style>
 </head>
 <body>
@@ -138,24 +305,8 @@
             </button>
             
             <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav mx-auto">
-                    <?php if (!isLoggedIn()): ?>
-                        <li class="nav-item">
-                            <a class="nav-link nav-link-new" href="register-business.php">
-                                <i class="bi bi-shop"></i> List Your Business
-                            </a>
-                        </li>
-                    <?php endif; ?>
-                    <?php if (isCustomerLoggedIn()): ?>
-                        <li class="nav-item">
-                            <a class="nav-link nav-link-new" href="my-bookings.php">
-                                <i class="bi bi-calendar-check"></i> My Bookings
-                            </a>
-                        </li>
-                    <?php endif; ?>
-                </ul>
-                
-                <ul class="navbar-nav">
+                <!-- Right Menu Items -->
+                <ul class="navbar-nav ms-auto">
                     <?php if (isLoggedIn()): ?>
                         <?php 
                         // Get appropriate user data based on login type
@@ -167,6 +318,22 @@
                             $displayName = $currentUser['fname'] ?? 'User';
                         }
                         ?>
+                        
+                        <!-- My Bookings Icon (Only for Customers) -->
+                        <?php if (isCustomerLoggedIn()): ?>
+                            <?php 
+                            // Get pending/upcoming bookings count (you can create a function for this)
+                            $upcomingBookingsCount = function_exists('getUpcomingBookingsCount') ? getUpcomingBookingsCount($currentUser['customer_id']) : 0;
+                            ?>
+                            <li class="nav-item me-3">
+                                <a class="nav-link position-relative" href="my-bookings.php" title="My Bookings">
+                                    <i class="bi bi-calendar-check-fill bookings-calendar"></i>
+                                    <?php if ($upcomingBookingsCount > 0): ?>
+                                        <span class="bookings-badge"><?php echo $upcomingBookingsCount; ?></span>
+                                    <?php endif; ?>
+                                </a>
+                            </li>
+                        <?php endif; ?>
                         
                         <!-- Favorites Button (Only for Customers) -->
                         <?php if (isCustomerLoggedIn()): ?>
@@ -300,7 +467,7 @@
                         
                         <!-- User/Business Profile Dropdown -->
                         <?php if (isBusinessLoggedIn()): ?>
-                            <li class="nav-item dropdown">
+                            <li class="nav-item dropdown profile-dropdown">
                                 <a class="nav-link dropdown-toggle" href="#" id="businessDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                     <i class="bi bi-buildings"></i> <?php echo htmlspecialchars($displayName); ?>
                                 </a>
@@ -317,7 +484,7 @@
                                 </ul>
                             </li>
                         <?php else: ?>
-                            <li class="nav-item dropdown">
+                            <li class="nav-item dropdown profile-dropdown">
                                 <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                     <i class="bi bi-person-circle"></i> <?php echo htmlspecialchars($displayName); ?>
                                 </a>
@@ -336,11 +503,31 @@
                             </li>
                         <?php endif; ?>
                     <?php else: ?>
+                        <!-- Login Button -->
                         <li class="nav-item">
                             <a class="btn btn-outline-burgundy me-2" href="login.php">Login</a>
                         </li>
-                        <li class="nav-item">
-                            <a class="btn btn-burgundy" href="register-user.php">Sign Up</a>
+                        
+                        <!-- Sign Up Dropdown -->
+                        <li class="nav-item dropdown">
+                            <a class="btn btn-burgundy dropdown-toggle" href="#" id="signupDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                Sign Up
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end signup-dropdown-menu" aria-labelledby="signupDropdown">
+                                <li>
+                                    <a class="dropdown-item signup-dropdown-item user-signup" href="register-user.php">
+                                        <i class="bi bi-person-fill"></i>
+                                        <span>Sign up as User</span>
+                                    </a>
+                                </li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <a class="dropdown-item signup-dropdown-item business-signup" href="register-business.php">
+                                        <i class="bi bi-shop"></i>
+                                        <span>Sign up as Business</span>
+                                    </a>
+                                </li>
+                            </ul>
                         </li>
                     <?php endif; ?>
                 </ul>
