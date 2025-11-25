@@ -7,10 +7,10 @@
 // OPTION 1: Use virtual environment Python (recommended)
 //$pythonPath = __DIR__ . '/.venv/Scripts/python.exe';
 
-$pythonPath = __DIR__ . '/var/www/BeautyGo/FaceShapeAI/ven311/bin/python';
+$pythonPath = '/var/www/BeautyGo/FaceShapeAI/ven311/bin/python';
 
 
-// OPTION 2: Use system Python instead (only if venv is not used)
+// OPTION 2: Use sysstem Python instead (only if venv is not used)
 // $pythonPath = 'python';   // or 'python3' depending on machine
 
 ?>
