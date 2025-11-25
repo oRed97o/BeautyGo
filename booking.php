@@ -448,8 +448,12 @@ async function loadFullyBookedDates() {
     
     try {
         const url = `ajax/get_available_slots.php?action=get_booked_dates&business_id=${businessId}&employ_id=${employId}`;
+        console.log('Loading booked dates from:', url);
+        
         const response = await fetch(url);
         const data = await response.json();
+        
+        console.log('Booked dates response:', data);
         
         if (data.success) {
             fullyBookedDates = data.fully_booked_dates || [];
@@ -494,19 +498,26 @@ async function checkAvailability() {
     
     try {
         const url = `ajax/get_available_slots.php?business_id=${businessId}&date=${date}&employ_id=${employId}&service_ids=${serviceIds}`;
+        console.log('Fetching slots from:', url);
+        
         const response = await fetch(url);
         const data = await response.json();
         
+        console.log('Slots response:', data);
+        
         if (data.success) {
             availableSlots = data.slots;
+            console.log('Total slots:', availableSlots.length);
+            console.log('Available slots:', availableSlots.filter(s => s.available).length);
+            console.log('Booked slots:', availableSlots.filter(s => !s.available).length);
             updateTimeSlots();
         } else {
             console.error('Error fetching slots:', data.error);
-            timeSelect.innerHTML = '<option value="">Error loading times. Please try again.</option>';
+            timeSelect.innerHTML = '<option value="">Error: ' + data.error + '</option>';
         }
     } catch (error) {
-        console.error('Error:', error);
-        timeSelect.innerHTML = '<option value="">Error loading times. Please try again.</option>';
+        console.error('Fetch error:', error);
+        timeSelect.innerHTML = '<option value="">Network error. Please try again.</option>';
     }
     
     timeSelect.disabled = false;
@@ -587,6 +598,7 @@ function initializeDatePicker() {
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('Page loaded, initializing booking system...');
     updateServiceSelection();
     initializeDatePicker();
     loadFullyBookedDates();

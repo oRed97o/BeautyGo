@@ -1,261 +1,482 @@
 <?php
+// Enable error reporting for debugging
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-require_once '../db_connection/config.php';
-require_once '../backend/function_appointments.php';
-require_once '../backend/function_services.php';
-require_once '../backend/function_businesses.php';
+// Start output buffering to prevent any accidental output
+ob_start();
 
+// Set JSON header early
 header('Content-Type: application/json');
 
 try {
-    // Get fully booked dates for a business
-    if (isset($_GET['action']) && $_GET['action'] === 'get_booked_dates') {
-        $businessId = intval($_GET['business_id']);
-        $employId = isset($_GET['employ_id']) && !empty($_GET['employ_id']) ? intval($_GET['employ_id']) : null;
+    // Include config file
+    require_once __DIR__ . '/../db_connection/config.php';
+    
+    // Get database connection using your config function
+    $conn = getDbConnection();
+    
+    if (!$conn) {
+        throw new Exception("Failed to get database connection");
+    }
+    
+    // Log the request
+    error_log("get_available_slots.php called with: " . print_r($_GET, true));
+    
+    $action = $_GET['action'] ?? 'get_slots';
+
+    if ($action === 'get_booked_dates') {
+        $businessId = $_GET['business_id'] ?? '';
+        $employId = $_GET['employ_id'] ?? '';
         
-        $conn = getDbConnection();
+        if (empty($businessId)) {
+            throw new Exception('Missing business_id');
+        }
         
-        // Get all confirmed/pending appointments for the next 3 months
-        $startDate = date('Y-m-d');
-        $endDate = date('Y-m-d', strtotime('+3 months'));
+        // Get fully booked dates
+        $fullyBookedDates = getFullyBookedDates($conn, intval($businessId), $employId);
         
-        if ($employId) {
-            // Get bookings for specific staff
-            $sql = "SELECT DATE(a.appoint_date) as booking_date, 
-                           TIME(a.appoint_date) as booking_time,
-                           s.duration
-                    FROM appointments a
-                    JOIN services s ON a.service_id = s.service_id
-                    WHERE a.employ_id = ?
-                    AND a.appoint_status IN ('confirmed', 'pending')
-                    AND DATE(a.appoint_date) BETWEEN ? AND ?
-                    ORDER BY a.appoint_date";
-            
-            $stmt = $conn->prepare($sql);
-            $stmt->bind_param("iss", $employId, $startDate, $endDate);
+        // Clear any output buffer
+        ob_clean();
+        
+        echo json_encode([
+            'success' => true,
+            'fully_booked_dates' => $fullyBookedDates
+        ]);
+        
+        exit;
+    }
+
+    // Get available time slots (default action)
+    $businessId = $_GET['business_id'] ?? '';
+    $date = $_GET['date'] ?? '';
+    $employId = $_GET['employ_id'] ?? '';
+    $serviceIds = $_GET['service_ids'] ?? '';
+
+    if (empty($businessId)) {
+        throw new Exception('Missing business_id');
+    }
+
+    if (empty($date)) {
+        throw new Exception('Missing date');
+    }
+    
+    // Validate and sanitize inputs
+    $businessId = intval($businessId);
+    $employId = !empty($employId) ? intval($employId) : null;
+    
+    // Parse service IDs
+    $selectedServiceIds = [];
+    if (!empty($serviceIds)) {
+        $selectedServiceIds = array_map('intval', explode(',', $serviceIds));
+    }
+
+    // Get business details
+    $stmt = $conn->prepare("SELECT opening_hour, closing_hour FROM businesses WHERE business_id = ?");
+    if (!$stmt) {
+        throw new Exception("Database prepare failed: " . $conn->error);
+    }
+    
+    $stmt->bind_param("i", $businessId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $business = $result->fetch_assoc();
+
+    if (!$business) {
+        throw new Exception('Business not found with ID: ' . $businessId);
+    }
+
+    $openingHour = $business['opening_hour'];
+    $closingHour = $business['closing_hour'];
+
+    // Generate time slots
+    $slots = [];
+    $currentTime = strtotime($openingHour);
+    $endTime = strtotime($closingHour);
+
+    // If opening and closing are too close, provide default hours
+    if (($endTime - $currentTime) < 3600) {
+        error_log("Business hours too short (opening: $openingHour, closing: $closingHour), using default 9 AM to 6 PM");
+        $currentTime = strtotime('09:00:00');
+        $endTime = strtotime('18:00:00');
+    }
+
+    while ($currentTime < $endTime) {
+        $timeStr = date('H:i', $currentTime);
+        $displayTime = date('g:i A', $currentTime);
+        
+        // Check if this time slot is available considering service duration
+        $isAvailable = isTimeSlotAvailableWithDuration($conn, $businessId, $date, $timeStr, $employId, $selectedServiceIds);
+        
+        $slots[] = [
+            'time' => $timeStr,
+            'display' => $displayTime,
+            'available' => $isAvailable
+        ];
+        
+        // Move to next 30-minute slot
+        $currentTime = strtotime('+30 minutes', $currentTime);
+    }
+
+    // Clear any output buffer
+    ob_clean();
+    
+    echo json_encode([
+        'success' => true,
+        'slots' => $slots,
+        'date' => $date,
+        'total_slots' => count($slots),
+        'available_count' => count(array_filter($slots, function($s) { return $s['available']; })),
+        'business_hours' => [
+            'opening' => $openingHour,
+            'closing' => $closingHour
+        ]
+    ]);
+
+} catch (Exception $e) {
+    error_log("Error in get_available_slots.php: " . $e->getMessage());
+    
+    // Clear any output buffer
+    ob_clean();
+    
+    echo json_encode([
+        'success' => false,
+        'error' => $e->getMessage(),
+        'file' => basename(__FILE__),
+        'trace' => $e->getTraceAsString()
+    ]);
+}
+
+// End output buffering and send
+ob_end_flush();
+
+/**
+ * Check if a time slot is available considering SERVICE DURATION
+ * CRITICAL: A 120-minute service starting at 2:00 PM blocks slots until 4:00 PM
+ */
+function isTimeSlotAvailableWithDuration($conn, $businessId, $date, $time, $employId = null, $selectedServiceIds = []) {
+    try {
+        $appointmentTime = $time . ':00';
+        $slotDateTime = new DateTime($date . ' ' . $appointmentTime);
+        
+        // Get maximum service duration from selected services
+        $maxDuration = 30; // Default 30 minutes
+        if (!empty($selectedServiceIds)) {
+            $serviceIdsStr = implode(',', $selectedServiceIds);
+            $durationQuery = "SELECT MAX(duration) as max_duration FROM services WHERE service_id IN ($serviceIdsStr)";
+            $durationStmt = $conn->prepare($durationQuery);
+            if ($durationStmt) {
+                $durationStmt->execute();
+                $durationResult = $durationStmt->get_result();
+                if ($row = $durationResult->fetch_assoc()) {
+                    $maxDuration = intval($row['max_duration']);
+                }
+                $durationStmt->close();
+            }
+        }
+        
+        // Calculate the end time of the proposed appointment
+        $proposedEnd = clone $slotDateTime;
+        $proposedEnd->modify("+{$maxDuration} minutes");
+        
+        error_log("Checking slot at $time (duration: {$maxDuration}min, ends at " . $proposedEnd->format('H:i') . ")");
+        
+        // Get total number of available employees for this business
+        $employeeQuery = "SELECT COUNT(*) as total 
+                         FROM employees 
+                         WHERE business_id = ? 
+                         AND employ_status = 'available'";
+        
+        if (!empty($employId)) {
+            $employeeQuery .= " AND employ_id = ?";
+        }
+        
+        $employeeStmt = $conn->prepare($employeeQuery);
+        if (!$employeeStmt) {
+            error_log("Employee query prepare failed: " . $conn->error);
+            return true;
+        }
+        
+        if (!empty($employId)) {
+            $employeeStmt->bind_param("ii", $businessId, $employId);
         } else {
-            // Get bookings for all staff in business
-            $sql = "SELECT DATE(a.appoint_date) as booking_date, 
-                           TIME(a.appoint_date) as booking_time,
-                           s.duration,
-                           a.employ_id
-                    FROM appointments a
-                    JOIN services s ON a.service_id = s.service_id
-                    WHERE s.business_id = ?
-                    AND a.appoint_status IN ('confirmed', 'pending')
-                    AND DATE(a.appoint_date) BETWEEN ? AND ?
-                    ORDER BY a.appoint_date";
+            $employeeStmt->bind_param("i", $businessId);
+        }
+        
+        $employeeStmt->execute();
+        $employeeResult = $employeeStmt->get_result();
+        $employeeRow = $employeeResult->fetch_assoc();
+        $totalEmployees = max(1, intval($employeeRow['total']));
+        $employeeStmt->close();
+        
+        // Get all appointments on this date that could conflict
+        $query = "SELECT a.appointment_id, a.employ_id, a.appoint_date, s.duration
+                  FROM appointments a 
+                  JOIN services s ON a.service_id = s.service_id 
+                  WHERE s.business_id = ? 
+                  AND DATE(a.appoint_date) = ? 
+                  AND a.appoint_status IN ('pending', 'confirmed')";
+        
+        $params = [$businessId, $date];
+        $types = "is";
+        
+        // If specific employee is selected, only check that employee's bookings
+        if (!empty($employId)) {
+            $query .= " AND a.employ_id = ?";
+            $params[] = $employId;
+            $types .= "i";
+        }
+        
+        $stmt = $conn->prepare($query);
+        if (!$stmt) {
+            error_log("Prepare failed in isTimeSlotAvailableWithDuration: " . $conn->error);
+            return true;
+        }
+        
+        $stmt->bind_param($types, ...$params);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        
+        // Track which employees are busy during the proposed time slot
+        $busyEmployees = [];
+        
+        while ($row = $result->fetch_assoc()) {
+            $existingStart = new DateTime($row['appoint_date']);
+            $existingEnd = clone $existingStart;
+            $existingEnd->modify("+{$row['duration']} minutes");
             
-            $stmt = $conn->prepare($sql);
+            // Check if the proposed appointment overlaps with this existing appointment
+            // Overlap occurs if: (proposedStart < existingEnd) AND (proposedEnd > existingStart)
+            $overlaps = ($slotDateTime < $existingEnd && $proposedEnd > $existingStart);
+            
+            if ($overlaps) {
+                $employeeId = $row['employ_id'];
+                if ($employeeId) {
+                    $busyEmployees[$employeeId] = true;
+                }
+                
+                error_log("  - Conflict found: Existing appointment from " . 
+                         $existingStart->format('H:i') . " to " . $existingEnd->format('H:i') . 
+                         " (duration: {$row['duration']}min) for employee $employeeId");
+            }
+        }
+        $stmt->close();
+        
+        $busyCount = count($busyEmployees);
+        
+        // LOGIC:
+        // - If specific employee selected: available if that employee is NOT in busyEmployees
+        // - If no employee selected: available if busyCount < totalEmployees (at least one free)
+        if (!empty($employId)) {
+            $isAvailable = !isset($busyEmployees[$employId]);
+            error_log("  → Employee $employId is " . ($isAvailable ? 'AVAILABLE' : 'BUSY'));
+        } else {
+            $isAvailable = ($busyCount < $totalEmployees);
+            error_log("  → Busy staff: $busyCount / $totalEmployees total → " . ($isAvailable ? 'AVAILABLE' : 'FULLY BOOKED'));
+        }
+        
+        return $isAvailable;
+        
+    } catch (Exception $e) {
+        error_log("Error checking time slot: " . $e->getMessage());
+        return true; // Default to available if error occurs
+    }
+}
+
+/**
+ * Get fully booked dates for the next 90 days
+ * UPDATED: Considers service durations when calculating capacity
+ */
+function getFullyBookedDates($conn, $businessId, $employId = null) {
+    try {
+        $fullyBookedDates = [];
+        $startDate = date('Y-m-d');
+        $endDate = date('Y-m-d', strtotime('+90 days'));
+        
+        // Get business hours
+        $stmt = $conn->prepare("SELECT opening_hour, closing_hour FROM businesses WHERE business_id = ?");
+        if (!$stmt) {
+            error_log("Failed to prepare business query: " . $conn->error);
+            return $fullyBookedDates;
+        }
+        
+        $stmt->bind_param("i", $businessId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $business = $result->fetch_assoc();
+        
+        if (!$business) {
+            return $fullyBookedDates;
+        }
+        
+        $openingHour = $business['opening_hour'];
+        $closingHour = $business['closing_hour'];
+        
+        // Calculate total time slots per day (30-minute intervals)
+        $openTime = strtotime($openingHour);
+        $closeTime = strtotime($closingHour);
+        
+        // If hours are invalid, use default
+        if (($closeTime - $openTime) < 3600) {
+            $openTime = strtotime('09:00:00');
+            $closeTime = strtotime('18:00:00');
+        }
+        
+        $totalSlotsPerDay = ($closeTime - $openTime) / 1800; // 30-minute slots
+        
+        // Get total employees
+        $employeeQuery = "SELECT COUNT(*) as total 
+                         FROM employees 
+                         WHERE business_id = ? 
+                         AND employ_status = 'available'";
+        
+        if (!empty($employId)) {
+            $employeeQuery .= " AND employ_id = ?";
+        }
+        
+        $stmt = $conn->prepare($employeeQuery);
+        if (!$stmt) {
+            error_log("Failed to prepare employee query: " . $conn->error);
+            return $fullyBookedDates;
+        }
+        
+        if (!empty($employId)) {
+            $stmt->bind_param("ii", $businessId, intval($employId));
+        } else {
+            $stmt->bind_param("i", $businessId);
+        }
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $row = $result->fetch_assoc();
+        $totalEmployees = max(1, intval($row['total']));
+        
+        // Get appointments and calculate occupied time per date
+        $query = "SELECT DATE(a.appoint_date) as date, 
+                         a.appoint_date,
+                         s.duration,
+                         a.employ_id
+                  FROM appointments a 
+                  JOIN services s ON a.service_id = s.service_id 
+                  WHERE s.business_id = ? 
+                  AND DATE(a.appoint_date) BETWEEN ? AND ? 
+                  AND a.appoint_status IN ('pending', 'confirmed')";
+        
+        if (!empty($employId)) {
+            $query .= " AND a.employ_id = ?";
+        }
+        
+        $query .= " ORDER BY DATE(a.appoint_date), a.appoint_date";
+        
+        $stmt = $conn->prepare($query);
+        if (!$stmt) {
+            error_log("Failed to prepare bookings query: " . $conn->error);
+            return $fullyBookedDates;
+        }
+        
+        if (!empty($employId)) {
+            $employIdInt = intval($employId);
+            $stmt->bind_param("issi", $businessId, $startDate, $endDate, $employIdInt);
+        } else {
             $stmt->bind_param("iss", $businessId, $startDate, $endDate);
         }
         
         $stmt->execute();
         $result = $stmt->get_result();
         
-        $bookingsByDate = [];
+        // Group appointments by date
+        $appointmentsByDate = [];
         while ($row = $result->fetch_assoc()) {
-            $date = $row['booking_date'];
-            if (!isset($bookingsByDate[$date])) {
-                $bookingsByDate[$date] = [];
+            $date = $row['date'];
+            if (!isset($appointmentsByDate[$date])) {
+                $appointmentsByDate[$date] = [];
             }
-            $bookingsByDate[$date][] = [
-                'time' => $row['booking_time'],
-                'duration' => $row['duration'],
-                'employ_id' => $row['employ_id'] ?? null
-            ];
+            $appointmentsByDate[$date][] = $row;
         }
         
-        $stmt->close();
-        
-        // Determine which dates are fully booked
-        $fullyBookedDates = [];
-        $businessHours = ['09:00:00', '10:00:00', '11:00:00', '12:00:00', '13:00:00', '14:00:00', '15:00:00', '16:00:00', '17:00:00', '18:00:00'];
-        
-        foreach ($bookingsByDate as $date => $bookings) {
-            $bookedSlots = count($bookings);
-            $totalSlots = count($businessHours);
+        // Check each date to see if it's fully booked
+        foreach ($appointmentsByDate as $checkDate => $appointments) {
+            $dayStart = new DateTime($checkDate . ' ' . $openingHour);
+            $dayEnd = new DateTime($checkDate . ' ' . $closingHour);
             
-            // If all time slots are booked, mark date as fully booked
-            if ($bookedSlots >= $totalSlots) {
-                $fullyBookedDates[] = $date;
-            }
-        }
-        
-        echo json_encode([
-            'success' => true,
-            'fully_booked_dates' => $fullyBookedDates,
-            'bookings_by_date' => $bookingsByDate
-        ]);
-        exit;
-    }
-
-    // Get available time slots for a specific date
-    if (!isset($_GET['business_id']) || !isset($_GET['date'])) {
-        echo json_encode([
-            'success' => false,
-            'error' => 'Missing parameters',
-            'params' => $_GET
-        ]);
-        exit;
-    }
-
-    $businessId = intval($_GET['business_id']);
-    $date = $_GET['date'];
-    $employId = isset($_GET['employ_id']) && !empty($_GET['employ_id']) ? intval($_GET['employ_id']) : null;
-    $serviceIds = isset($_GET['service_ids']) ? explode(',', $_GET['service_ids']) : [];
-
-    // Remove empty values from serviceIds array
-    $serviceIds = array_filter($serviceIds);
-
-    // Business hours
-    $businessHours = [
-        '09:00' => '9:00 AM',
-        '10:00' => '10:00 AM',
-        '11:00' => '11:00 AM',
-        '12:00' => '12:00 PM',
-        '13:00' => '1:00 PM',
-        '14:00' => '2:00 PM',
-        '15:00' => '3:00 PM',
-        '16:00' => '4:00 PM',
-        '17:00' => '5:00 PM',
-        '18:00' => '6:00 PM'
-    ];
-
-    $allSlots = [];
-
-    foreach ($businessHours as $time => $display) {
-        $slotDateTime = $date . ' ' . $time . ':00';
-        
-        // Check availability
-        $available = true;
-        
-        if (!empty($serviceIds)) {
-            // Check if ANY of the selected services can be booked at this time
-            $anyServiceAvailable = false;
-            
-            foreach ($serviceIds as $serviceId) {
-                // Verify the function exists
-                if (function_exists('isTimeSlotAvailable')) {
-                    if (isTimeSlotAvailable($serviceId, $employId, $slotDateTime)) {
-                        $anyServiceAvailable = true;
+            // For specific employee: check if all time slots are blocked
+            if (!empty($employId)) {
+                $allSlotsBlocked = true;
+                $currentSlot = clone $dayStart;
+                
+                while ($currentSlot < $dayEnd) {
+                    $slotIsBlocked = false;
+                    $slotEnd = clone $currentSlot;
+                    $slotEnd->modify('+30 minutes');
+                    
+                    foreach ($appointments as $apt) {
+                        $aptStart = new DateTime($apt['appoint_date']);
+                        $aptEnd = clone $aptStart;
+                        $aptEnd->modify("+{$apt['duration']} minutes");
+                        
+                        // Check if this appointment blocks this slot
+                        if ($currentSlot < $aptEnd && $slotEnd > $aptStart) {
+                            $slotIsBlocked = true;
+                            break;
+                        }
+                    }
+                    
+                    if (!$slotIsBlocked) {
+                        $allSlotsBlocked = false;
                         break;
                     }
-                } else {
-                    // Fallback: manual availability check
-                    $conn = getDbConnection();
                     
-                    if ($employId) {
-                        $checkSql = "SELECT COUNT(*) as count 
-                                    FROM appointments a 
-                                    WHERE a.employ_id = ? 
-                                    AND a.appoint_date = ?
-                                    AND a.appoint_status IN ('confirmed', 'pending')";
-                        $checkStmt = $conn->prepare($checkSql);
-                        $checkStmt->bind_param("is", $employId, $slotDateTime);
-                    } else {
-                        $checkSql = "SELECT COUNT(*) as count 
-                                    FROM appointments a 
-                                    JOIN services s ON a.service_id = s.service_id
-                                    WHERE s.business_id = ? 
-                                    AND a.appoint_date = ?
-                                    AND a.appoint_status IN ('confirmed', 'pending')";
-                        $checkStmt = $conn->prepare($checkSql);
-                        $checkStmt->bind_param("is", $businessId, $slotDateTime);
+                    $currentSlot->modify('+30 minutes');
+                }
+                
+                if ($allSlotsBlocked) {
+                    $fullyBookedDates[] = $checkDate;
+                    error_log("Date $checkDate is FULLY BOOKED for employee $employId");
+                }
+            } 
+            // For all employees: check if all employees are busy for every time slot
+            else {
+                $allSlotsBlocked = true;
+                $currentSlot = clone $dayStart;
+                
+                while ($currentSlot < $dayEnd) {
+                    $slotEnd = clone $currentSlot;
+                    $slotEnd->modify('+30 minutes');
+                    
+                    // Count how many employees are busy during this slot
+                    $busyEmployees = [];
+                    foreach ($appointments as $apt) {
+                        $aptStart = new DateTime($apt['appoint_date']);
+                        $aptEnd = clone $aptStart;
+                        $aptEnd->modify("+{$apt['duration']} minutes");
+                        
+                        if ($currentSlot < $aptEnd && $slotEnd > $aptStart) {
+                            $busyEmployees[$apt['employ_id']] = true;
+                        }
                     }
                     
-                    $checkStmt->execute();
-                    $checkResult = $checkStmt->get_result();
-                    $checkRow = $checkResult->fetch_assoc();
-                    $checkStmt->close();
-                    
-                    if ($checkRow['count'] == 0) {
-                        $anyServiceAvailable = true;
+                    $busyCount = count($busyEmployees);
+                    if ($busyCount < $totalEmployees) {
+                        // At least one employee is free for this slot
+                        $allSlotsBlocked = false;
                         break;
                     }
-                }
-            }
-            
-            $available = $anyServiceAvailable;
-        } else {
-            // No services selected - check general availability using the function
-            if (function_exists('getUnavailableTimeSlots')) {
-                $unavailableSlots = getUnavailableTimeSlots($businessId, $date, $employId);
-                
-                $slotTime = new DateTime($slotDateTime);
-                $available = true;
-                
-                // Check if this slot conflicts with any booked slots
-                foreach ($unavailableSlots as $bookedSlot) {
-                    $bookedStart = new DateTime($date . ' ' . $bookedSlot['start']);
-                    $bookedEnd = new DateTime($date . ' ' . $bookedSlot['end']);
                     
-                    // If the slot falls within a booked period, mark as unavailable
-                    if ($slotTime >= $bookedStart && $slotTime < $bookedEnd) {
-                        $available = false;
-                        break;
-                    }
-                }
-            } else {
-                // Fallback: simple exact time check
-                $conn = getDbConnection();
-                
-                if ($employId) {
-                    $sql = "SELECT COUNT(*) as count 
-                            FROM appointments a 
-                            WHERE a.employ_id = ? 
-                            AND a.appoint_date = ?
-                            AND a.appoint_status IN ('confirmed', 'pending')";
-                    $stmt = $conn->prepare($sql);
-                    $stmt->bind_param("is", $employId, $slotDateTime);
-                } else {
-                    $sql = "SELECT COUNT(*) as count 
-                            FROM appointments a 
-                            JOIN services s ON a.service_id = s.service_id
-                            WHERE s.business_id = ? 
-                            AND a.appoint_date = ?
-                            AND a.appoint_status IN ('confirmed', 'pending')";
-                    $stmt = $conn->prepare($sql);
-                    $stmt->bind_param("is", $businessId, $slotDateTime);
+                    $currentSlot->modify('+30 minutes');
                 }
                 
-                $stmt->execute();
-                $result = $stmt->get_result();
-                $row = $result->fetch_assoc();
-                $stmt->close();
-                
-                // If there are bookings, consider it unavailable
-                $available = ($row['count'] == 0);
+                if ($allSlotsBlocked) {
+                    $fullyBookedDates[] = $checkDate;
+                    error_log("Date $checkDate is FULLY BOOKED: All $totalEmployees employees busy for all slots");
+                }
             }
         }
         
-        $allSlots[] = [
-            'time' => $time,
-            'display' => $display,
-            'available' => $available
-        ];
+        error_log("Found " . count($fullyBookedDates) . " fully booked dates");
+        return $fullyBookedDates;
+        
+    } catch (Exception $e) {
+        error_log("Error getting booked dates: " . $e->getMessage());
+        return [];
     }
-
-    echo json_encode([
-        'success' => true,
-        'slots' => $allSlots,
-        'date' => $date,
-        'debug' => [
-            'businessId' => $businessId,
-            'date' => $date,
-            'employId' => $employId,
-            'serviceIds' => $serviceIds,
-            'serviceCount' => count($serviceIds)
-        ]
-    ]);
-
-} catch (Exception $e) {
-    echo json_encode([
-        'success' => false,
-        'error' => $e->getMessage(),
-        'trace' => $e->getTraceAsString()
-    ]);
 }
 ?>

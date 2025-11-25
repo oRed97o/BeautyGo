@@ -1,6 +1,6 @@
 <?php
 // ============================================================
-// APPOINTMENT FUNCTIONS - UPDATED WITH BUSINESS HOURS
+// APPOINTMENT FUNCTIONS - UPDATED WITH STAFF-DEPENDENT AVAILABILITY
 // ============================================================
 
 // Get appointments for a specific customer
@@ -78,19 +78,34 @@ function getAppointmentById($appointmentId) {
     return $data;
 }
 
-// Create a new appointment
+// UPDATED: Create appointment with staff-dependent availability checking
 function createAppointment($data) {
     $conn = getDbConnection();
-
+    
+    // Validate customer
     $customer = getCustomerById($data['customer_id']);
     if (!$customer) {
         error_log("Invalid customer_id: " . $data['customer_id']);
         return false;
     }
     
-    $employeeId = null;
-    $businessId = null;
+    // Validate and get service
+    if (empty($data['service_id'])) {
+        error_log("Missing service_id");
+        return false;
+    }
     
+    $service = getServiceById($data['service_id']);
+    if (!$service) {
+        error_log("Invalid service_id: " . $data['service_id']);
+        return false;
+    }
+    
+    $businessId = $service['business_id'];
+    $employeeId = null;
+    $isSpecificStaff = false;
+    
+    // Check if specific employee was selected
     if (!empty($data['employ_id'])) {
         $employee = getEmployeeById($data['employ_id']);
         if (!$employee) {
@@ -98,62 +113,208 @@ function createAppointment($data) {
             return false;
         }
         $employeeId = $data['employ_id'];
-        $businessId = $employee['business_id'];
+        $isSpecificStaff = true;
     }
-
-    if (!empty($data['service_id'])) {
-        $service = getServiceById($data['service_id']);
-        if (!$service) {
-            error_log("Invalid service_id: " . $data['service_id']);
-            return false;
-        }
-        if (!$businessId) {
-            $businessId = $service['business_id'];
-        }
-    }
-
+    
     $appointDate = $data['appoint_date'] 
         ?? (($data['booking_date'] ?? '') . ' ' . ($data['booking_time'] ?? ''));
-
-    // CHECK AVAILABILITY BEFORE CREATING
-    if (!isTimeSlotAvailable($data['service_id'], $employeeId, $appointDate)) {
-        error_log("Time slot not available: " . $appointDate);
-        return ['error' => 'time_slot_unavailable'];
-    }
-
+    
     $customerId = $data['customer_id'];
-    $serviceId = !empty($data['service_id']) ? $data['service_id'] : null;
+    $serviceId = $data['service_id'];
     $status = $data['appoint_status'] ?? 'pending';
     $notes = $data['appoint_desc'] ?? '';
-
-    $stmt = $conn->prepare("
-        INSERT INTO appointments 
-        (customer_id, employ_id, service_id, appoint_date, appoint_status, appoint_desc)
-        VALUES (?, ?, ?, ?, ?, ?)
-    ");
-    $stmt->bind_param("iiisss",
-        $customerId,
-        $employeeId,
-        $serviceId,
-        $appointDate,
-        $status,
-        $notes
-    );
-
-    if ($stmt->execute()) {
-        $appointmentId = $conn->insert_id;
-        $stmt->close();
+    
+    // Extract date and time for checking
+    $dateTime = new DateTime($appointDate);
+    $date = $dateTime->format('Y-m-d');
+    $time = $dateTime->format('H:i:s');
+    
+    // START TRANSACTION WITH ROW LOCKING
+    $conn->begin_transaction();
+    
+    try {
+        // CASE 1: SPECIFIC STAFF SELECTED
+        if ($isSpecificStaff) {
+            error_log("Checking availability for SPECIFIC staff: Employee ID $employeeId at $appointDate");
+            
+            // Check if THIS SPECIFIC staff member is already booked at this exact time
+            $checkQuery = "SELECT appointment_id, customer_id
+                          FROM appointments a
+                          JOIN services s ON a.service_id = s.service_id
+                          WHERE a.employ_id = ?
+                          AND DATE(a.appoint_date) = ?
+                          AND TIME(a.appoint_date) = ?
+                          AND a.appoint_status IN ('pending', 'confirmed')
+                          FOR UPDATE"; // Row lock prevents concurrent bookings
+            
+            $checkStmt = $conn->prepare($checkQuery);
+            $checkStmt->bind_param("iss", $employeeId, $date, $time);
+            $checkStmt->execute();
+            $checkResult = $checkStmt->get_result();
+            
+            if ($checkResult->num_rows > 0) {
+                $existingBooking = $checkResult->fetch_assoc();
+                $checkStmt->close();
+                error_log("BLOCKED: Staff member $employeeId already booked at $appointDate by customer " . $existingBooking['customer_id']);
+                throw new Exception("staff_unavailable");
+            }
+            $checkStmt->close();
+            
+            error_log("SUCCESS: Staff member $employeeId is available at $appointDate");
+            
+        } 
+        // CASE 2: "ANY AVAILABLE" STAFF SELECTED
+        else {
+            error_log("Checking availability for ANY available staff at $appointDate");
+            
+            // Get all available employees for this business with lock
+            $employeeQuery = "SELECT employ_id
+                             FROM employees 
+                             WHERE business_id = ? 
+                             AND employ_status = 'available'
+                             FOR UPDATE";
+            
+            $empStmt = $conn->prepare($employeeQuery);
+            $empStmt->bind_param("i", $businessId);
+            $empStmt->execute();
+            $empResult = $empStmt->get_result();
+            $allEmployees = $empResult->fetch_all(MYSQLI_ASSOC);
+            $totalEmployees = count($allEmployees);
+            $empStmt->close();
+            
+            if ($totalEmployees == 0) {
+                error_log("BLOCKED: No available employees found for business $businessId");
+                throw new Exception("no_employees_available");
+            }
+            
+            error_log("Found $totalEmployees available staff members for business $businessId");
+            
+            // Count how many staff are ALREADY booked at this time
+            $checkQuery = "SELECT COUNT(DISTINCT a.employ_id) as booked_staff_count
+                          FROM appointments a
+                          JOIN services s ON a.service_id = s.service_id
+                          WHERE s.business_id = ?
+                          AND DATE(a.appoint_date) = ?
+                          AND TIME(a.appoint_date) = ?
+                          AND a.appoint_status IN ('pending', 'confirmed')
+                          AND a.employ_id IS NOT NULL
+                          FOR UPDATE"; // Row lock
+            
+            $checkStmt = $conn->prepare($checkQuery);
+            $checkStmt->bind_param("iss", $businessId, $date, $time);
+            $checkStmt->execute();
+            $checkResult = $checkStmt->get_result();
+            $checkRow = $checkResult->fetch_assoc();
+            $bookedStaffCount = intval($checkRow['booked_staff_count']);
+            $checkStmt->close();
+            
+            error_log("Booked staff at this time: $bookedStaffCount out of $totalEmployees total");
+            
+            // If ALL staff are booked, time slot is unavailable
+            if ($bookedStaffCount >= $totalEmployees) {
+                error_log("BLOCKED: All $totalEmployees staff members are booked at $appointDate");
+                throw new Exception("all_staff_booked");
+            }
+            
+            // Find a staff member who is NOT booked at this time
+            $findEmployeeQuery = "SELECT e.employ_id, e.employ_fname, e.employ_lname
+                                 FROM employees e
+                                 WHERE e.business_id = ?
+                                 AND e.employ_status = 'available'
+                                 AND e.employ_id NOT IN (
+                                     SELECT a.employ_id 
+                                     FROM appointments a
+                                     JOIN services s ON a.service_id = s.service_id
+                                     WHERE s.business_id = ?
+                                     AND DATE(a.appoint_date) = ?
+                                     AND TIME(a.appoint_date) = ?
+                                     AND a.appoint_status IN ('pending', 'confirmed')
+                                     AND a.employ_id IS NOT NULL
+                                 )
+                                 LIMIT 1";
+            
+            $findEmpStmt = $conn->prepare($findEmployeeQuery);
+            $findEmpStmt->bind_param("iiss", $businessId, $businessId, $date, $time);
+            $findEmpStmt->execute();
+            $findEmpResult = $findEmpStmt->get_result();
+            
+            if ($findEmpResult->num_rows > 0) {
+                $availableEmp = $findEmpResult->fetch_assoc();
+                $employeeId = $availableEmp['employ_id'];
+                $staffName = $availableEmp['employ_fname'] . ' ' . $availableEmp['employ_lname'];
+                error_log("SUCCESS: Assigned to available staff member: $staffName (ID: $employeeId)");
+            } else {
+                error_log("WARNING: Could not find available staff. Will leave employ_id as NULL for business to assign.");
+                // Leave $employeeId as NULL - business owner can assign later
+            }
+            $findEmpStmt->close();
+        }
         
+        // INSERT THE APPOINTMENT
+        $insertStmt = $conn->prepare("
+            INSERT INTO appointments 
+            (customer_id, employ_id, service_id, appoint_date, appoint_status, appoint_desc)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ");
+        $insertStmt->bind_param("iiisss",
+            $customerId,
+            $employeeId,
+            $serviceId,
+            $appointDate,
+            $status,
+            $notes
+        );
+        
+        if (!$insertStmt->execute()) {
+            throw new Exception("Failed to insert appointment: " . $insertStmt->error);
+        }
+        
+        $appointmentId = $conn->insert_id;
+        $insertStmt->close();
+        
+        // COMMIT TRANSACTION
+        $conn->commit();
+        
+        $staffInfo = $employeeId ? "Staff ID: $employeeId" : "Staff: TBD";
+        error_log("✓ Appointment created successfully: ID=$appointmentId, Customer=$customerId, Service=$serviceId, $staffInfo, DateTime=$appointDate");
+        
+        // Send notification after successful commit
         if ($businessId) {
             createBusinessBookingNotification($businessId, $customerId, $appointmentId);
         }
         
         return $appointmentId;
+        
+    } catch (Exception $e) {
+        // ROLLBACK ON ERROR
+        $conn->rollback();
+        
+        error_log("✗ Appointment creation failed: " . $e->getMessage());
+        
+        // Return specific error messages based on scenario
+        if ($e->getMessage() === "staff_unavailable") {
+            return [
+                'error' => 'staff_unavailable', 
+                'message' => 'The selected staff member is already booked at this time. Please select another time or staff member.'
+            ];
+        }
+        
+        if ($e->getMessage() === "all_staff_booked") {
+            return [
+                'error' => 'all_staff_booked', 
+                'message' => 'All staff members are booked at this time. Please select another time slot.'
+            ];
+        }
+        
+        if ($e->getMessage() === "no_employees_available") {
+            return [
+                'error' => 'no_employees_available', 
+                'message' => 'No staff members are currently available. Please contact the business.'
+            ];
+        }
+        
+        return false;
     }
-
-    error_log("Appointment creation failed: " . $stmt->error);
-    $stmt->close();
-    return false;
 }
 
 // Update appointment status
@@ -191,8 +352,8 @@ function cancelAppointment($appointmentId) {
         return false;
     }
     
-    $employee = getEmployeeById($appointment['employ_id']);
-    $businessId = $employee ? $employee['business_id'] : null;
+    $service = getServiceById($appointment['service_id']);
+    $businessId = $service ? $service['business_id'] : null;
     
     $stmt = $conn->prepare("UPDATE appointments SET appoint_status = 'cancelled' WHERE appointment_id = ?");
     $stmt->bind_param("i", $appointmentId);
@@ -218,10 +379,11 @@ function cancelAppointment($appointmentId) {
     return false;
 }
 
+// UPDATED: Check if time slot is available for specific staff OR any staff
 function isTimeSlotAvailable($serviceId, $employId, $appointDate, $excludeAppointmentId = null) {
     $conn = getDbConnection();
     
-    // Get service duration and business hours
+    // Get service duration and business info
     $service = getServiceById($serviceId);
     if (!$service) return false;
     
@@ -249,9 +411,8 @@ function isTimeSlotAvailable($serviceId, $employId, $appointDate, $excludeAppoin
         return false; // Outside business hours
     }
     
-    // Check for conflicting appointments
+    // CASE 1: Check specific staff member's availability
     if ($employId) {
-        // Check specific staff member
         $sql = "SELECT a.appointment_id, a.appoint_date, s.duration
                 FROM appointments a
                 JOIN services s ON a.service_id = s.service_id
@@ -269,14 +430,31 @@ function isTimeSlotAvailable($serviceId, $employId, $appointDate, $excludeAppoin
         } else {
             $stmt->bind_param("is", $employId, $appointDate);
         }
-    } else {
-        // Check ALL staff for this business (for "Any Available" bookings)
-        $sql = "SELECT a.appointment_id, a.appoint_date, s.duration, a.employ_id
+    } 
+    // CASE 2: Check if ANY staff member is available (for "Any Available" option)
+    else {
+        // Count how many staff members are available
+        $countStmt = $conn->prepare("SELECT COUNT(*) as total FROM employees WHERE business_id = ? AND employ_status = 'available'");
+        $countStmt->bind_param("i", $businessId);
+        $countStmt->execute();
+        $countResult = $countStmt->get_result();
+        $countRow = $countResult->fetch_assoc();
+        $totalStaff = intval($countRow['total']);
+        $countStmt->close();
+        
+        if ($totalStaff == 0) {
+            return false; // No staff available
+        }
+        
+        // Count how many are already booked at this exact time
+        $sql = "SELECT COUNT(DISTINCT a.employ_id) as booked_count
                 FROM appointments a
                 JOIN services s ON a.service_id = s.service_id
                 WHERE s.business_id = ?
+                AND DATE(a.appoint_date) = DATE(?)
+                AND TIME(a.appoint_date) = TIME(?)
                 AND a.appoint_status IN ('confirmed', 'pending')
-                AND DATE(a.appoint_date) = DATE(?)";
+                AND a.employ_id IS NOT NULL";
         
         if ($excludeAppointmentId) {
             $sql .= " AND a.appointment_id != ?";
@@ -284,29 +462,41 @@ function isTimeSlotAvailable($serviceId, $employId, $appointDate, $excludeAppoin
         
         $stmt = $conn->prepare($sql);
         if ($excludeAppointmentId) {
-            $stmt->bind_param("isi", $businessId, $appointDate, $excludeAppointmentId);
+            $stmt->bind_param("issi", $businessId, $appointDate, $appointDate, $excludeAppointmentId);
         } else {
-            $stmt->bind_param("is", $businessId, $appointDate);
+            $stmt->bind_param("iss", $businessId, $appointDate, $appointDate);
         }
-    }
-    
-    $stmt->execute();
-    $result = $stmt->get_result();
-    
-    // Check each existing appointment for time conflicts
-    while ($row = $result->fetch_assoc()) {
-        $existingStart = new DateTime($row['appoint_date']);
-        $existingEnd = clone $existingStart;
-        $existingEnd->modify("+{$row['duration']} minutes");
         
-        // Check if times overlap
-        if ($newStart < $existingEnd && $newEnd > $existingStart) {
-            $stmt->close();
-            return false; // Conflict found
-        }
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $row = $result->fetch_assoc();
+        $bookedStaffCount = intval($row['booked_count']);
+        $stmt->close();
+        
+        // Available if at least one staff member is free
+        return ($bookedStaffCount < $totalStaff);
     }
     
-    $stmt->close();
+    // For specific staff, check for time conflicts
+    if ($employId) {
+        $stmt->execute();
+        $result = $stmt->get_result();
+        
+        while ($row = $result->fetch_assoc()) {
+            $existingStart = new DateTime($row['appoint_date']);
+            $existingEnd = clone $existingStart;
+            $existingEnd->modify("+{$row['duration']} minutes");
+            
+            // Check if times overlap
+            if ($newStart < $existingEnd && $newEnd > $existingStart) {
+                $stmt->close();
+                return false; // Conflict found for this specific staff
+            }
+        }
+        
+        $stmt->close();
+    }
+    
     return true; // No conflicts
 }
 
@@ -379,9 +569,8 @@ function markConflictingAppointments($appointmentId) {
     $confirmedEnd = clone $confirmedStart;
     $confirmedEnd->modify("+{$duration} minutes");
     
-    // Find conflicting appointments
+    // Find conflicting appointments for THE SAME STAFF MEMBER
     if ($appointment['employ_id']) {
-        // Check same staff member
         $sql = "SELECT a.appointment_id, a.appoint_date, s.duration, a.customer_id
                 FROM appointments a
                 JOIN services s ON a.service_id = s.service_id
@@ -393,17 +582,8 @@ function markConflictingAppointments($appointmentId) {
         $stmt = $conn->prepare($sql);
         $stmt->bind_param("iis", $appointment['employ_id'], $appointmentId, $appointment['appoint_date']);
     } else {
-        // Check all staff in the business
-        $sql = "SELECT a.appointment_id, a.appoint_date, s.duration, a.customer_id
-                FROM appointments a
-                JOIN services s ON a.service_id = s.service_id
-                WHERE s.business_id = ?
-                AND a.appointment_id != ?
-                AND a.appoint_status = 'pending'
-                AND DATE(a.appoint_date) = DATE(?)";
-        
-        $stmt = $conn->prepare($sql);
-        $stmt->bind_param("iis", $service['business_id'], $appointmentId, $appointment['appoint_date']);
+        // If no specific staff, don't mark conflicts (let business assign)
+        return 0;
     }
     
     $stmt->execute();
@@ -449,11 +629,9 @@ function markConflictingAppointments($appointmentId) {
     
     return count($conflictingIds);
 }
-function getUpcomingBookingsCount($customer_id) {
-    // Use your shared DB connection
-    $conn = getDbConnection();
 
-    // Current date/time
+function getUpcomingBookingsCount($customer_id) {
+    $conn = getDbConnection();
     $now = date("Y-m-d H:i:s");
 
     $sql = "SELECT COUNT(*) AS total 
@@ -462,14 +640,11 @@ function getUpcomingBookingsCount($customer_id) {
               AND appoint_status IN ('pending', 'confirmed')
               AND appoint_date >= ?";
 
-    // Prepare statement
     if (!$stmt = $conn->prepare($sql)) {
-        return 0; // Safety return if prepare fails
+        return 0;
     }
 
-    // Bind parameters: i = integer, s = string
     $stmt->bind_param("is", $customer_id, $now);
-
     $stmt->execute();
     $result = $stmt->get_result();
 
@@ -477,10 +652,8 @@ function getUpcomingBookingsCount($customer_id) {
         return (int)$row['total'];
     }
 
-    return 0; // Default fallback
+    return 0;
 }
-
-
 
 // UPDATED: Get available time slots using business hours
 function getAvailableTimeSlotsForBooking($businessId, $date, $serviceIds = [], $employId = null) {
