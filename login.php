@@ -109,47 +109,7 @@ include 'includes/header.php';
                         </div>
                     </div>
                 </div>
-                
-                <!-- Demo Credentials -->
-                <div class="card mt-3" style="background-color: #FFF5E4;">
-                    <div class="card-body">
-                        <h6 class="mb-3" style="color: #850E35; font-weight: 600;">
-                            <i class="bi bi-info-circle"></i> Demo Accounts
-                        </h6>
-                        <div class="mb-3">
-                            <strong style="color: #850E35;">Customers:</strong>
-                            <div class="ms-3 mt-1" style="font-size: 0.9rem;">
-                                <div class="mb-1">
-                                    <i class="bi bi-person-circle text-muted"></i> maria.santos@email.com
-                                    <span class="text-muted">/ password</span>
-                                </div>
-                                <div class="mb-1">
-                                    <i class="bi bi-person-circle text-muted"></i> juan.delacruz@email.com
-                                    <span class="text-muted">/ password</span>
-                                </div>
-                                <div>
-                                    <i class="bi bi-person-circle text-muted"></i> ana.reyes@email.com
-                                    <span class="text-muted">/ password</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div>
-                            <strong style="color: #850E35;">Businesses:</strong>
-                            <div class="ms-3 mt-1" style="font-size: 0.9rem;">
-                                <div class="mb-1">
-                                    <i class="bi bi-shop text-muted"></i> glam.salon@email.com
-                                    <span class="text-muted">/ password</span>
-                                </div>
-                                <div class="mb-1">
-                                    <i class="bi bi-shop text-muted"></i> tranquil.spa@email.com
-                                    <span class="text-muted">/ password</span>
-                                </div>
-                                <div>
-                                    <i class="bi bi-shop text-muted"></i> classic.barber@email.com
-                                    <span class="text-muted">/ password</span>
-                                </div>
-                            </div>
-                        </div>
+            
                     </div>
                 </div>
             </div>

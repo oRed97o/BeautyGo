@@ -27,7 +27,7 @@ if (!$business) {
 }
 
 $services = getBusinessServices($businessId);
-$staff = getBusinessEmployees($businessId); // Fixed: was getBusinessStaff
+$staff = getBusinessEmployees($businessId);
 $reviews = getBusinessReviews($businessId);
 $averageRating = calculateAverageRating($businessId);
 $album = getBusinessAlbum($businessId);
@@ -35,7 +35,7 @@ $album = getBusinessAlbum($businessId);
 // Get all available images from album
 $albumImages = [];
 for ($i = 1; $i <= 10; $i++) {
-    $imageKey = 'image' . $i; // Fixed: removed underscore
+    $imageKey = 'image' . $i;
     if (isset($album[$imageKey]) && !empty($album[$imageKey])) {
         // Convert BLOB to base64 for display
         $albumImages[] = 'data:image/jpeg;base64,' . base64_encode($album[$imageKey]);
@@ -125,15 +125,20 @@ include 'includes/header.php';
                                 <h2 class="mb-1"><?php echo htmlspecialchars($business['business_name']); ?></h2>
                                 <span class="badge badge-rose"><?php echo ucfirst($business['business_type']); ?></span>
                             </div>
-                            <?php if (isCustomerLoggedIn()): ?>
-                                <a href="booking.php?business_id=<?php echo $business['business_id']; ?>" class="btn btn-primary">
-                                    <i class="bi bi-calendar-plus"></i> Book Now
-                                </a>
-                            <?php else: ?>
-                                <a href="login.php" class="btn btn-primary">
-                                    <i class="bi bi-box-arrow-in-right"></i> Login to Book
-                                </a>
-                            <?php endif; ?>
+                                <?php if (isBusinessLoggedIn()): ?>
+                                    <!-- Business owners cannot book appointments -->
+                                    <span class="badge bg-secondary" style="padding: 10px 20px; font-size: 14px;">
+                                        <i class="bi bi-info-circle"></i> Business View Only
+                                    </span>
+                                <?php elseif (isCustomerLoggedIn()): ?>
+                                    <a href="booking.php?business_id=<?php echo $business['business_id']; ?>" class="btn btn-primary">
+                                        <i class="bi bi-calendar-plus"></i> Book Now
+                                    </a>
+                                <?php else: ?>
+                                    <a href="login.php" class="btn btn-primary">
+                                        <i class="bi bi-box-arrow-in-right"></i> Login to Book
+                                    </a>
+                                <?php endif; ?>
                         </div>
                         
                         <p class="business-description"><?php echo htmlspecialchars($business['business_desc'] ?? ''); ?></p>
@@ -209,6 +214,85 @@ include 'includes/header.php';
                 <div class="card mb-4" id="reviews">
                     <div class="card-body">
                         <h4 class="mb-3">Customer Reviews</h4>
+                        
+                        <!-- Write Review Form (Only for logged-in customers) -->
+                        <?php if (isCustomerLoggedIn()): ?>
+                            <?php 
+                            // Check if customer has already reviewed this business
+                            $currentCustomer = getCurrentCustomer();
+                            $customerId = $currentCustomer['customer_id'];
+                            
+                            $conn = getDbConnection();
+                            $checkStmt = $conn->prepare("SELECT review_id FROM reviews WHERE customer_id = ? AND business_id = ?");
+                            $checkStmt->bind_param("ii", $customerId, $businessId);
+                            $checkStmt->execute();
+                            $existingReview = $checkStmt->get_result()->fetch_assoc();
+                            $checkStmt->close();
+                            
+                            if (!$existingReview): ?>
+                                <div class="write-review-section mb-4">
+                                    <button class="btn btn-primary mb-3" type="button" data-bs-toggle="collapse" data-bs-target="#reviewForm" aria-expanded="false">
+                                        <i class="bi bi-star-fill"></i> Write a Review
+                                    </button>
+                                    
+                                    <div class="collapse" id="reviewForm">
+                                        <div class="card card-body">
+                                            <form action="backend/submit-review.php" method="POST" enctype="multipart/form-data">
+                                                <input type="hidden" name="business_id" value="<?php echo $businessId; ?>">
+                                                
+                                                <!-- Rating -->
+                                                <div class="mb-3">
+                                                    <label class="form-label">Your Rating *</label>
+                                                    <div class="star-rating">
+                                                        <input type="radio" name="rating" value="5" id="star5" required>
+                                                        <label for="star5" title="5 stars"><i class="bi bi-star-fill"></i></label>
+                                                        
+                                                        <input type="radio" name="rating" value="4" id="star4">
+                                                        <label for="star4" title="4 stars"><i class="bi bi-star-fill"></i></label>
+                                                        
+                                                        <input type="radio" name="rating" value="3" id="star3">
+                                                        <label for="star3" title="3 stars"><i class="bi bi-star-fill"></i></label>
+                                                        
+                                                        <input type="radio" name="rating" value="2" id="star2">
+                                                        <label for="star2" title="2 stars"><i class="bi bi-star-fill"></i></label>
+                                                        
+                                                        <input type="radio" name="rating" value="1" id="star1">
+                                                        <label for="star1" title="1 star"><i class="bi bi-star-fill"></i></label>
+                                                    </div>
+                                                </div>
+                                                
+                                                <!-- Review Text -->
+                                                <div class="mb-3">
+                                                    <label class="form-label">Your Review *</label>
+                                                    <textarea class="form-control" name="review_text" rows="4" placeholder="Share your experience..." required></textarea>
+                                                </div>
+                                                
+                                                <!-- Photos (Optional) -->
+                                                <div class="mb-3">
+                                                    <label class="form-label">Add Photos (Optional)</label>
+                                                    <input type="file" class="form-control" name="review_images[]" accept="image/*" multiple max="5">
+                                                    <small class="text-muted">You can upload up to 5 photos</small>
+                                                </div>
+                                                
+                                                <button type="submit" name="submit_review" class="btn btn-primary">
+                                                    <i class="bi bi-send"></i> Submit Review
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            <?php else: ?>
+                                <div class="alert alert-info">
+                                    <i class="bi bi-info-circle"></i> You have already reviewed this business.
+                                </div>
+                            <?php endif; ?>
+                        <?php elseif (!isBusinessLoggedIn()): ?>
+                            <div class="alert alert-warning">
+                                <i class="bi bi-exclamation-triangle"></i> Please <a href="login.php">login</a> to write a review.
+                            </div>
+                        <?php endif; ?>
+                        
+                        <!-- Display existing reviews -->
                         <?php if (empty($reviews)): ?>
                             <div class="empty-state py-3">
                                 <i class="bi bi-chat-square-text"></i>
@@ -216,39 +300,39 @@ include 'includes/header.php';
                             </div>
                         <?php else: ?>
                             <?php foreach ($reviews as $review): ?>
-                                <div class="review-item">
-                                    <div class="d-flex justify-content-between align-items-start mb-1">
-                                        <strong><?php echo htmlspecialchars(trim(($review['customer_fname'] ?? '') . ' ' . ($review['customer_lname'] ?? '')) ?: 'Anonymous'); ?></strong>
-                                        <div class="rating">
-                                            <?php
-                                            for ($i = 1; $i <= 5; $i++) {
-                                                if ($i <= ($review['rating'] ?? 0)) {
-                                                    echo '<i class="bi bi-star-fill"></i>';
-                                                } else {
-                                                    echo '<i class="bi bi-star"></i>';
+                                <div class="review-item mb-3 pb-3 border-bottom">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <div>
+                                            <strong><?php echo htmlspecialchars(($review['customer_fname'] ?? '') . ' ' . ($review['customer_lname'] ?? '')); ?></strong>
+                                            <div class="rating">
+                                                <?php
+                                                for ($i = 1; $i <= 5; $i++) {
+                                                    if ($i <= ($review['rating'] ?? 0)) {
+                                                        echo '<i class="bi bi-star-fill"></i>';
+                                                    } else {
+                                                        echo '<i class="bi bi-star"></i>';
+                                                    }
                                                 }
-                                            }
-                                            ?>
-                                        </div>
-                                    </div>
-                                    <p class="text-muted mb-1"><?php echo htmlspecialchars($review['review_text'] ?? ''); ?></p>
-                                    
-                                    <!-- Review Images -->
-                                    <?php if (!empty($review['images'])): ?>
-                                        <div class="review-images mb-2">
-                                            <div class="d-flex gap-2 flex-wrap">
-                                                <?php foreach ($review['images'] as $image): ?>
-                                                    <img src="<?php echo htmlspecialchars($image); ?>" 
-                                                         alt="Review image" 
-                                                         class="review-image-thumb"
-                                                         onclick="openImageModal('<?php echo htmlspecialchars($image); ?>')"
-                                                         style="cursor: pointer;">
-                                                <?php endforeach; ?>
+                                                ?>
                                             </div>
                                         </div>
-                                    <?php endif; ?>
+                                        <small class="text-muted"><?php echo formatDate($review['review_date'] ?? ''); ?></small>
+                                    </div>
                                     
-                                    <small class="text-muted"><?php echo formatDate($review['review_date'] ?? ''); ?></small>
+                                    <p class="mb-2"><?php echo htmlspecialchars($review['review_text'] ?? ''); ?></p>
+                                    
+                                    <!-- Review Images if any -->
+                                    <?php if (!empty($review['images'])): ?>
+                                        <div class="review-images mb-2">
+                                            <?php foreach ($review['images'] as $image): ?>
+                                                <img src="data:image/jpeg;base64,<?php echo base64_encode($image); ?>" 
+                                                     alt="Review image" 
+                                                     class="review-image" 
+                                                     onclick="openImageModal('data:image/jpeg;base64,<?php echo base64_encode($image); ?>')"
+                                                     style="cursor: pointer; width: 100px; height: 100px; object-fit: cover; margin-right: 5px; border-radius: 5px;">
+                                            <?php endforeach; ?>
+                                        </div>
+                                    <?php endif; ?>
                                     
                                     <!-- Display Replies -->
                                     <?php if (!empty($review['replies'])): ?>
@@ -283,7 +367,6 @@ include 'includes/header.php';
                                     <?php if (isCustomerLoggedIn()): ?>
                                         <?php 
                                         $currentCustomer = getCurrentCustomer();
-                                        // Only show reply button if customer is not the review author or if they want to continue conversation
                                         ?>
                                         <button class="btn btn-sm btn-outline-secondary mt-2" 
                                                 onclick="showCustomerReplyForm(<?php echo $review['review_id']; ?>)">
@@ -542,9 +625,12 @@ const markerIcon = L.divIcon({
     iconAnchor: [16, 32]
 });
 
+const businessName = <?php echo json_encode($business['business_name']); ?>;
+const businessAddress = <?php echo json_encode($business['business_address'] ?? ''); ?>;
+
 L.marker([bizLat, bizLng], { icon: markerIcon })
     .addTo(businessMap)
-    .bindPopup('<strong><?php echo addslashes(htmlspecialchars($business['business_name'])); ?></strong><br><?php echo addslashes(htmlspecialchars($business['business_address'] ?? '')); ?>');
+    .bindPopup('<strong>' + businessName + '</strong><br>' + businessAddress);
 </script>
 
 <?php include 'includes/footer.php'; ?>

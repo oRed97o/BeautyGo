@@ -1,95 +1,124 @@
 <?php
+session_start();
 require_once '../db_connection/config.php';
 require_once 'function_utilities.php';
-require_once 'function_customers.php';
-require_once 'function_businesses.php';
-require_once 'function_reviews.php';
 
-// Check if user is logged in
+// Check if customer is logged in
 if (!isCustomerLoggedIn()) {
+    $_SESSION['error'] = "Please login to submit a review.";
     header('Location: ../login.php');
     exit;
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $businessId = intval($_POST['business_id'] ?? 0);
-    $customerId = intval($_POST['customer_id'] ?? 0);
-    $rating = intval($_POST['rating'] ?? 0);
-    $reviewText = sanitize($_POST['review_text'] ?? '');
+// Check if form was submitted
+if (!isset($_POST['submit_review'])) {
+    $_SESSION['error'] = "Invalid request.";
+    header('Location: ../index.php');
+    exit;
+}
+
+// Get current customer
+$conn = getDbConnection();
+$customerId = $_SESSION['customer_id'];
+
+// Validate required fields
+$businessId = $_POST['business_id'] ?? '';
+$rating = $_POST['rating'] ?? '';
+$reviewText = trim($_POST['review_text'] ?? '');
+
+// Validation
+if (empty($businessId) || empty($rating) || empty($reviewText)) {
+    $_SESSION['error'] = "Invalid review data. Please fill in all required fields.";
+    header('Location: ../business-detail.php?id=' . urlencode($businessId));
+    exit;
+}
+
+// Validate rating is between 1-5
+if (!is_numeric($rating) || $rating < 1 || $rating > 5) {
+    $_SESSION['error'] = "Invalid rating. Please select a rating between 1 and 5 stars.";
+    header('Location: ../business-detail.php?id=' . urlencode($businessId));
+    exit;
+}
+
+// Check if business exists
+$checkBusiness = $conn->prepare("SELECT business_id FROM businesses WHERE business_id = ?");
+$checkBusiness->bind_param("i", $businessId);
+$checkBusiness->execute();
+if ($checkBusiness->get_result()->num_rows === 0) {
+    $_SESSION['error'] = "Business not found.";
+    header('Location: ../index.php');
+    exit;
+}
+$checkBusiness->close();
+
+// Check if customer has already reviewed this business
+$checkReview = $conn->prepare("SELECT review_id FROM reviews WHERE customer_id = ? AND business_id = ?");
+$checkReview->bind_param("ii", $customerId, $businessId);
+$checkReview->execute();
+if ($checkReview->get_result()->num_rows > 0) {
+    $_SESSION['error'] = "You have already reviewed this business.";
+    header('Location: ../business-detail.php?id=' . urlencode($businessId));
+    exit;
+}
+$checkReview->close();
+
+// Insert review
+$insertReview = $conn->prepare("INSERT INTO reviews (business_id, customer_id, rating, review_text, review_date) VALUES (?, ?, ?, ?, NOW())");
+$insertReview->bind_param("iiis", $businessId, $customerId, $rating, $reviewText);
+
+if ($insertReview->execute()) {
+    $reviewId = $conn->insert_id;
     
-    // Validate required fields
-    if (empty($businessId) || empty($customerId) || $rating < 1 || $rating > 5) {
-        $_SESSION['error'] = 'Invalid review data';
-        header('Location: ../my-bookings.php');
-        exit;
-    }
-    
-    // Verify the customer is the logged-in user
-    $currentCustomer = getCurrentCustomer();
-    if ($customerId != $currentCustomer['customer_id']) {
-        $_SESSION['error'] = 'Unauthorized action';
-        header('Location: ../my-bookings.php');
-        exit;
-    }
-    
-    // Verify business exists
-    $business = getBusinessById($businessId);
-    if (!$business) {
-        $_SESSION['error'] = 'Invalid business';
-        header('Location: ../my-bookings.php');
-        exit;
-    }
-    
-    // Handle review images (up to 5)
-    $reviewImages = [];
-    for ($i = 1; $i <= 5; $i++) {
-        $fileKey = "review_img$i";
-        if (isset($_FILES[$fileKey]) && $_FILES[$fileKey]['error'] === UPLOAD_ERR_OK) {
-            $file = $_FILES[$fileKey];
+    // Handle image uploads (optional)
+    if (isset($_FILES['review_images']) && !empty($_FILES['review_images']['name'][0])) {
+        $uploadedCount = 0;
+        $maxImages = 5;
+        
+        foreach ($_FILES['review_images']['tmp_name'] as $key => $tmpName) {
+            if ($uploadedCount >= $maxImages) break;
             
-            // Validate file type
-            $allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-            $finfo = finfo_open(FILEINFO_MIME_TYPE);
-            $mimeType = finfo_file($finfo, $file['tmp_name']);
-            finfo_close($finfo);
-            
-            if (!in_array($mimeType, $allowedTypes)) {
-                continue; // Skip invalid file types
+            if (!empty($tmpName) && $_FILES['review_images']['error'][$key] === UPLOAD_ERR_OK) {
+                // Validate file type
+                $fileType = $_FILES['review_images']['type'][$key];
+                $allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+                
+                if (!in_array($fileType, $allowedTypes)) {
+                    continue; // Skip non-image files
+                }
+                
+                // Validate file size (max 5MB per image)
+                if ($_FILES['review_images']['size'][$key] > 5242880) {
+                    continue; // Skip files larger than 5MB
+                }
+                
+                // Read file content
+                $imageData = file_get_contents($tmpName);
+                
+                if ($imageData !== false) {
+                    // Insert image into review_images table
+                    $insertImage = $conn->prepare("INSERT INTO review_images (review_id, image_data) VALUES (?, ?)");
+                    // Use 'b' for blob binding
+                    $null = NULL;
+                    $insertImage->bind_param("ib", $reviewId, $null);
+                    $insertImage->send_long_data(1, $imageData);
+                    
+                    if ($insertImage->execute()) {
+                        $uploadedCount++;
+                    }
+                    $insertImage->close();
+                }
             }
-            
-            // Validate file size (5MB max)
-            if ($file['size'] > 5 * 1024 * 1024) {
-                continue; // Skip files that are too large
-            }
-            
-            // Read file contents
-            $reviewImages[$fileKey] = file_get_contents($file['tmp_name']);
         }
     }
     
-    // Prepare review data
-    $reviewData = [
-        'business_id' => $businessId,
-        'customer_id' => $customerId,
-        'rating' => $rating,
-        'review_text' => $reviewText
-    ];
-    
-    // Add images to review data
-    foreach ($reviewImages as $key => $imageData) {
-        $reviewData[$key] = $imageData;
-    }
-    
-    // Create review
-    $reviewId = createReview($reviewData);
-    
-    if ($reviewId) {
-        $_SESSION['success'] = 'Thank you for your review!';
-    } else {
-        $_SESSION['error'] = 'Failed to submit review. Please try again.';
-    }
+    $_SESSION['success'] = "Review submitted successfully! Thank you for your feedback.";
+} else {
+    $_SESSION['error'] = "Failed to submit review. Please try again.";
 }
 
-header('Location: ../my-bookings.php');
+$insertReview->close();
+$conn->close();
+
+header('Location: ../business-detail.php?id=' . urlencode($businessId) . '#reviews');
 exit;
 ?>
