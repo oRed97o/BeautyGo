@@ -20,18 +20,28 @@ ini_set('display_errors', 0);
 error_reporting(E_ALL);
 
 try {
-    // Check if user is logged in
-    if (!isCustomerLoggedIn()) {
+    // Check if user is logged in as CUSTOMER (not business)
+    if (!isset($_SESSION['customer_id']) || empty($_SESSION['customer_id'])) {
         echo json_encode([
-            'success' => false, 
-            'message' => 'Please login first'
+            'success' => false,
+            'message' => 'Please login first',
+            'redirect' => 'login.php'
+        ]);
+        exit;
+    }
+
+    // Check if user is logged in as BUSINESS - prevent them from favoriting
+    if (isset($_SESSION['business_id']) && !empty($_SESSION['business_id'])) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'Business accounts cannot favorite'
         ]);
         exit;
     }
 
     // Get parameters
     $action = $_POST['action'] ?? '';
-    $customerId = $_SESSION['customer_id'] ?? 0;
+    $customerId = $_SESSION['customer_id'];
     $businessId = intval($_POST['business_id'] ?? 0);
 
     // Validate inputs
@@ -51,30 +61,24 @@ try {
         exit;
     }
 
-    if ($customerId <= 0) {
-        echo json_encode([
-            'success' => false, 
-            'message' => 'Invalid customer ID'
-        ]);
-        exit;
-    }
-
-    // Perform the toggle operation
-    $success = toggleFavorite($customerId, $businessId);
+    // Check if already favorited
+    $isFavorite = isFavorite($customerId, $businessId);
     
-    if ($success) {
-        // Check current favorite status
-        $isFav = isFavorite($customerId, $businessId);
-        
+    if ($isFavorite) {
+        // Remove favorite
+        $result = removeFavorite($customerId, $businessId);
         echo json_encode([
-            'success' => true,
-            'is_favorite' => $isFav,
-            'message' => $isFav ? 'Added to favorites' : 'Removed from favorites'
+            'success' => $result,
+            'is_favorite' => false,
+            'message' => $result ? 'Removed from favorites' : 'Failed to remove favorite'
         ]);
     } else {
+        // Add favorite
+        $result = addFavorite($customerId, $businessId);
         echo json_encode([
-            'success' => false, 
-            'message' => 'Database operation failed'
+            'success' => $result,
+            'is_favorite' => true,
+            'message' => $result ? 'Added to favorites' : 'Failed to add favorite'
         ]);
     }
 

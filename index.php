@@ -314,7 +314,7 @@ include 'includes/header.php';
 </main>
 
 <?php
-// Helper function to render business cards
+// Updated renderBusinessCard function - replace the existing one in index.php
 function renderBusinessCard($business, $type = 'regular') {
     $album = getBusinessAlbum($business['business_id']);
     $businessImage = null;
@@ -345,8 +345,12 @@ function renderBusinessCard($business, $type = 'regular') {
         $location = trim($addressParts[0]);
     }
     
+    // Only check favorites if user is a CUSTOMER (not business)
     $isFavorited = false;
-    if (isCustomerLoggedIn()) {
+    $showFavoriteButton = false;
+    
+    if (isCustomerLoggedIn() && !isBusinessLoggedIn()) {
+        $showFavoriteButton = true;
         $isFavorited = isFavorite($_SESSION['customer_id'], $business['business_id']);
     }
     
@@ -379,14 +383,19 @@ function renderBusinessCard($business, $type = 'regular') {
             <?php echo $badge; ?>
             <?php echo $distanceBadge; ?>
             
-            <!-- Favorite Heart Button -->
-            <button class="airbnb-favorite-btn favorite-btn-<?php echo $business['business_id']; ?> <?php echo $isFavorited ? 'favorited' : ''; ?>" 
-                    data-business-id="<?php echo $business['business_id']; ?>"
-                    <?php if (!isCustomerLoggedIn()): ?>
-                    onclick="event.stopPropagation(); alert('Please login to add favorites'); window.location.href='login.php';"
-                    <?php endif; ?>>
-                <i class="bi bi-heart<?php echo $isFavorited ? '-fill' : ''; ?>"></i>
-            </button>
+            <!-- Favorite Heart Button - ONLY SHOW FOR CUSTOMERS -->
+            <?php if ($showFavoriteButton): ?>
+                <button class="airbnb-favorite-btn favorite-btn-<?php echo $business['business_id']; ?> <?php echo $isFavorited ? 'favorited' : ''; ?>" 
+                        data-business-id="<?php echo $business['business_id']; ?>">
+                    <i class="bi bi-heart<?php echo $isFavorited ? '-fill' : ''; ?>"></i>
+                </button>
+            <?php elseif (!isCustomerLoggedIn() && !isBusinessLoggedIn()): ?>
+                <!-- Show for non-logged users but use custom toast -->
+                <button class="airbnb-favorite-btn" 
+                        onclick="handleNonLoggedInFavorite(event)">
+                    <i class="bi bi-heart"></i>
+                </button>
+            <?php endif; ?>
         </div>
 
         <div class="business-card-content" onclick="window.location.href='business-detail.php?id=<?php echo $business['business_id']; ?>'">
@@ -468,31 +477,51 @@ document.querySelectorAll('.carousel-btn').forEach(btn => {
 
 startAutoSlide();
 
-// Filter by category - NO SCROLL VERSION
+// Debounce timer for filtering
+let filterTimeout = null;
+
+// SMOOTH Filter by category
 function filterByCategory(category, clickedCard) {
     const typeFilter = document.getElementById('typeFilter');
     const categoryCards = document.querySelectorAll('.category-card');
     
-    // If clicking the same category, turn off filter
-    if (typeFilter.value === category) {
-        typeFilter.value = '';
-        // Remove active state from all cards
-        categoryCards.forEach(card => card.classList.remove('active'));
-    } else {
-        typeFilter.value = category;
-        
-        // Update active state on category cards
+    // Check if clicking the same active category
+    const isSameCategory = typeFilter.value === category;
+    
+    // Update filter value immediately
+    typeFilter.value = isSameCategory ? '' : category;
+    
+    // Use requestAnimationFrame for smooth DOM updates
+    requestAnimationFrame(() => {
+        // Remove ALL active states first
         categoryCards.forEach(card => {
             card.classList.remove('active');
+            card.classList.remove('force-inactive');
         });
         
-        // Add active to clicked card
-        if (clickedCard) {
+        // If turning off the filter, add force-inactive to prevent hover while still hovering
+        if (isSameCategory && clickedCard) {
+            clickedCard.classList.add('force-inactive');
+            
+            // Remove force-inactive when mouse leaves
+            const removeForceInactive = function() {
+                clickedCard.classList.remove('force-inactive');
+                clickedCard.removeEventListener('mouseleave', removeForceInactive);
+            };
+            clickedCard.addEventListener('mouseleave', removeForceInactive);
+        }
+        
+        // Add active to clicked card only if not turning off
+        if (!isSameCategory && clickedCard) {
             clickedCard.classList.add('active');
         }
-    }
-    
-    filterBusinesses();
+        
+        // Debounce the filtering to avoid lag
+        clearTimeout(filterTimeout);
+        filterTimeout = setTimeout(() => {
+            filterBusinesses();
+        }, 50);
+    });
 }
 
 // Back to Top functionality
@@ -514,15 +543,20 @@ window.addEventListener('scroll', function() {
     }
 });
 
-// Filter businesses
+// OPTIMIZED filterBusinesses function with better performance
 function filterBusinesses() {
     const searchTerm = document.getElementById('searchInput').value.toLowerCase();
     const typeFilter = document.getElementById('typeFilter').value.toLowerCase();
-    const businessCards = document.querySelectorAll('.business-card');
+    const businessCards = document.querySelectorAll('#allBusinessesGrid .business-card');
+    const loadMoreContainer = document.getElementById('loadMoreContainer');
     
     let visibleCount = 0;
+    let totalMatches = 0;
     
-    businessCards.forEach(card => {
+    // Batch DOM reads and writes
+    const updates = [];
+    
+    businessCards.forEach((card, index) => {
         const businessName = card.getAttribute('data-name').toLowerCase();
         const businessType = card.getAttribute('data-type').toLowerCase();
         
@@ -530,22 +564,53 @@ function filterBusinesses() {
         const matchesType = typeFilter === '' || businessType === typeFilter;
         
         if (matchesSearch && matchesType) {
-            card.style.display = 'block';
-            visibleCount++;
+            totalMatches++;
+            const grid = document.getElementById('allBusinessesGrid');
+            const shouldShow = grid.classList.contains('show-all') || 
+                (grid.classList.contains('show-more-60') && index < 60) ||
+                (grid.classList.contains('show-more-40') && index < 40) ||
+                index < 20;
+            
+            if (shouldShow) {
+                visibleCount++;
+                updates.push({ card, display: 'block' });
+            } else {
+                updates.push({ card, display: 'none' });
+            }
         } else {
-            card.style.display = 'none';
+            updates.push({ card, display: 'none' });
         }
     });
     
-    // Show/hide no results message
-    const noResults = document.getElementById('noResultsMessage');
-    const allGrid = document.getElementById('allBusinessesGrid');
-    
-    if (visibleCount === 0) {
-        if (noResults) noResults.style.display = 'block';
-    } else {
-        if (noResults) noResults.style.display = 'none';
-    }
+    // Apply all updates at once
+    requestAnimationFrame(() => {
+        updates.forEach(({ card, display }) => {
+            card.style.display = display;
+        });
+        
+        // Update UI elements
+        if (searchTerm || typeFilter) {
+            if (loadMoreContainer) loadMoreContainer.style.display = 'none';
+        } else {
+            if (loadMoreContainer && typeof totalBusinesses !== 'undefined' && totalBusinesses > 20) {
+                loadMoreContainer.style.display = 'block';
+            }
+        }
+        
+        const noResults = document.getElementById('noResultsMessage');
+        const allGrid = document.getElementById('allBusinessesGrid');
+        
+        if (totalMatches === 0) {
+            if (noResults) noResults.style.display = 'block';
+            if (allGrid) allGrid.style.display = 'none';
+        } else {
+            if (noResults) noResults.style.display = 'none';
+            if (allGrid) allGrid.style.display = 'grid';
+        }
+        
+        // Filter other sections
+        filterOtherSections(searchTerm, typeFilter);
+    });
 }
 
 // Request user location
@@ -738,12 +803,12 @@ function filterBusinesses() {
     });
 }
 
-// Initialize favorite buttons when page loads
+// Initialize favorite buttons when page loads - ONLY FOR CUSTOMERS
 window.addEventListener('load', function() {
     const favoriteButtons = document.querySelectorAll('.airbnb-favorite-btn');
     
     favoriteButtons.forEach(function(button) {
-        // Skip if button already has login check (for non-logged users)
+        // Skip if button already has login check (for non-logged users or business users)
         if (button.hasAttribute('onclick')) {
             return;
         }
@@ -778,21 +843,19 @@ function updateFavoritesCount(change) {
         if (favoriteBadge) {
             favoriteBadge.textContent = newCount;
         } else {
-            // Create badge if it doesn't exist
             const badge = document.createElement('span');
             badge.className = 'favorites-badge';
             badge.textContent = newCount;
             favoritesHeartLink.parentElement.appendChild(badge);
         }
     } else {
-        // Remove badge if count is 0
         if (favoriteBadge) {
             favoriteBadge.remove();
         }
     }
 }
 
-// Toggle favorite function with BeautyGo colors - SYNCS ALL BUTTONS
+// Update your toggleFavorite function
 async function toggleFavorite(businessId, button) {
     // Disable ALL buttons for this business during request
     const allButtons = document.querySelectorAll(`.favorite-btn-${businessId}`);
@@ -810,15 +873,12 @@ async function toggleFavorite(businessId, button) {
             body: 'action=toggle&business_id=' + businessId
         });
         
-        // Check if response is OK
         if (!response.ok) {
             throw new Error('Network response was not ok');
         }
         
-        // Get response text first
         const text = await response.text();
         
-        // Try to parse as JSON
         let data;
         try {
             data = JSON.parse(text);
@@ -844,25 +904,28 @@ async function toggleFavorite(businessId, button) {
             
             // Show toast notification
             if (data.is_favorite) {
-                showToast('❤️ Added to favorites!', 'success');
-                updateFavoritesCount(1); // Increment count
+                showToast('Added to Favorites', 'Added to your collection successfully!', 'success');
+                updateFavoritesCount(1);
             } else {
-                showToast('💔 Removed from favorites', 'info');
-                updateFavoritesCount(-1); // Decrement count
+                showToast('Removed from Favorites', 'Item removed from your collection', 'info');
+                updateFavoritesCount(-1);
             }
         } else {
+            // Handle different error cases
             if (data.message === 'Please login first') {
-                showToast('⚠️ Please login to add favorites', 'warning');
+                showToast('Login Required', 'Please login to add favorites', 'warning');
                 setTimeout(() => {
-                    window.location.href = 'login.php';
-                }, 1500);
+                    window.location.href = data.redirect || 'login.php';
+                }, 2000);
+            } else if (data.message === 'Business accounts cannot favorite') {
+                showToast('Not Allowed', 'Business accounts cannot add favorites', 'warning');
             } else {
-                showToast('❌ ' + (data.message || 'Failed to update favorite'), 'error');
+                showToast('Error', data.message || 'Failed to update favorite', 'error');
             }
         }
     } catch (error) {
         console.error('Fetch Error:', error);
-        showToast('❌ Connection error. Please try again.', 'error');
+        showToast('Connection Error', 'Please try again later', 'error');
     } finally {
         // Re-enable ALL buttons for this business
         allButtons.forEach(btn => {
@@ -872,64 +935,87 @@ async function toggleFavorite(businessId, button) {
     }
 }
 
-// BeautyGo toast notification function
-function showToast(message, type = 'success') {
-    // Remove any existing toasts
-    const existingToast = document.querySelector('.toast-notification');
-    if (existingToast) {
-        existingToast.remove();
-    }
+// Create toast container if it doesn't exist
+if (!document.getElementById('toastContainer')) {
+    const container = document.createElement('div');
+    container.id = 'toastContainer';
+    container.className = 'toast-container';
+    document.body.appendChild(container);
+}
+
+// Custom Toast Notification Function
+function showToast(title, message, type = 'success') {
+    const container = document.getElementById('toastContainer');
     
+    // Create toast element
     const toast = document.createElement('div');
-    toast.className = 'toast-notification toast-' + type;
-    toast.textContent = message;
+    toast.className = `custom-toast ${type}`;
     
-    // BeautyGo Colors based on type
-    const colors = {
-        success: '#850E35',  // Burgundy - for adding favorites
-        error: '#dc3545',    // Keep red for errors
-        warning: '#EE6983',  // Rose - for warnings
-        info: '#FFC4C4'      // Pink - for removal/info
+    // Icon mapping
+    const icons = {
+        success: 'bi-heart-fill',
+        error: 'bi-x-circle-fill',
+        warning: 'bi-exclamation-triangle-fill',
+        info: 'bi-heart'
     };
     
-    // Text color adjustments
-    const textColors = {
-        success: 'white',
-        error: 'white',
-        warning: 'white',
-        info: '#850E35'  // Burgundy text on pink background
-    };
-    
-    toast.style.cssText = `
-        position: fixed;
-        bottom: 20px;
-        right: 20px;
-        background: ${colors[type] || colors.success};
-        color: ${textColors[type] || 'white'};
-        padding: 15px 25px;
-        border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(133, 14, 53, 0.3);
-        z-index: 9999;
-        font-size: 14px;
-        font-weight: 500;
-        animation: slideIn 0.3s ease;
-        max-width: 300px;
+    toast.innerHTML = `
+        <div class="toast-icon">
+            <i class="bi ${icons[type]}"></i>
+        </div>
+        <div class="toast-content">
+            <div class="toast-title">${title}</div>
+            <div class="toast-message">${message}</div>
+        </div>
+        <button class="toast-close" onclick="closeToast(this)">
+            <i class="bi bi-x"></i>
+        </button>
+        <div class="toast-progress"></div>
     `;
     
-    document.body.appendChild(toast);
+    container.appendChild(toast);
+    
+    // Trigger animation
+    setTimeout(() => {
+        toast.classList.add('show');
+    }, 10);
     
     // Auto remove after 3 seconds
-    setTimeout(() => {
-        toast.style.animation = 'slideOut 0.3s ease';
-        setTimeout(() => toast.remove(), 300);
+    const autoRemoveTimer = setTimeout(() => {
+        removeToast(toast);
     }, 3000);
+    
+    // Click to dismiss
+    toast.addEventListener('click', function(e) {
+        if (!e.target.closest('.toast-close')) {
+            clearTimeout(autoRemoveTimer);
+            removeToast(toast);
+        }
+    });
+    
+    // Store timer on element for cleanup
+    toast.autoRemoveTimer = autoRemoveTimer;
+}
+
+function closeToast(button) {
+    const toast = button.closest('.custom-toast');
+    clearTimeout(toast.autoRemoveTimer);
+    removeToast(toast);
+}
+
+function removeToast(toast) {
+    toast.classList.remove('show');
+    toast.classList.add('hide');
+    
+    setTimeout(() => {
+        toast.remove();
+    }, 400);
 }
 
 // Helper function to get category from card
 function getCategoryFromCard(card) {
     const categoryName = card.querySelector('.category-name').textContent.trim().toLowerCase();
     
-    // Map display names to filter values
     const categoryMap = {
         'hair salon': 'hair salon',
         'spa & wellness': 'spa & wellness',
@@ -941,33 +1027,139 @@ function getCategoryFromCard(card) {
     return categoryMap[categoryName] || '';
 }
 
-// Also update the search filter to clear active states when manually changing dropdown
+
+
+// IMPROVED: Clear active states when dropdown is manually changed
 document.getElementById('typeFilter').addEventListener('change', function() {
     const categoryCards = document.querySelectorAll('.category-card');
     const selectedValue = this.value.toLowerCase();
     
-    // Update active states to match dropdown selection
+    // First remove ALL active states
     categoryCards.forEach(card => {
         card.classList.remove('active');
-        
-        // Add active to matching card
-        const cardCategory = getCategoryFromCard(card);
-        if (cardCategory === selectedValue) {
-            card.classList.add('active');
-        }
     });
-});
-
-// Clear active states when search input is used
-document.getElementById('searchInput').addEventListener('input', function() {
-    if (this.value.trim() !== '') {
-        // If user is searching, clear category filter and active states
-        document.getElementById('typeFilter').value = '';
-        document.querySelectorAll('.category-card').forEach(card => {
-            card.classList.remove('active');
+    
+    // Only add active if a category is selected (not empty)
+    if (selectedValue !== '') {
+        categoryCards.forEach(card => {
+            const cardCategory = getCategoryFromCard(card);
+            if (cardCategory === selectedValue) {
+                card.classList.add('active');
+            }
         });
     }
 });
+
+// OPTIMIZED: Clear active states when dropdown is manually changed
+document.addEventListener('DOMContentLoaded', function() {
+    const typeFilter = document.getElementById('typeFilter');
+    const searchInput = document.getElementById('searchInput');
+    
+    if (typeFilter) {
+        typeFilter.addEventListener('change', function() {
+            const categoryCards = document.querySelectorAll('.category-card');
+            const selectedValue = this.value.toLowerCase();
+            
+            requestAnimationFrame(() => {
+                // Remove ALL active states
+                categoryCards.forEach(card => {
+                    card.classList.remove('active');
+                });
+                
+                // Add active only if value selected
+                if (selectedValue !== '') {
+                    categoryCards.forEach(card => {
+                        const cardCategory = getCategoryFromCard(card);
+                        if (cardCategory === selectedValue) {
+                            card.classList.add('active');
+                        }
+                    });
+                }
+                
+                // Debounced filter
+                clearTimeout(filterTimeout);
+                filterTimeout = setTimeout(() => {
+                    filterBusinesses();
+                }, 50);
+            });
+        });
+    }
+    
+    // OPTIMIZED: Clear active states when search input is used
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            if (this.value.trim() !== '') {
+                const categoryCards = document.querySelectorAll('.category-card');
+                
+                requestAnimationFrame(() => {
+                    document.getElementById('typeFilter').value = '';
+                    categoryCards.forEach(card => {
+                        card.classList.remove('active');
+                    });
+                    
+                    // Debounced filter
+                    clearTimeout(filterTimeout);
+                    filterTimeout = setTimeout(() => {
+                        filterBusinesses();
+                    }, 150); // Slightly longer for search typing
+                });
+            }
+        });
+    }
+});
+
+// Helper to filter other sections
+function filterOtherSections(searchTerm, typeFilter) {
+    const sections = [
+        { id: 'topRatedRow', name: 'Top Rated' },
+        { id: 'popularRow', name: 'Popular This Month' },
+        { id: 'newRow', name: 'New to BeautyGo' }
+    ];
+    
+    sections.forEach(section => {
+        const sectionElement = document.getElementById(section.id);
+        if (!sectionElement) return;
+        
+        const sectionCards = sectionElement.querySelectorAll('.business-card');
+        let sectionVisibleCount = 0;
+        
+        sectionCards.forEach(card => {
+            const businessName = card.getAttribute('data-name').toLowerCase();
+            const businessType = card.getAttribute('data-type').toLowerCase();
+            
+            const matchesSearch = businessName.includes(searchTerm);
+            const matchesType = typeFilter === '' || businessType === typeFilter;
+            
+            if (matchesSearch && matchesType) {
+                card.style.display = 'block';
+                sectionVisibleCount++;
+            } else {
+                card.style.display = 'none';
+            }
+        });
+        
+        let emptyState = sectionElement.querySelector('.section-empty-state');
+        
+        if (sectionVisibleCount === 0) {
+            if (!emptyState) {
+                emptyState = document.createElement('div');
+                emptyState.className = 'section-empty-state';
+                emptyState.innerHTML = `
+                    <div class="empty-state-mini">
+                        <i class="bi bi-search"></i>
+                        <p>No ${section.name.toLowerCase()} businesses match your filter</p>
+                    </div>
+                `;
+                sectionElement.appendChild(emptyState);
+            }
+            emptyState.style.display = 'block';
+        } else {
+            if (emptyState) {
+                emptyState.style.display = 'none';
+            }
+        }
+    });
+}
 
 // Add CSS for toast animations if not already present
 if (!document.getElementById('toast-animations')) {
@@ -1006,6 +1198,79 @@ if (!document.getElementById('toast-animations')) {
         }
     `;
     document.head.appendChild(style);
+}
+
+// Create login modal HTML when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    // Create modal HTML if it doesn't exist
+    if (!document.getElementById('loginModalOverlay')) {
+        const modalHTML = `
+            <div class="login-modal-overlay" id="loginModalOverlay">
+                <div class="login-modal">
+                    <button class="login-modal-close" onclick="closeLoginModal()">
+                        <i class="bi bi-x"></i>
+                    </button>
+                    <div class="login-modal-icon">
+                        <i class="bi bi-heart"></i>
+                    </div>
+                    <h2 class="login-modal-title">Login Required</h2>
+                    <p class="login-modal-message">
+                        Please login as a customer to add favorites and book services
+                    </p>
+                    <div class="login-modal-buttons">
+                        <a href="login.php" class="login-modal-btn login-modal-btn-primary">
+                            <i class="bi bi-box-arrow-in-right"></i>
+                            Login Now
+                        </a>
+                        <button class="login-modal-btn login-modal-btn-secondary" onclick="closeLoginModal()">
+                            <i class="bi bi-x-circle"></i>
+                            Maybe Later
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        
+        // Close modal when clicking outside
+        document.getElementById('loginModalOverlay').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeLoginModal();
+            }
+        });
+        
+        // Close modal with Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeLoginModal();
+            }
+        });
+    }
+});
+
+// Show login modal
+function showLoginModal() {
+    const overlay = document.getElementById('loginModalOverlay');
+    if (overlay) {
+        overlay.classList.add('show');
+        document.body.style.overflow = 'hidden'; // Prevent scrolling
+    }
+}
+
+// Close login modal
+function closeLoginModal() {
+    const overlay = document.getElementById('loginModalOverlay');
+    if (overlay) {
+        overlay.classList.remove('show');
+        document.body.style.overflow = ''; // Restore scrolling
+    }
+}
+
+// Handle favorite click for non-logged-in users (UPDATED)
+function handleNonLoggedInFavorite(event) {
+    event.stopPropagation();
+    event.preventDefault();
+    showLoginModal(); // Show modal instead of toast
 }
 
 // Allow clicking toast to dismiss

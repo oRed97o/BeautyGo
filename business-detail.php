@@ -135,9 +135,9 @@ include 'includes/header.php';
                                         <i class="bi bi-calendar-plus"></i> Book Now
                                     </a>
                                 <?php else: ?>
-                                    <a href="login.php" class="btn btn-primary">
-                                        <i class="bi bi-box-arrow-in-right"></i> Login to Book
-                                    </a>
+                                    <button class="btn btn-primary" onclick="showLoginModal(event)">
+                                        <i class="bi bi-calendar-plus"></i> Book Now
+                                    </button>
                                 <?php endif; ?>
                         </div>
                         
@@ -624,6 +624,81 @@ const markerIcon = L.divIcon({
     iconSize: [32, 32],
     iconAnchor: [16, 32]
 });
+
+// ==================== LOGIN MODAL FUNCTIONALITY ====================
+
+// Create login modal HTML when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    // Create modal HTML if it doesn't exist
+    if (!document.getElementById('loginModalOverlay')) {
+        const modalHTML = `
+            <div class="login-modal-overlay" id="loginModalOverlay">
+                <div class="login-modal">
+                    <button class="login-modal-close" onclick="closeLoginModal()">
+                        <i class="bi bi-x"></i>
+                    </button>
+                    <div class="login-modal-icon">
+                        <i class="bi bi-calendar-heart"></i>
+                    </div>
+                    <h2 class="login-modal-title">Login Required</h2>
+                    <p class="login-modal-message">
+                        Please login as a customer to book appointments and enjoy our services
+                    </p>
+                    <div class="login-modal-buttons">
+                        <a href="login.php" class="login-modal-btn login-modal-btn-primary">
+                            <i class="bi bi-box-arrow-in-right"></i>
+                            Login Now
+                        </a>
+                        <button class="login-modal-btn login-modal-btn-secondary" onclick="closeLoginModal()">
+                            <i class="bi bi-x-circle"></i>
+                            Maybe Later
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        
+        // Close modal when clicking outside
+        document.getElementById('loginModalOverlay').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeLoginModal();
+            }
+        });
+        
+        // Close modal with Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                const overlay = document.getElementById('loginModalOverlay');
+                if (overlay && overlay.classList.contains('show')) {
+                    closeLoginModal();
+                }
+            }
+        });
+    }
+});
+
+// Show login modal
+function showLoginModal(event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    const overlay = document.getElementById('loginModalOverlay');
+    if (overlay) {
+        overlay.classList.add('show');
+        document.body.style.overflow = 'hidden'; // Prevent scrolling
+    }
+}
+
+// Close login modal
+function closeLoginModal() {
+    const overlay = document.getElementById('loginModalOverlay');
+    if (overlay) {
+        overlay.classList.remove('show');
+        document.body.style.overflow = ''; // Restore scrolling
+    }
+}
 
 const businessName = <?php echo json_encode($business['business_name']); ?>;
 const businessAddress = <?php echo json_encode($business['business_address'] ?? ''); ?>;
