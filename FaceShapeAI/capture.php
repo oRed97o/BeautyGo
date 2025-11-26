@@ -50,7 +50,11 @@ try {
     
     // Call Python script with proper escaping
   //  $pythonPath = __DIR__ . '\.venv\Scripts\python.exe'; // or 'python3' depending on your system
-    $command = escapeshellcmd("$pythonPath predict.py") . ' ' . escapeshellarg($filename);
+  //  $command = escapeshellcmd("$pythonPath predict.py") . ' ' . escapeshellarg($filename);
+
+    $predictPath = __DIR__ . '/predict.py';  // full path to predict.py
+    $command = escapeshellcmd("$pythonPath $predictPath") . ' ' . escapeshellarg($filename);
+
     
     // Execute command and capture output
     // Don't capture stderr at all
