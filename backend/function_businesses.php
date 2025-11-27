@@ -246,9 +246,14 @@ function getAllBusinessesExcludingFeatured($excludeIds = []) {
     
     $stmt = $conn->prepare($sql);
     
-    // Bind parameters dynamically
+    // Bind parameters dynamically (ensure bind_param uses references)
     if (count($excludeIds) > 0) {
-        $stmt->bind_param($types, ...$excludeIds);
+        $bindNames = [];
+        $bindNames[] = $types;
+        for ($i = 0; $i < count($excludeIds); $i++) {
+            $bindNames[] = & $excludeIds[$i];
+        }
+        call_user_func_array([$stmt, 'bind_param'], $bindNames);
     }
     
     $stmt->execute();

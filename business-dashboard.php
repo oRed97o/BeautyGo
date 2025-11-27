@@ -408,10 +408,27 @@ include 'includes/header.php';
         </a>   -->
 
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2><i class="bi bi-speedometer2"></i> Business Dashboard</h2>
-            <a href="business-profile.php" class="btn btn-outline-primary">
-                <i class="bi bi-gear"></i> Manage Profile
-            </a>
+            <div>
+                <h2 class="page-title">Business Dashboard</h2>
+            </div>
+        </div>
+        
+        <!-- Dashboard header/banner -->
+        <div class="dashboard-header mb-4">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <h3 class="dashboard-title"><?php echo htmlspecialchars($business['business_name'] ?? $business['business'] ?? 'My Business'); ?></h3>
+                    <p class="small mb-0">Welcome back — here is a quick overview of your bookings and services.</p>
+                </div>
+                <div class="d-flex gap-2">
+                    <a href="business-profile.php" class="btn btn-outline-burgundy btn-action-sm">
+                        <i class="bi bi-gear"></i> Edit Profile
+                    </a>
+                    <a href="index.php?business=<?php echo $businessId; ?>" class="btn btn-burgundy btn-action-sm">
+                        <i class="bi bi-box-arrow-up-right"></i> View Public Page
+                    </a>
+                </div>
+            </div>
         </div>
         
         <!-- Stats Cards - ORIGINAL COLORS -->
@@ -494,17 +511,15 @@ include 'includes/header.php';
             <div class="tab-pane fade show active" id="bookings" role="tabpanel">
                 <div class="card">
                     <div class="card-body">
-                        <h4 class="mb-3">
-                            <i class="bi bi-calendar-check"></i> Manage Bookings
-                        </h4>
+                        <h4 class="mb-3 dashboard-section-title">Manage Bookings</h4>
                         <?php if (empty($bookings)): ?>
                             <div class="empty-state text-center py-5">
                                 <i class="bi bi-calendar-x" style="font-size: 4rem; color: #ccc;"></i>
                                 <p class="text-muted mt-3">No bookings yet</p>
                             </div>
                         <?php else: ?>
-                            <div class="table-responsive">
-                                <table class="table table-hover">
+                            <div class="table-responsive table-dashboard">
+                                <table class="table table-hover table-dashboard">
                                     <thead>
                                         <tr>
                                             <th>ID</th>
@@ -514,6 +529,7 @@ include 'includes/header.php';
                                             <th>Service</th>
                                             <th>Staff</th>
                                             <th>Amount</th>
+                                            <th>Notes</th>
                                             <th>Status</th>
                                             <th>Actions</th>
                                         </tr>
@@ -532,12 +548,21 @@ include 'includes/header.php';
                                                 <td><?php echo htmlspecialchars(($booking['staff_fname'] ?? '') . ' ' . ($booking['staff_lname'] ?? '') ?: 'Any Available'); ?></td>
                                                 <td><strong>₱<?php echo number_format($booking['cost'] ?? 0, 2); ?></strong></td>
                                                 <td>
-                                                    <span class="badge status-<?php echo $booking['appoint_status']; ?> bg-<?php 
-                                                        echo $booking['appoint_status'] === 'confirmed' ? 'success' : 
-                                                            ($booking['appoint_status'] === 'cancelled' ? 'danger' : 
-                                                            ($booking['appoint_status'] === 'completed' ? 'info' : 
-                                                            ($booking['appoint_status'] === 'unavailable' ? 'secondary' : 'warning'))); 
-                                                    ?>">
+                                                    <?php if (!empty($booking['appoint_desc'])): ?>
+                                                        <small class="text-muted"><?php echo htmlspecialchars($booking['appoint_desc']); ?></small>
+                                                    <?php else: ?>
+                                                        <span class="text-muted">-</span>
+                                                    <?php endif; ?>
+                                                </td>
+                                                <td>
+                                                    <?php
+                                                        // Map statuses to bootstrap color classes and pill styling
+                                                        $statusClass = $booking['appoint_status'] === 'confirmed' ? 'bg-success text-white' : (
+                                                            $booking['appoint_status'] === 'cancelled' ? 'bg-danger text-white' : (
+                                                            $booking['appoint_status'] === 'completed' ? 'bg-info text-white' : (
+                                                            $booking['appoint_status'] === 'unavailable' ? 'bg-secondary text-white' : 'bg-warning text-dark')));
+                                                    ?>
+                                                    <span class="status-badge-pill <?php echo $statusClass; ?>">
                                                         <?php echo ucfirst($booking['appoint_status']); ?>
                                                     </span>
                                                 </td>
@@ -586,7 +611,7 @@ include 'includes/header.php';
                 <div class="card">
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-center mb-4">
-                            <h4 class="mb-0"><i class="bi bi-graph-up"></i> Booking Analytics</h4>
+                            <h4 class="mb-0 dashboard-section-title">Booking Analytics</h4>
                             <div class="month-selector">
                                 <label for="monthSelect" class="form-label mb-1 small">Select Month:</label>
                                 <input type="month" id="monthSelect" class="form-control" value="<?php echo $selectedMonth; ?>" max="<?php echo date('Y-m'); ?>">
@@ -645,7 +670,7 @@ include 'includes/header.php';
                 <div class="card">
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-center mb-3">
-                            <h4 class="mb-0"><i class="bi bi-scissors"></i> Manage Services</h4>
+                            <h4 class="mb-0 dashboard-section-title">Manage Services</h4>
                             <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addServiceModal">
                                 <i class="bi bi-plus-circle"></i> Add Service
                             </button>
@@ -704,7 +729,7 @@ include 'includes/header.php';
                 <div class="card">
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-center mb-3">
-                            <h4 class="mb-0"><i class="bi bi-people"></i> Manage Staff</h4>
+                            <h4 class="mb-0 dashboard-section-title">Manage Staff</h4>
                             <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addStaffModal">
                                 <i class="bi bi-person-plus"></i> Add Staff
                             </button>
@@ -762,7 +787,7 @@ include 'includes/header.php';
             <div class="tab-pane fade" id="reviews" role="tabpanel">
                 <div class="card">
                     <div class="card-body">
-                        <h4 class="mb-3"><i class="bi bi-star-fill"></i> Customer Reviews</h4>
+                        <h4 class="mb-3 dashboard-section-title">Customer Reviews</h4>
                         <?php if (empty($reviews)): ?>
                             <div class="empty-state text-center py-5">
                                 <i class="bi bi-chat-square-text" style="font-size: 4rem; color: #ccc;"></i>
