@@ -396,6 +396,37 @@ include 'includes/header.php';
             </div>
             
             <div class="col-lg-4">
+                <!-- Business Hours -->
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h4 class="mb-3"><i class="bi bi-clock-fill"></i> Business Hours</h4>
+                        <?php 
+                        $openingHour = $business['opening_hour'] ?? null;
+                        $closingHour = $business['closing_hour'] ?? null;
+                        
+                        if (!empty($openingHour) && !empty($closingHour)): 
+                        ?>
+                            <div class="business-hours">
+                                <div class="hours-item">
+                                    <strong>Opens:</strong>
+                                    <span class="hours-time"><?php echo date('g:i A', strtotime($openingHour)); ?></span>
+                                </div>
+                                <div class="hours-item">
+                                    <strong>Closes:</strong>
+                                    <span class="hours-time"><?php echo date('g:i A', strtotime($closingHour)); ?></span>
+                                </div>
+                                <div class="hours-status mt-3 p-2 rounded text-center" id="businessStatus">
+                                    <small id="statusText"></small>
+                                </div>
+                            </div>
+                        <?php else: ?>
+                            <div class="empty-state py-3">
+                                <p class="text-muted">Business hours not available</p>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+
                 <!-- Staff -->
                 <div class="card mb-4">
                     <div class="card-body">
@@ -706,6 +737,47 @@ const businessAddress = <?php echo json_encode($business['business_address'] ?? 
 L.marker([bizLat, bizLng], { icon: markerIcon })
     .addTo(businessMap)
     .bindPopup('<strong>' + businessName + '</strong><br>' + businessAddress);
+
+// ==================== BUSINESS HOURS STATUS ====================
+
+// Update business hours status in real-time
+function updateBusinessStatus() {
+    const statusElement = document.getElementById('businessStatus');
+    const statusText = document.getElementById('statusText');
+    
+    if (!statusElement) return;
+    
+    <?php if (!empty($business['opening_hour']) && !empty($business['closing_hour'])): ?>
+        const openingTime = '<?php echo date('H:i', strtotime($business['opening_hour'])); ?>';
+        const closingTime = '<?php echo date('H:i', strtotime($business['closing_hour'])); ?>';
+        
+        const now = new Date();
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        const currentTime = hours + ':' + minutes;
+        
+        // Convert time strings to comparable format
+        const isOpen = currentTime >= openingTime && currentTime < closingTime;
+        
+        if (isOpen) {
+            statusElement.classList.remove('closed');
+            statusElement.classList.add('open');
+            statusText.innerHTML = '<i class="bi bi-check-circle-fill"></i> <strong>Open Now</strong> (Closes at ' + closingTime.substring(0, 5).replace(':', ':') + ')';
+        } else {
+            statusElement.classList.add('closed');
+            statusElement.classList.remove('open');
+            statusText.innerHTML = '<i class="bi bi-exclamation-circle-fill"></i> <strong>Closed</strong> (Opens at ' + openingTime.substring(0, 5).replace(':', ':') + ')';
+        }
+    <?php endif; ?>
+}
+
+// Update status on page load
+document.addEventListener('DOMContentLoaded', function() {
+    updateBusinessStatus();
+    // Update status every minute
+    setInterval(updateBusinessStatus, 60000);
+});
+
 </script>
 
 <?php include 'includes/footer.php'; ?>

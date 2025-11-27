@@ -46,6 +46,8 @@ function createBusiness($data) {
     $businessNum = $data['business_num'] ?? '';
     $businessAddress = $data['business_address'] ?? '';
     $city = $data['city'] ?? '';
+    $openingHour = $data['opening_hour'] ?? '09:00';
+    $closingHour = $data['closing_hour'] ?? '18:00';
 
     $longitude = $data['longitude'] ?? 120.6328;
     $latitude = $data['latitude'] ?? 14.0697;
@@ -53,8 +55,8 @@ function createBusiness($data) {
 
     $stmt = $conn->prepare("
         INSERT INTO businesses 
-        (business_email, business_password, business_name, business_type, business_desc, business_num, business_address, city, location)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ST_GeomFromText(?))
+        (business_email, business_password, business_name, business_type, business_desc, business_num, business_address, city, opening_hour, closing_hour, location)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ST_GeomFromText(?))
     ");
     $stmt->bind_param("sssssssss",
         $email,
@@ -65,6 +67,8 @@ function createBusiness($data) {
         $businessNum,
         $businessAddress,
         $city,
+        $openingHour,
+        $closingHour,
         $location
     );
 

@@ -195,7 +195,9 @@ function registerBusiness() {
         'business_num' => sanitize($_POST['business_num'] ?? ''),
         'city' => $city,
         'latitude' => $_POST['latitude'] ?? 14.0697,
-        'longitude' => $_POST['longitude'] ?? 120.6328
+        'longitude' => $_POST['longitude'] ?? 120.6328,
+        'opening_hour' => $_POST['opening_hour'] ?? '09:00',
+        'closing_hour' => $_POST['closing_hour'] ?? '18:00'
     ];
 
     $businessId = createBusiness($businessData);

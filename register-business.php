@@ -96,6 +96,24 @@ include 'includes/header.php';
                             
                             <hr class="my-4">
                             
+                            <!-- Business Hours -->
+                            <h5 class="mb-3">Business Hours</h5>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="opening_hour" class="form-label">Opening Time *</label>
+                                    <input type="time" class="form-control" id="opening_hour" name="opening_hour" required>
+                                    <small class="text-muted d-block mt-1">e.g., 09:00</small>
+                                </div>
+                                
+                                <div class="col-md-6 mb-3">
+                                    <label for="closing_hour" class="form-label">Closing Time *</label>
+                                    <input type="time" class="form-control" id="closing_hour" name="closing_hour" required>
+                                    <small class="text-muted d-block mt-1">e.g., 18:00</small>
+                                </div>
+                            </div>
+                            
+                            <hr class="my-4">
+                            
                             <!-- Contact Information -->
                             <h5 class="mb-3">Contact Information</h5>
                             <div class="row">
