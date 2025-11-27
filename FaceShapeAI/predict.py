@@ -6,7 +6,12 @@ import joblib
 import os
 
 # -------------------- LOAD MODEL AND PREPROCESSOR --------------------
-MODEL_DIR = "model"
+# Get the folder where predict.py is located
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# Model folder relative to the script
+MODEL_DIR = os.path.join(BASE_DIR, "model")
+
 ensemble_file = os.path.join(MODEL_DIR, "ensemble_with_rf_svc_compressed.pkl")
 preproc_file = os.path.join(MODEL_DIR, "preproc_scaler_pca.pkl")
 
