@@ -50,43 +50,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_booking'])) {
         $notes = isset($_POST['notes']) ? sanitize($_POST['notes']) : '';
         $employId = isset($_POST['employ_id']) && !empty($_POST['employ_id']) ? sanitize($_POST['employ_id']) : null;
         
-        // Combine multiple services into a single appointment: sum durations
-        $totalDuration = 0;
-        $firstServiceId = null;
+        // Create separate appointments for each service
         foreach ($serviceIds as $serviceId) {
             $service = getServiceById($serviceId);
             if (!$service) {
                 error_log("Invalid service_id: " . $serviceId);
                 continue;
             }
-            if ($firstServiceId === null) $firstServiceId = $serviceId;
-            $totalDuration += intval($service['duration']);
-        }
-
-        if ($firstServiceId === null) {
-            $_SESSION['error'] = 'Selected services are invalid.';
-        } else {
+            
             $appointmentData = [
                 'customer_id' => $user['customer_id'],
-                // store primary service id (first selected) but use combined duration for availability checks
-                'service_id' => intval($firstServiceId),
+                'service_id' => intval($serviceId), 
                 'employ_id' => $employId,
                 'appoint_date' => $appointDate,
                 'appoint_status' => 'pending',
-                'appoint_desc' => $notes,
-                'combined_duration' => $totalDuration
+                'appoint_desc' => $notes
             ];
-
+            
             $result = createAppointment($appointmentData);
-
+            
             if (is_array($result) && isset($result['error'])) {
+                // Time slot unavailable
                 $failureCount++;
-                $_SESSION['error'] = $result['message'] ?? 'The selected time slot is no longer available. Please choose another time.';
+                $_SESSION['error'] = 'The selected time slot is no longer available. Please choose another time.';
             } elseif ($result) {
                 $successCount++;
             } else {
                 $failureCount++;
-                error_log("Failed to create appointment for combined services: " . implode(',', $serviceIds));
+                error_log("Failed to create appointment for service_id: " . $serviceId);
             }
         }
         
@@ -98,6 +89,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_booking'])) {
             $_SESSION['warning'] = "Some appointments were created, but {$failureCount} failed. The time slot may have been booked by someone else.";
             header('Location: my-bookings.php');
             exit;
+        } else {
+            if (!isset($_SESSION['error'])) {
+                $_SESSION['error'] = 'Booking failed. The time slot may be unavailable or already booked.';
+            }
         }
     }
 }
@@ -374,6 +369,7 @@ function updateServiceSelection() {
     }
     
     // Refresh calendar and time slots when services change
+    loadFullyBookedDates();
     checkAvailability();
     updateSummary();
 }
@@ -385,11 +381,9 @@ function selectStaff() {
     document.getElementById('staff_name').value = staffName;
     
     // Refresh calendar and time slots when staff changes
-    // Reload fully booked dates for the selected employee, then update availability
-    loadFullyBookedDates().then(() => {
-        checkAvailability();
-        updateSummary();
-    });
+    loadFullyBookedDates();
+    checkAvailability();
+    updateSummary();
 }
 
 function updateSummary() {
@@ -490,21 +484,12 @@ async function checkAvailability() {
         const timeSelect = document.getElementById('time');
         timeSelect.disabled = true;
         timeSelect.innerHTML = '<option value="">Please select a date first</option>';
-        console.log('No date selected, clearing time options');
         return;
     }
     
     // Get selected service IDs
     const checkboxes = document.querySelectorAll('input[name="service_ids[]"]:checked');
     const serviceIds = Array.from(checkboxes).map(cb => cb.value).join(',');
-    
-    if (!serviceIds) {
-        const timeSelect = document.getElementById('time');
-        timeSelect.disabled = true;
-        timeSelect.innerHTML = '<option value="">Please select at least one service</option>';
-        console.log('No services selected, clearing time options');
-        return;
-    }
     
     // Show loading state
     const timeSelect = document.getElementById('time');
@@ -513,43 +498,25 @@ async function checkAvailability() {
     
     try {
         const url = `ajax/get_available_slots.php?business_id=${businessId}&date=${date}&employ_id=${employId}&service_ids=${serviceIds}`;
-        console.log('📡 Fetching slots from: ' + url);
+        console.log('Fetching slots from:', url);
         
         const response = await fetch(url);
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-        
         const data = await response.json();
         
-        console.log('✅ Slots response received:', {
-            success: data.success,
-            total_slots: data.total_slots,
-            available_count: data.available_count,
-            booked_count: data.booked_count,
-            business_hours: data.business_hours
-        });
+        console.log('Slots response:', data);
         
-        if (!data.success) {
-            console.error('❌ API error:', data.error);
-            timeSelect.innerHTML = '<option value="">Error: ' + (data.error || 'Unknown error') + '</option>';
-            timeSelect.disabled = false;
-            return;
+        if (data.success) {
+            availableSlots = data.slots;
+            console.log('Total slots:', availableSlots.length);
+            console.log('Available slots:', availableSlots.filter(s => s.available).length);
+            console.log('Booked slots:', availableSlots.filter(s => !s.available).length);
+            updateTimeSlots();
+        } else {
+            console.error('Error fetching slots:', data.error);
+            timeSelect.innerHTML = '<option value="">Error: ' + data.error + '</option>';
         }
-        
-        availableSlots = data.slots || [];
-        console.log('📊 Slot breakdown:', {
-            total: availableSlots.length,
-            available: availableSlots.filter(s => s.available).length,
-            booked: availableSlots.filter(s => !s.available).length
-        });
-        
-        // Debug: log first few slots
-        console.log('📋 First 3 slots:', availableSlots.slice(0, 3));
-        
-        updateTimeSlots();
     } catch (error) {
-        console.error('❌ Fetch error:', error);
+        console.error('Fetch error:', error);
         timeSelect.innerHTML = '<option value="">Network error. Please try again.</option>';
     }
     
@@ -563,60 +530,42 @@ function updateTimeSlots() {
     
     timeSelect.innerHTML = '<option value="">Choose time...</option>';
     
-    // Separate available and booked slots
-    const availableList = availableSlots.filter(s => s.available);
-    const bookedList = availableSlots.filter(s => !s.available);
+    let hasAvailableSlots = false;
     
-    let hasAvailableSlots = availableList.length > 0;
-    
-    // Add ONLY available slots to the main list
-    availableList.forEach(slot => {
+    availableSlots.forEach(slot => {
         const option = document.createElement('option');
         option.value = slot.time;
-        option.textContent = slot.display;
-        option.className = 'available-option';
+        
+        if (!slot.available) {
+            option.disabled = true;
+            option.textContent = slot.display + ' (Fully Booked)';
+            option.style.color = '#999';
+            option.style.backgroundColor = '#f8d7da';
+            option.style.textDecoration = 'line-through';
+        } else {
+            option.textContent = slot.display;
+            hasAvailableSlots = true;
+        }
+        
         timeSelect.appendChild(option);
     });
-    
-    // Add booked slots in a separate, disabled optgroup
-    if (bookedList.length > 0) {
-        const bookedGroup = document.createElement('optgroup');
-        bookedGroup.label = '✗ Booked Times (' + bookedList.length + ')';
-        bookedGroup.className = 'booked-group';
-        bookedGroup.disabled = true;
-        
-        bookedList.forEach(slot => {
-            const option = document.createElement('option');
-            option.value = slot.time;
-            option.textContent = slot.display + ' (Booked)';
-            option.className = 'booked-option';
-            option.disabled = true;
-            bookedGroup.appendChild(option);
-        });
-        
-        timeSelect.appendChild(bookedGroup);
-    }
-    
-    console.log('Time slots updated: ' + availableSlots.length + ' total, ' + 
-                availableList.length + ' available, ' + 
-                bookedList.length + ' booked');
     
     // Update help text
     const helpText = document.getElementById('timeHelp');
     if (!hasAvailableSlots) {
         helpText.innerHTML = '<i class="bi bi-exclamation-triangle text-danger"></i> All time slots are booked for this date. Please select another date.';
         helpText.className = 'text-danger';
-    } else if (bookedList.length > 0) {
-        helpText.innerHTML = '<i class="bi bi-info-circle"></i> <strong>' + bookedList.length + ' slot(s)</strong> are booked and shown below';
-        helpText.className = 'text-muted';
     } else {
-        helpText.innerHTML = '<i class="bi bi-info-circle"></i> All slots available';
+        helpText.innerHTML = '<i class="bi bi-info-circle"></i> Grey slots are already booked';
         helpText.className = 'text-muted';
     }
     
     // Restore previously selected value if still available
-    if (currentValue && availableList.find(s => s.time === currentValue)) {
-        timeSelect.value = currentValue;
+    if (currentValue) {
+        const previousOption = timeSelect.querySelector(`option[value="${currentValue}"]`);
+        if (previousOption && !previousOption.disabled) {
+            timeSelect.value = currentValue;
+        }
     }
 }
 
@@ -650,14 +599,10 @@ function initializeDatePicker() {
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Page loaded, initializing booking system...');
-    // Initialize date picker first so onDayCreate can use fetched booked dates
+    updateServiceSelection();
     initializeDatePicker();
-    // Load fully booked dates and then refresh service selection (which triggers availability)
-    loadFullyBookedDates().then(() => {
-        updateServiceSelection();
-        checkAvailability();
-    });
-
+    loadFullyBookedDates();
+    
     // Add event listener to time picker
     document.getElementById('time').addEventListener('change', updateSummary);
 });
@@ -690,19 +635,12 @@ document.getElementById('bookingForm').addEventListener('submit', function(e) {
     cursor: not-allowed !important;
 }
 
-/* Style for unavailable time slots in dropdown */
+/* Style for unavailable time slots */
 #time option:disabled {
     color: #999 !important;
-}
-
-/* Booked option styling - make it visually clear it's unavailable */
-#time option.booked-option {
-    color: #999;
+    background-color: #f8d7da !important;
     text-decoration: line-through;
-}
-
-#time option.available-option {
-    color: #333;
+    font-style: italic;
 }
 
 /* Loading state for time select */
@@ -716,17 +654,6 @@ document.getElementById('bookingForm').addEventListener('submit', function(e) {
     background-color: #f8d7da !important;
     color: #721c24 !important;
     font-weight: bold;
-}
-
-/* Style time select for better visibility */
-#time {
-    font-size: 1rem;
-    padding: 0.5rem;
-}
-
-#time optgroup {
-    font-style: normal;
-    color: #333;
 }
 </style>
 
