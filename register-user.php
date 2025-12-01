@@ -526,7 +526,7 @@ include 'includes/header.php';
                                 
                                 <div class="col-md-6 mb-3">
                                     <label for="cstmr_num" class="form-label">Phone Number *</label>
-                                    <input type="tel" class="form-control" id="cstmr_num" name="cstmr_num" required placeholder="+63 912 345 6789">
+                                    <input type="tel" class="form-control" id="cstmr_num" name="cstmr_num" required placeholder="09123456789">
                                 </div>
                             </div>
 
@@ -1049,8 +1049,8 @@ cropModal.addEventListener('click', function(e) {
 </main>
 
 <script>
+// Live validation for register-user.php
 (function() {
-    // Email validation updated to only require @ symbol (not .com)
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const passwordRules = {
         minLength: 8,
@@ -1064,7 +1064,7 @@ cropModal.addEventListener('click', function(e) {
 
     function validateEmail(val) {
         const v = val.trim().toLowerCase();
-        return emailRegex.test(v); // Only requires @ symbol and valid format
+        return emailRegex.test(v); // Only requires @ and valid email format, NOT .com
     }
 
     function validatePhone(val) {
@@ -1086,8 +1086,14 @@ cropModal.addEventListener('click', function(e) {
 
     function setState(el, ok) {
         el.classList.remove('valid','invalid');
-        // For selects, value may be empty string
         const val = (el.tagName === 'SELECT') ? el.value : el.value.trim();
+        
+        // Special handling for optional middle name field
+        if (el.id === 'mname' && !val) {
+            el.removeAttribute('aria-invalid');
+            return; // Don't mark empty middle name as invalid
+        }
+        
         if (!val) {
             el.removeAttribute('aria-invalid');
             return;
@@ -1103,41 +1109,50 @@ cropModal.addEventListener('click', function(e) {
 
     document.addEventListener('DOMContentLoaded', function() {
         const map = [
-            { id: 'fname', validator: (el)=> validateName(el.value) },
-            { id: 'mname', validator: (el)=> el.value.trim() === '' ? false : validateName(el.value) },
-            { id: 'surname', validator: (el)=> validateName(el.value) },
-            { id: 'cstmr_email', validator: (el)=> validateEmail(el.value) },
-            { id: 'cstmr_num', validator: (el)=> validatePhone(el.value) },
-            { id: 'password', validator: (el)=> validatePassword(el.value) },
-            { id: 'confirm_password', validator: (el)=> {
+            { id: 'fname', validator: (el) => validateName(el.value), required: true },
+            { id: 'mname', validator: (el) => el.value.trim() === '' || validateName(el.value), required: false }, // Optional field
+            { id: 'surname', validator: (el) => validateName(el.value), required: true },
+            { id: 'cstmr_email', validator: (el) => validateEmail(el.value), required: true },
+            { id: 'cstmr_num', validator: (el) => validatePhone(el.value), required: true },
+            { id: 'password', validator: (el) => validatePassword(el.value), required: true },
+            { id: 'confirm_password', validator: (el) => {
                     const pw = document.getElementById('password').value;
                     return el.value === pw && validatePassword(pw);
-                }
+                }, required: true
             },
-            { id: 'cstmr_address', validator: (el)=> validateSelect(el) }
+            { id: 'cstmr_address', validator: (el) => validateSelect(el), required: true }
         ];
 
         map.forEach(item => {
             const el = document.getElementById(item.id);
             if (!el) return;
             el.classList.add('validate-field');
-            // initial state (use setState so selects handled)
+            
+            // Initial state
             setState(el, item.validator(el));
 
             const inputEvent = (e) => {
                 setState(el, item.validator(el));
+                
+                // When password changes, revalidate confirm password
                 if (item.id === 'password') {
                     const confirm = document.getElementById('confirm_password');
-                    if (confirm) setState(confirm, map.find(m=>m.id==='confirm_password').validator(confirm));
+                    if (confirm) {
+                        const confirmValidator = map.find(m => m.id === 'confirm_password');
+                        if (confirmValidator) setState(confirm, confirmValidator.validator(confirm));
+                    }
                     if (confirm && confirm.classList.contains('valid')) {
                         const pwMismatch = document.getElementById('pwMismatch');
                         if (pwMismatch) pwMismatch.classList.add('d-none');
                     }
                 }
+                
                 // Hide inline mismatch message when confirm becomes valid
                 if (item.id === 'confirm_password') {
                     const pwMismatch = document.getElementById('pwMismatch');
-                    if (pwMismatch && el.classList.contains('valid')) pwMismatch.classList.add('d-none');
+                    if (pwMismatch && el.classList.contains('valid')) {
+                        pwMismatch.classList.add('d-none');
+                    }
                 }
             };
 
@@ -1151,7 +1166,7 @@ cropModal.addEventListener('click', function(e) {
             }
         });
 
-        // Form submit: prevent if invalid required fields exist (include location)
+        // Form submit validation
         const form = document.getElementById('userRegisterForm');
         if (form) {
             form.addEventListener('submit', function(e) {
@@ -1162,16 +1177,21 @@ cropModal.addEventListener('click', function(e) {
                 requiredIds.forEach(id => {
                     const el = document.getElementById(id);
                     if (!el) return;
-                    // For selects, check value; for inputs, check trimmed value
                     const val = (el.tagName === 'SELECT') ? el.value : el.value.trim();
+                    
+                    // Mark as invalid if empty
                     if (!val) {
                         el.classList.add('invalid');
+                        el.classList.remove('valid');
                         anyInvalid = true;
                         firstInvalid = firstInvalid || el;
                         return;
                     }
-                    if (!el.classList.contains('valid')) {
+                    
+                    // Mark as invalid if it has the invalid class OR doesn't have valid class
+                    if (el.classList.contains('invalid') || !el.classList.contains('valid')) {
                         el.classList.add('invalid');
+                        el.classList.remove('valid');
                         anyInvalid = true;
                         firstInvalid = firstInvalid || el;
                     }
@@ -1181,14 +1201,14 @@ cropModal.addEventListener('click', function(e) {
                     e.preventDefault();
                     if (firstInvalid) firstInvalid.focus();
                     if (typeof showErrorModal === 'function') {
-                        showErrorModal('Please fix highlighted fields before continuing.');
+                        showErrorModal('Please fix all highlighted fields before continuing.');
                     } else {
-                        alert('Please fix highlighted fields before continuing.');
+                        alert('Please fix all highlighted fields before continuing.');
                     }
+                    return false;
                 }
             });
         }
-
     });
 })();
 </script>

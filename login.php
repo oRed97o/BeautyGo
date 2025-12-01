@@ -127,133 +127,212 @@ unset($_SESSION['failed_type']);
 
 <?php include 'includes/footer.php'; ?>
 
+
+
 <script>
-    // Live validation
-(function() {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-    function validateEmail(val) {
-        const v = val.trim().toLowerCase();
-        return emailRegex.test(v); // Removed the .endsWith('.com') requirement
-    }
-
-    function validatePassword(val) {
-        return val.trim().length >= 8;
-    }
-
-    function setState(el, ok) {
-        if (!el) return;
-        el.classList.remove('valid', 'invalid');
-        const val = el.value.trim();
-        if (!val) {
-            el.removeAttribute('aria-invalid');
-            return;
-        }
-        if (ok) {
-            el.classList.add('valid');
-            el.setAttribute('aria-invalid', 'false');
+    // Password visibility toggle function
+    function togglePassword(inputId, eyeId) {
+        const passwordInput = document.getElementById(inputId);
+        const eyeIcon = document.getElementById(eyeId);
+        
+        if (passwordInput.type === 'password') {
+            // Show password
+            passwordInput.type = 'text';
+            eyeIcon.classList.remove('bi-eye');
+            eyeIcon.classList.add('bi-eye-slash');
         } else {
-            el.classList.add('invalid');
-            el.setAttribute('aria-invalid', 'true');
+            // Hide password
+            passwordInput.type = 'password';
+            eyeIcon.classList.remove('bi-eye-slash');
+            eyeIcon.classList.add('bi-eye');
         }
     }
 
-    document.addEventListener('DOMContentLoaded', function() {
-        const fields = [
-            { id: 'customerEmail', validator: (el) => validateEmail(el.value) },
-            { id: 'customerPassword', validator: (el) => validatePassword(el.value) },
-            { id: 'businessEmail', validator: (el) => validateEmail(el.value) },
-            { id: 'businessPassword', validator: (el) => validatePassword(el.value) }
-        ];
+    // Live validation for login.php
+    (function() {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-        fields.forEach(item => {
-            const el = document.getElementById(item.id);
+        function validateEmail(val) {
+            const v = val.trim().toLowerCase();
+            return emailRegex.test(v); // Only requires @ and valid email format, NOT .com
+        }
+
+        function validatePassword(val) {
+            return val.trim().length >= 8;
+        }
+
+        function setState(el, ok) {
             if (!el) return;
-            el.classList.add('validate-field');
-            
-            // Initial state
-            setState(el, item.validator(el));
+            el.classList.remove('valid', 'invalid');
+            const val = el.value.trim();
+            if (!val) {
+                el.removeAttribute('aria-invalid');
+                return;
+            }
+            if (ok) {
+                el.classList.add('valid');
+                el.setAttribute('aria-invalid', 'false');
+            } else {
+                el.classList.add('invalid');
+                el.setAttribute('aria-invalid', 'true');
+            }
+        }
 
-            const handler = function() {
+        document.addEventListener('DOMContentLoaded', function() {
+            const fields = [
+                { id: 'customerEmail', validator: (el) => validateEmail(el.value) },
+                { id: 'customerPassword', validator: (el) => validatePassword(el.value) },
+                { id: 'businessEmail', validator: (el) => validateEmail(el.value) },
+                { id: 'businessPassword', validator: (el) => validatePassword(el.value) }
+            ];
+
+            fields.forEach(item => {
+                const el = document.getElementById(item.id);
+                if (!el) return;
+                el.classList.add('validate-field');
+                
+                // Initial state
                 setState(el, item.validator(el));
-            };
 
-            el.addEventListener('input', handler);
-            el.addEventListener('blur', handler);
-        });
+                const handler = function() {
+                    setState(el, item.validator(el));
+                };
 
-        // Clear form fields when switching tabs
-        const customerTab = document.getElementById('customer-tab');
-        const businessTab = document.getElementById('business-tab');
-        
-        // Function to reset form fields but keep email
-        function resetCustomerPassword() {
-            const pwField = document.getElementById('customerPassword');
-            pwField.value = '';
-            pwField.classList.remove('valid', 'invalid');
-            // Reset password field type to 'password'
-            pwField.type = 'password';
-            // Reset eye icon
-            const customerEye = document.getElementById('customerEye');
-            customerEye.classList.remove('bi-eye-slash');
-            customerEye.classList.add('bi-eye');
-        }
-        
-        function resetBusinessPassword() {
-            const pwField = document.getElementById('businessPassword');
-            pwField.value = '';
-            pwField.classList.remove('valid', 'invalid');
-            // Reset password field type to 'password'
-            pwField.type = 'password';
-            // Reset eye icon
-            const businessEye = document.getElementById('businessEye');
-            businessEye.classList.remove('bi-eye-slash');
-            businessEye.classList.add('bi-eye');
-        }
-        
-        function resetCustomerForm() {
-            const emailField = document.getElementById('customerEmail');
-            emailField.value = '';
-            emailField.classList.remove('valid', 'invalid');
-            resetCustomerPassword();
-        }
-        
-        function resetBusinessForm() {
-            const emailField = document.getElementById('businessEmail');
-            emailField.value = '';
-            emailField.classList.remove('valid', 'invalid');
-            resetBusinessPassword();
-        }
-        
-        // Check if we're coming from a failed login
-        const customerEmail = document.getElementById('customerEmail').value;
-        const businessEmail = document.getElementById('businessEmail').value;
-        
-        // If customer email is populated (failed login), only clear password and switch to customer tab
-        if (customerEmail) {
-            resetCustomerPassword();
-            customerTab.click();
-        }
-        
-        // If business email is populated (failed login), only clear password and switch to business tab
-        if (businessEmail) {
-            resetBusinessPassword();
-            businessTab.click();
-        }
-        
-        // Reset forms when switching tabs (clears both email and password)
-        customerTab.addEventListener('click', function() {
-            resetBusinessForm();
-            if (!customerEmail) {
-                resetCustomerForm();
+                el.addEventListener('input', handler);
+                el.addEventListener('blur', handler);
+            });
+
+            // Clear form fields when switching tabs
+            const customerTab = document.getElementById('customer-tab');
+            const businessTab = document.getElementById('business-tab');
+            
+            function resetCustomerPassword() {
+                const pwField = document.getElementById('customerPassword');
+                pwField.value = '';
+                pwField.classList.remove('valid', 'invalid');
+                pwField.type = 'password';
+                const customerEye = document.getElementById('customerEye');
+                customerEye.classList.remove('bi-eye-slash');
+                customerEye.classList.add('bi-eye');
             }
-        });
-        
-        businessTab.addEventListener('click', function() {
-            resetCustomerForm();
-            if (!businessEmail) {
+            
+            function resetBusinessPassword() {
+                const pwField = document.getElementById('businessPassword');
+                pwField.value = '';
+                pwField.classList.remove('valid', 'invalid');
+                pwField.type = 'password';
+                const businessEye = document.getElementById('businessEye');
+                businessEye.classList.remove('bi-eye-slash');
+                businessEye.classList.add('bi-eye');
+            }
+            
+            function resetCustomerForm() {
+                const emailField = document.getElementById('customerEmail');
+                emailField.value = '';
+                emailField.classList.remove('valid', 'invalid');
+                resetCustomerPassword();
+            }
+            
+            function resetBusinessForm() {
+                const emailField = document.getElementById('businessEmail');
+                emailField.value = '';
+                emailField.classList.remove('valid', 'invalid');
+                resetBusinessPassword();
+            }
+            
+            // Check if we're coming from a failed login
+            const customerEmail = document.getElementById('customerEmail').value;
+            const businessEmail = document.getElementById('businessEmail').value;
+            
+            if (customerEmail) {
+                resetCustomerPassword();
+                customerTab.click();
+            }
+            
+            if (businessEmail) {
+                resetBusinessPassword();
+                businessTab.click();
+            }
+            
+            // Reset forms when switching tabs
+            customerTab.addEventListener('click', function() {
                 resetBusinessForm();
+                if (!customerEmail) {
+                    resetCustomerForm();
+                }
+            });
+            
+            businessTab.addEventListener('click', function() {
+                resetCustomerForm();
+                if (!businessEmail) {
+                    resetBusinessForm();
+                }
+            });
+
+            // Prevent form submission if fields are invalid
+            const customerForm = document.querySelector('#customer form');
+            const businessForm = document.querySelector('#business form');
+
+            if (customerForm) {
+                customerForm.addEventListener('submit', function(e) {
+                    const emailField = document.getElementById('customerEmail');
+                    const passwordField = document.getElementById('customerPassword');
+                    
+                    let isValid = true;
+                    let firstInvalid = null;
+
+                    // Check email
+                    if (!emailField.value.trim() || emailField.classList.contains('invalid')) {
+                        emailField.classList.add('invalid');
+                        isValid = false;
+                        firstInvalid = firstInvalid || emailField;
+                    }
+
+                    // Check password
+                    if (!passwordField.value.trim() || passwordField.classList.contains('invalid')) {
+                        passwordField.classList.add('invalid');
+                        isValid = false;
+                        firstInvalid = firstInvalid || passwordField;
+                    }
+
+                    if (!isValid) {
+                        e.preventDefault();
+                        if (firstInvalid) firstInvalid.focus();
+                        alert('Please fix all highlighted fields before continuing.');
+                    }
+                });
+            }
+
+            if (businessForm) {
+                businessForm.addEventListener('submit', function(e) {
+                    const emailField = document.getElementById('businessEmail');
+                    const passwordField = document.getElementById('businessPassword');
+                    
+                    let isValid = true;
+                    let firstInvalid = null;
+
+                    // Check email
+                    if (!emailField.value.trim() || emailField.classList.contains('invalid')) {
+                        emailField.classList.add('invalid');
+                        isValid = false;
+                        firstInvalid = firstInvalid || emailField;
+                    }
+
+                    // Check password
+                    if (!passwordField.value.trim() || passwordField.classList.contains('invalid')) {
+                        passwordField.classList.add('invalid');
+                        isValid = false;
+                        firstInvalid = firstInvalid || passwordField;
+                    }
+
+                    if (!isValid) {
+                        e.preventDefault();
+                        if (firstInvalid) firstInvalid.focus();
+                        alert('Please fix all highlighted fields before continuing.');
+                    }
+                });
             }
         });
-    });
-})();
+    })();
+</script>

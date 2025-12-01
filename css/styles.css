@@ -2,6 +2,9 @@
 
 :root {
     --color-burgundy: #850E35;
+    --color-rose: #EE6983;
+    --color-pink: #FFC4C4;
+    --color-cream: #FFF5E4;
 
 /* -- Live validation indicators -- */
 .validate-field {

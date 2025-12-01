@@ -1188,19 +1188,20 @@
         padding: 1rem 0;
     }
 
-    /* Pagination for All Businesses */
     .business-grid-paginated {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        /* Changed from auto-fill to auto-fit and fixed max width */
+        grid-template-columns: repeat(auto-fit, minmax(260px, 260px));
         gap: 1.5rem;
         padding: 1rem 0;
+        /* This centers the grid */
         justify-content: center;
         max-width: 100%;
     }
 
     .business-grid-paginated .business-card {
         width: 260px;
-        justify-self: center;
+        /* Remove justify-self as it's not needed anymore */
     }
 
     .business-grid-paginated .business-card:nth-child(n+21) {
@@ -1257,8 +1258,14 @@
     }
 
     @media (max-width: 768px) {
-        .business-grid-paginated {
-            grid-template-columns: 1fr;
-        }
+    .business-grid-paginated {
+        grid-template-columns: 1fr;
     }
+    
+    .business-grid-paginated .business-card {
+        width: 100%;
+        max-width: 350px;
+        margin: 0 auto;
+    }
+}
 

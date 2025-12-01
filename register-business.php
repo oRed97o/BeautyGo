@@ -124,7 +124,7 @@ include 'includes/header.php';
                                 
                                 <div class="col-md-6 mb-3">
                                     <label for="business_num" class="form-label">Phone Number *</label>
-                                    <input type="tel" class="form-control" id="business_num" name="business_num" required placeholder="+63 912 345 6789">
+                                    <input type="tel" class="form-control" id="business_num" name="business_num" required placeholder="09123456789">
                                 </div>
                             </div>
                             
@@ -758,14 +758,13 @@ cropModal.addEventListener('click', function(e) {
 </script>
 
 <script>
-// Live validation for business contact and location fields
-// Live validation for business information, hours, contact and location fields
+// Live validation for register-business.php
 (function() {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
     function validateEmail(val) {
         const v = val.trim().toLowerCase();
-        return emailRegex.test(v) && v.endsWith('.com');
+        return emailRegex.test(v); // Only requires @ and valid email format, NOT .com
     }
 
     function validatePhone(val) {
@@ -809,55 +808,59 @@ cropModal.addEventListener('click', function(e) {
     document.addEventListener('DOMContentLoaded', function() {
         const fields = [
             // Business Information
-            { id: 'business_name', validator: (el)=> validateNonEmpty(el.value) },
-            { id: 'business_type', validator: (el)=> el.value !== '' },
-            { id: 'business_desc', validator: (el)=> validateNonEmpty(el.value) },
+            { id: 'business_name', validator: (el) => validateNonEmpty(el.value) },
+            { id: 'business_type', validator: (el) => el.value !== '' },
+            { id: 'business_desc', validator: (el) => validateNonEmpty(el.value) },
             
             // Business Hours
-            { id: 'opening_hour', validator: (el)=> validateTime(el.value) },
-            { id: 'closing_hour', validator: (el)=> validateTime(el.value) },
+            { id: 'opening_hour', validator: (el) => validateTime(el.value) },
+            { id: 'closing_hour', validator: (el) => validateTime(el.value) },
             
             // Contact Information
-            { id: 'business_email', validator: (el)=> validateEmail(el.value) },
-            { id: 'business_num', validator: (el)=> validatePhone(el.value) },
-            { id: 'business_password', validator: (el)=> validatePassword(el.value) },
-            { id: 'confirm_password', validator: (el)=> {
+            { id: 'business_email', validator: (el) => validateEmail(el.value) },
+            { id: 'business_num', validator: (el) => validatePhone(el.value) },
+            { id: 'business_password', validator: (el) => validatePassword(el.value) },
+            { id: 'confirm_password', validator: (el) => {
                     const pw = document.getElementById('business_password') ? document.getElementById('business_password').value : '';
                     return el.value === pw && validatePassword(pw);
                 }
             },
             
             // Location
-            { id: 'business_address', validator: (el)=> validateNonEmpty(el.value) },
-            { id: 'city', validator: (el)=> validateNonEmpty(el.value) }
+            { id: 'business_address', validator: (el) => validateNonEmpty(el.value) },
+            { id: 'city', validator: (el) => validateNonEmpty(el.value) }
         ];
 
         fields.forEach(item => {
             const el = document.getElementById(item.id);
             if (!el) return;
             el.classList.add('validate-field');
-            // initial
+            
+            // Initial state
             setState(el, item.validator(el));
 
             const handler = function() {
                 setState(el, item.validator(el));
-                // if business_password changes, revalidate confirm_password and hide mismatch if resolved
+                
+                // If business_password changes, revalidate confirm_password
                 if (item.id === 'business_password') {
                     const confirm = document.getElementById('confirm_password');
                     if (confirm) {
                         const confirmValidator = fields.find(f => f.id === 'confirm_password');
                         if (confirmValidator) setState(confirm, confirmValidator.validator(confirm));
-                        if (confirm.classList.contains('valid')) {
-                            const pwMismatch = document.getElementById('businessPwMismatch');
-                            if (pwMismatch) pwMismatch.classList.add('d-none');
-                        }
+                    }
+                    if (confirm && confirm.classList.contains('valid')) {
+                        const pwMismatch = document.getElementById('businessPwMismatch');
+                        if (pwMismatch) pwMismatch.classList.add('d-none');
                     }
                 }
 
-                // if confirm_password changes, hide mismatch when valid
+                // If confirm_password changes, hide mismatch when valid
                 if (item.id === 'confirm_password') {
                     const pwMismatch = document.getElementById('businessPwMismatch');
-                    if (pwMismatch && el.classList.contains('valid')) pwMismatch.classList.add('d-none');
+                    if (pwMismatch && el.classList.contains('valid')) {
+                        pwMismatch.classList.add('d-none');
+                    }
                 }
             };
 
@@ -871,7 +874,7 @@ cropModal.addEventListener('click', function(e) {
             }
         });
 
-        // On submit, ensure all required fields are valid
+        // Form submit validation
         const form = document.getElementById('businessRegisterForm');
         if (form) {
             form.addEventListener('submit', function(e) {
@@ -879,6 +882,7 @@ cropModal.addEventListener('click', function(e) {
                     'business_name', 'business_type', 'business_desc',
                     'opening_hour', 'closing_hour',
                     'business_email', 'business_num',
+                    'business_password', 'confirm_password',
                     'business_address', 'city'
                 ];
                 let firstInvalid = null;
@@ -888,14 +892,20 @@ cropModal.addEventListener('click', function(e) {
                     const el = document.getElementById(id);
                     if (!el) return;
                     const val = (el.tagName === 'SELECT') ? el.value : el.value.trim();
+                    
+                    // Mark as invalid if empty
                     if (!val) {
                         el.classList.add('invalid');
+                        el.classList.remove('valid');
                         anyInvalid = true;
                         firstInvalid = firstInvalid || el;
                         return;
                     }
-                    if (!el.classList.contains('valid')) {
+                    
+                    // Mark as invalid if it has the invalid class OR doesn't have valid class
+                    if (el.classList.contains('invalid') || !el.classList.contains('valid')) {
                         el.classList.add('invalid');
+                        el.classList.remove('valid');
                         anyInvalid = true;
                         firstInvalid = firstInvalid || el;
                     }
@@ -909,6 +919,7 @@ cropModal.addEventListener('click', function(e) {
                     } else {
                         alert('Please fix all highlighted fields before continuing.');
                     }
+                    return false;
                 }
             });
         }
