@@ -111,11 +111,11 @@ include 'includes/header.php';
                 <div class="search-bar-container">
                     <div class="search-input-group">
                         <i class="bi bi-search search-icon"></i>
-                        <input type="text" class="search-input" id="searchInput" placeholder="Search salons, services..." onkeyup="filterBusinesses()">
+                        <input type="text" class="search-input" id="searchInput" placeholder="Search salons, services..." onkeyup="handleSearchInput(event)">
                     </div>
                     <div class="search-divider"></div>
                     <div class="search-category-group">
-                        <select class="search-category-select" id="typeFilter" onchange="filterBusinesses()">
+                        <select class="search-category-select" id="typeFilter" onchange="handleCategoryDropdown()">
                             <option value="">All Categories</option>
                             <option value="hair salon">Hair Salon</option>
                             <option value="spa & wellness">Spa & Wellness</option>
@@ -1054,6 +1054,61 @@ document.getElementById('typeFilter').addEventListener('change', function() {
 document.addEventListener('DOMContentLoaded', function() {
     const typeFilter = document.getElementById('typeFilter');
     const searchInput = document.getElementById('searchInput');
+    const categoryArrow = document.querySelector('.category-arrow');
+    
+    // Responsive dropdown arrow animation with rapid click support
+    if (typeFilter && categoryArrow) {
+    let isDropdownOpen = false;
+    
+    // Toggle arrow on each click
+    typeFilter.addEventListener('mousedown', function(e) {
+        isDropdownOpen = !isDropdownOpen;
+        updateArrowState(isDropdownOpen);
+    });
+    
+    // Keep arrow up after making a selection
+    typeFilter.addEventListener('change', function() {
+        isDropdownOpen = true;
+        updateArrowState(true);
+        
+        // Close dropdown after selection
+        setTimeout(() => {
+            isDropdownOpen = false;
+            updateArrowState(false);
+        }, 200);
+    });
+    
+    // Reset arrow when clicking outside
+    document.addEventListener('click', function(e) {
+        if (!typeFilter.contains(e.target) && !categoryArrow.contains(e.target)) {
+            if (isDropdownOpen) {
+                isDropdownOpen = false;
+                updateArrowState(false);
+            }
+        }
+    });
+    
+    // Handle blur event (when focus is lost)
+    typeFilter.addEventListener('blur', function() {
+        setTimeout(() => {
+            if (isDropdownOpen) {
+                isDropdownOpen = false;
+                updateArrowState(false);
+            }
+        }, 150);
+    });
+    
+   // Function to update arrow appearance instantly
+        function updateArrowState(isOpen) {
+        if (isOpen) {
+            categoryArrow.style.transform = 'translateY(-50%) rotateZ(180deg)';
+            categoryArrow.style.color = 'var(--color-rose)';
+        } else {
+            categoryArrow.style.transform = 'translateY(-50%) rotateZ(0deg)';
+            categoryArrow.style.color = '#6B7280';
+        }
+    }
+}
     
     if (typeFilter) {
         typeFilter.addEventListener('change', function() {
@@ -1300,6 +1355,17 @@ function scrollToTop() {
         behavior: 'smooth'
     });
 }
+// Handle search input
+function handleSearchInput(event) {
+    if (event.key === 'Enter') {
+        const searchValue = document.getElementById('searchInput').value.trim();
+        if (searchValue) {
+            window.location.href = 'search-results.php?search=' + encodeURIComponent(searchValue);
+        }
+    }
+}
+
+
 </script>
 
 
