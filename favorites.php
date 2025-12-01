@@ -82,69 +82,16 @@ include 'includes/header.php';
         background: linear-gradient(135deg, #f5f5f5 0%, #e0e0e0 100%);
         position: relative;
         overflow: hidden;
+        width: 100%;
     }
     
-    /* Business hours styling */
-    .business-hours-info {
-        background-color: #f8f9fa;
-        padding: 12px;
-        border-radius: 6px;
-        margin: 12px 0;
-        border-left: 3px solid var(--color-burgundy);
+    .favorite-business-card .card-title {
+        font-size: 0.95rem;
+        margin-bottom: 0.25rem;
     }
     
-    .hours-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 6px 0;
-        font-size: 0.85rem;
-    }
-    
-    .hours-time {
-        color: var(--color-burgundy);
-        font-weight: 600;
-    }
-    
-    .business-status {
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        font-size: 0.8rem;
-        padding: 4px 8px;
-        border-radius: 4px;
-        margin-top: 8px;
-    }
-    
-    .business-status.open {
-        background-color: #d4edda;
-        color: #155724;
-    }
-    
-    .business-status.closed {
-        background-color: #f8d7da;
-        color: #721c24;
-    }
-    
-    .status-dot {
-        width: 6px;
-        height: 6px;
-        border-radius: 50%;
-        display: inline-block;
-    }
-    
-    .status-dot.open {
-        background-color: #28a745;
-        animation: pulse 2s infinite;
-    }
-    
-    .status-dot.closed {
-        background-color: #dc3545;
-    }
-    
-    @keyframes pulse {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.6; }
+    .favorite-business-card .card-text {
+        margin-bottom: 0.5rem;
     }
     
     /* Responsive adjustments */
@@ -201,7 +148,7 @@ include 'includes/header.php';
     }
 </style>
 
-<main class="container-fluid px-2 px-md-3 py-3 py-md-4">
+<main class="container px-2 px-md-3 py-3 py-md-4" style="max-width: 1200px;">
     <div class="row">
         <div class="col-12">
             <!-- Back Button -->
@@ -281,8 +228,9 @@ include 'includes/header.php';
                         }
                         ?>
                         
-                        <div class="col-md-4 mb-4">
-                            <div class="card h-100 favorite-business-card">
+                        <div class="col-lg-3 col-md-6 col-sm-12 mb-4">
+                            <div class="card favorite-business-card">
+                                <!-- Image at top -->
                                 <img src="<?php echo htmlspecialchars($businessImage); ?>" 
                                      class="card-img-top business-image" 
                                      alt="<?php echo htmlspecialchars($business['business_name']); ?>"
@@ -303,37 +251,35 @@ include 'includes/header.php';
                                         <small class="text-muted">(<?php echo $reviewCount; ?> reviews)</small>
                                     </div>
                                     
-                                    <!-- Business Hours -->
+                                    <!-- Business Hours as inline text -->
                                     <?php if ($businessHours): ?>
-                                        <div class="business-hours-info">
-                                            <small><strong>Business Hours</strong></small>
-                                            <div class="hours-row">
-                                                <span class="hours-time">
-                                                    <?php echo date('g:i A', strtotime($businessHours['opening_hour'])); ?> - <?php echo date('g:i A', strtotime($businessHours['closing_hour'])); ?>
+                                        <p class="mb-2">
+                                            <small class="text-muted">
+                                                <i class="bi bi-clock"></i> 
+                                                <?php echo date('g:i A', strtotime($businessHours['opening_hour'])); ?> - <?php echo date('g:i A', strtotime($businessHours['closing_hour'])); ?>
+                                                <span class="badge <?php echo $isOpen ? 'bg-success' : 'bg-danger'; ?>" style="font-size: 0.7rem; margin-left: 4px;">
+                                                    <?php echo $isOpen ? 'Open' : 'Closed'; ?>
                                                 </span>
-                                                <span class="business-status <?php echo $isOpen ? 'open' : 'closed'; ?>">
-                                                    <span class="status-dot <?php echo $isOpen ? 'open' : 'closed'; ?>"></span>
-                                                    <?php echo $isOpen ? 'Open Now' : 'Closed'; ?>
-                                                </span>
-                                            </div>
-                                        </div>
+                                            </small>
+                                        </p>
                                     <?php endif; ?>
                                     
                                     <!-- Favorited Date -->
-                                    <small class="text-muted">
+                                    <small class="text-muted d-block mb-2">
                                         <i class="bi bi-calendar-heart"></i> 
                                         Favorited <?php echo formatDateTime($business['favorited_at']); ?>
                                     </small>
                                     
                                     <!-- Action Buttons -->
-                                    <div class="mt-3">
+                                    <div class="d-flex gap-2 mb-3">
                                         <a href="business-detail.php?id=<?php echo $business['business_id']; ?>" 
-                                           class="btn btn-primary btn-sm w-100 mb-2">
-                                            <i class="bi bi-eye"></i> View Details
+                                           class="btn btn-primary btn-sm flex-grow-1">
+                                            <i class="bi bi-eye"></i> View
                                         </a>
-                                        <button class="btn btn-outline-danger btn-sm w-100" 
-                                                onclick="removeFavorite(<?php echo $business['business_id']; ?>)">
-                                            <i class="bi bi-heart-fill"></i> Remove from Favorites
+                                        <button class="btn btn-outline-danger btn-sm" 
+                                                onclick="removeFavorite(<?php echo $business['business_id']; ?>)"
+                                                title="Remove from favorites">
+                                            <i class="bi bi-x-circle"></i>
                                         </button>
                                     </div>
                                 </div>

@@ -251,37 +251,36 @@ function registerBusiness() {
 }
 
 // ==========================
-// Login
+// Login - Auto-detect user type
 // ==========================
 function login() {
     $email = sanitize($_POST['email']);
     $password = $_POST['password'];
-    $type = $_POST['type'] ?? 'customer';
 
-    if ($type === 'business') {
-        $business = getBusinessByEmail($email);
-        if ($business && password_verify($password, $business['business_password'])) {
-            $_SESSION['business_id'] = $business['business_id'];
-            $_SESSION['user_type'] = 'business';
-            $_SESSION['success'] = 'Welcome back, ' . $business['business_name'] . '!';
-            header('Location: ../business-dashboard.php');
-            exit;
-        }
-    } else {
-        $customer = getCustomerByEmail($email);
-        if ($customer && password_verify($password, $customer['cstmr_password'])) {
-            $_SESSION['customer_id'] = $customer['customer_id'];
-            $_SESSION['user_type'] = 'customer';
-            $_SESSION['success'] = 'Welcome back, ' . $customer['fname'] . '!';
-            header('Location: ../index.php');
-            exit;
-        }
+    // First, try to find if email belongs to a business
+    $business = getBusinessByEmail($email);
+    if ($business && password_verify($password, $business['business_password'])) {
+        $_SESSION['business_id'] = $business['business_id'];
+        $_SESSION['user_type'] = 'business';
+        $_SESSION['success'] = 'Welcome back, ' . $business['business_name'] . '!';
+        header('Location: ../business-dashboard.php');
+        exit;
+    }
+
+    // Otherwise, try to find if email belongs to a customer
+    $customer = getCustomerByEmail($email);
+    if ($customer && password_verify($password, $customer['cstmr_password'])) {
+        $_SESSION['customer_id'] = $customer['customer_id'];
+        $_SESSION['user_type'] = 'customer';
+        $_SESSION['success'] = 'Welcome back, ' . $customer['fname'] . '!';
+        header('Location: ../index.php');
+        exit;
     }
 
     // Store failed login info to display in login form
     $_SESSION['error'] = 'Invalid email or password.';
     $_SESSION['failed_email'] = $email;
-    $_SESSION['failed_type'] = $type;
+    $_SESSION['failed_type'] = ''; // No type selection anymore
     header('Location: ../login.php');
     exit;
 }

@@ -584,25 +584,40 @@
     box-shadow: 0 2px 8px rgba(0,0,0,0.2);
 }
 
-/* View All Button */
+/* View All Button - Add this to your styles.css file */
 .view-all-btn {
-    display: inline-block;
-    margin-top: 2rem;
-    padding: 0.75rem 2rem;
-    background: white;
+    display: inline-flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 0.5rem;
+    background-color: white;
     color: var(--color-burgundy);
     border: 2px solid var(--color-burgundy);
-    border-radius: 50px;
+    padding: 1rem 1.5rem;
+    border-radius: 25px;
     font-weight: 600;
     text-decoration: none;
     transition: all 0.3s ease;
+    font-size: 0.95rem;
+    min-width: auto;
+    width: auto;
 }
 
 .view-all-btn:hover {
-    background: var(--color-burgundy);
+    background-color: var(--color-burgundy);
     color: white;
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(133, 14, 53, 0.3);
+}
+
+.view-all-btn i {
+    font-size: 1.5rem;
+    transition: color 0.3s ease;
+}
+
+.view-all-btn:hover i {
+    color: white;
 }
 
 /* Divider */

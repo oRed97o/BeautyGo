@@ -9,7 +9,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     
     <!-- Bootstrap Icons -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
     
     <!-- Custom CSS -->
     <link rel="stylesheet" href="css/styles.css?v=<?php echo time(); ?>">
@@ -676,7 +676,7 @@
                         <!-- Business Profile Dropdown -->
                         <li class="nav-item dropdown profile-dropdown">
                             <a class="nav-link dropdown-toggle d-flex align-items-center gap-2" href="#" id="businessDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                <i class="bi bi-building"></i>
+                                <i class="bi bi-buildings"></i>
                                 <span><?php echo htmlspecialchars($currentUser['business_name']); ?></span>
                             </a>
                                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="businessDropdown">

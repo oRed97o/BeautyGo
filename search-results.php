@@ -181,41 +181,46 @@ main {
 
     <!-- Results Section -->
     <div class="container">
-        <?php if ($resultCount > 0): ?>
-            <div class="results-header">
-                <h2 class="section-title">
-                    <?php if ($category): ?>
-                        <?php echo ucfirst($category); ?>
-                    <?php elseif ($searchQuery): ?>
-                        Search Results for "<?php echo htmlspecialchars($searchQuery); ?>"
-                    <?php else: ?>
-                        All Beauty Services
-                    <?php endif; ?>
-                </h2>
-                <p class="section-subtitle">
-                    Found <?php echo $resultCount; ?> <?php echo $resultCount === 1 ? 'business' : 'businesses'; ?>
-                </p>
-            </div>
-            
-            <div class="results-grid">
-                <?php foreach ($filteredBusinesses as $business): ?>
-                    <?php echo renderBusinessCard($business, 'regular'); ?>
-                <?php endforeach; ?>
-            </div>
-        <?php else: ?>
-            <div class="results-header">
-                <h2 class="section-title">No Results Found</h2>
-                <p class="section-subtitle">Try adjusting your search or filters</p>
-            </div>
-            <div class="no-results">
-                <i class="bi bi-inbox"></i>
-                <h3>We couldn't find any matches</h3>
-                <p>Try different keywords or browse all categories</p>
-                <a href="index.php" class="view-all-btn">
-                    <i class="bi bi-house-door"></i> Back to Home
-                </a>
-            </div>
-        <?php endif; ?>
+        <div class="results-header" style="<?php echo $resultCount === 0 ? 'display: none;' : ''; ?>">
+            <h2 class="section-title">
+                <?php if ($category): ?>
+                    <?php echo ucfirst($category); ?>
+                <?php elseif ($searchQuery): ?>
+                    Search Results for "<?php echo htmlspecialchars($searchQuery); ?>"
+                <?php else: ?>
+                    All Beauty Services
+                <?php endif; ?>
+            </h2>
+            <p class="section-subtitle">
+                Found <?php echo $resultCount; ?> <?php echo $resultCount === 1 ? 'business' : 'businesses'; ?>
+            </p>
+        </div>
+        
+        <div class="results-grid" style="<?php echo $resultCount === 0 ? 'display: none;' : ''; ?>">
+            <?php foreach ($filteredBusinesses as $business): ?>
+                <?php echo renderBusinessCard($business, 'regular'); ?>
+            <?php endforeach; ?>
+        </div>
+
+        <div class="no-results" style="<?php echo $resultCount > 0 ? 'display: none;' : 'display: block;'; ?>">
+            <i class="bi bi-inbox"></i>
+            <h3>We couldn't find any matches</h3>
+            <p>
+                <?php if ($searchQuery && $category): ?>
+                    No <?php echo htmlspecialchars($category); ?> businesses match "<?php echo htmlspecialchars($searchQuery); ?>"
+                <?php elseif ($searchQuery): ?>
+                    No businesses match "<?php echo htmlspecialchars($searchQuery); ?>"
+                <?php elseif ($category): ?>
+                    No <?php echo htmlspecialchars($category); ?> businesses found
+                <?php else: ?>
+                    Try different keywords or browse all categories
+                <?php endif; ?>
+            </p>
+            <a href="index.php" class="view-all-btn">
+                <i class="bi bi-house-door btn-icon"></i>
+                <span>Back to Home</span>
+            </a>
+        </div>
     </div>
 </main>
 
@@ -517,6 +522,22 @@ document.addEventListener('DOMContentLoaded', function() {
                 categoryArrow.style.color = '#6B7280';
             }
         }
+    }
+});
+
+// Ensure the icon color changes on hover
+document.addEventListener('DOMContentLoaded', function() {
+    const viewAllBtn = document.querySelector('.view-all-btn');
+    if (viewAllBtn) {
+        const icon = viewAllBtn.querySelector('.btn-icon');
+        
+        viewAllBtn.addEventListener('mouseenter', function() {
+            if (icon) icon.style.color = 'white';
+        });
+        
+        viewAllBtn.addEventListener('mouseleave', function() {
+            if (icon) icon.style.color = 'var(--color-burgundy)';
+        });
     }
 });
 </script>

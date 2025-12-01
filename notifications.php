@@ -121,7 +121,7 @@ include 'includes/header.php';
     }
 </style>
 
-<main class="container-fluid px-2 px-md-3 py-3 py-md-4">
+<main class="container px-2 px-md-3 py-3 py-md-4" style="max-width: 1200px;">
     <div class="row">
         <div class="col-12">
             <!-- Back Button -->

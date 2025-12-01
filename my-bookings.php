@@ -243,7 +243,7 @@ include 'includes/header.php';
 </style>
 
 <main>
-    <div class="container-fluid px-2 px-md-3 py-3 py-md-4">
+    <div class="container px-2 px-md-3 py-3 py-md-4" style="max-width: 1200px;">
         <div class="row">
             <div class="col-12">
                 <a href="index.php" class="back-button">

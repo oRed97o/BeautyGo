@@ -125,20 +125,20 @@ include 'includes/header.php';
                                 <h2 class="mb-1"><?php echo htmlspecialchars($business['business_name']); ?></h2>
                                 <span class="badge badge-rose"><?php echo ucfirst($business['business_type']); ?></span>
                             </div>
-                                <?php if (isBusinessLoggedIn()): ?>
-                                    <!-- Business owners cannot book appointments -->
-                                    <span class="badge bg-secondary" style="padding: 10px 20px; font-size: 14px;">
-                                        <i class="bi bi-info-circle"></i> Business View Only
-                                    </span>
-                                <?php elseif (isCustomerLoggedIn()): ?>
-                                    <a href="booking.php?business_id=<?php echo $business['business_id']; ?>" class="btn btn-primary">
-                                        <i class="bi bi-calendar-plus"></i> Book Now
-                                    </a>
-                                <?php else: ?>
-                                    <button class="btn btn-primary" onclick="showLoginModal(event)">
-                                        <i class="bi bi-calendar-plus"></i> Book Now
-                                    </button>
-                                <?php endif; ?>
+                            <?php if (isBusinessLoggedIn()): ?>
+                                <!-- Business owners cannot book appointments -->
+                                <span class="badge bg-secondary" style="padding: 10px 20px; font-size: 14px;">
+                                    <i class="bi bi-info-circle"></i> Business View Only
+                                </span>
+                            <?php elseif (isCustomerLoggedIn()): ?>
+                                <a href="booking.php?business_id=<?php echo $business['business_id']; ?>" class="btn btn-primary">
+                                    <i class="bi bi-calendar-plus"></i> Book Now
+                                </a>
+                            <?php else: ?>
+                                <button class="btn btn-primary" onclick="showLoginModal(event)">
+                                    <i class="bi bi-calendar-plus"></i> Book Now
+                                </button>
+                            <?php endif; ?>
                         </div>
                         
                         <p class="business-description"><?php echo htmlspecialchars($business['business_desc'] ?? ''); ?></p>
@@ -434,65 +434,65 @@ include 'includes/header.php';
                 </div>
 
                 <!-- Staff Section - COMPLETELY FIXED -->
-<div class="card mb-4">
-    <div class="card-body">
-        <h4 class="mb-3">Our Team</h4>
-        <?php if (empty($staff)): ?>
-            <div class="empty-state py-3">
-                <i class="bi bi-people"></i>
-                <p>No staff listed yet</p>
-            </div>
-        <?php else: ?>
-            <div class="staff-grid">
-                <?php foreach ($staff as $member): ?>
-                    <?php
-                    $employeeName = trim(($member['employ_fname'] ?? '') . ' ' . ($member['employ_lname'] ?? '')) ?: 'Staff Member';
-                    $employeeImg = $member['employ_img'] ?? null;
-                    
-                    // FIXED: Properly encode image for display AND for JavaScript
-                    $imageDataUrl = '';
-                    if (!empty($employeeImg)) {
-                        $finfo = new finfo(FILEINFO_MIME_TYPE);
-                        $mimeType = $finfo->buffer($employeeImg);
-                        $imageDataUrl = 'data:' . $mimeType . ';base64,' . base64_encode($employeeImg);
-                    }
-                    
-                    // FIXED: Prepare safe member data for JavaScript
-                    $memberData = [
-                        'employ_id' => $member['employ_id'] ?? '',
-                        'employ_fname' => $member['employ_fname'] ?? '',
-                        'employ_lname' => $member['employ_lname'] ?? '',
-                        'specialization' => $member['specialization'] ?? 'No specialization',
-                        'skills' => $member['skills'] ?? 'No skills listed',
-                        'employ_bio' => $member['employ_bio'] ?? 'No bio available',
-                        'employ_status' => $member['employ_status'] ?? 'available',
-                        'employ_img_url' => $imageDataUrl // Pass the data URL, not raw binary
-                    ];
-                    
-                    // FIXED: Properly escape JSON for HTML attribute
-                    $memberDataJson = htmlspecialchars(json_encode($memberData), ENT_QUOTES, 'UTF-8');
-                    ?>
-                    <div class="staff-member" 
-                         onclick='openStaffModal(<?php echo $memberDataJson; ?>)'
-                         role="button"
-                         tabindex="0"
-                         onkeypress="if(event.key==='Enter') openStaffModal(<?php echo $memberDataJson; ?>)">
-                        <?php if (!empty($imageDataUrl)): ?>
-                            <img src="<?php echo htmlspecialchars($imageDataUrl); ?>" 
-                                 alt="<?php echo htmlspecialchars($employeeName); ?>">
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h4 class="mb-3">Our Team</h4>
+                        <?php if (empty($staff)): ?>
+                            <div class="empty-state py-3">
+                                <i class="bi bi-people"></i>
+                                <p>No staff listed yet</p>
+                            </div>
                         <?php else: ?>
-                            <div class="staff-placeholder">
-                                <i class="bi bi-person-fill"></i>
+                            <div class="staff-grid">
+                                <?php foreach ($staff as $member): ?>
+                                    <?php
+                                    $employeeName = trim(($member['employ_fname'] ?? '') . ' ' . ($member['employ_lname'] ?? '')) ?: 'Staff Member';
+                                    $employeeImg = $member['employ_img'] ?? null;
+                                    
+                                    // FIXED: Properly encode image for display AND for JavaScript
+                                    $imageDataUrl = '';
+                                    if (!empty($employeeImg)) {
+                                        $finfo = new finfo(FILEINFO_MIME_TYPE);
+                                        $mimeType = $finfo->buffer($employeeImg);
+                                        $imageDataUrl = 'data:' . $mimeType . ';base64,' . base64_encode($employeeImg);
+                                    }
+                                    
+                                    // FIXED: Prepare safe member data for JavaScript
+                                    $memberData = [
+                                        'employ_id' => $member['employ_id'] ?? '',
+                                        'employ_fname' => $member['employ_fname'] ?? '',
+                                        'employ_lname' => $member['employ_lname'] ?? '',
+                                        'specialization' => $member['specialization'] ?? 'No specialization',
+                                        'skills' => $member['skills'] ?? 'No skills listed',
+                                        'employ_bio' => $member['employ_bio'] ?? 'No bio available',
+                                        'employ_status' => $member['employ_status'] ?? 'available',
+                                        'employ_img_url' => $imageDataUrl // Pass the data URL, not raw binary
+                                    ];
+                                    
+                                    // FIXED: Properly escape JSON for HTML attribute
+                                    $memberDataJson = htmlspecialchars(json_encode($memberData), ENT_QUOTES, 'UTF-8');
+                                    ?>
+                                    <div class="staff-member" 
+                                         onclick='openStaffModal(<?php echo $memberDataJson; ?>)'
+                                         role="button"
+                                         tabindex="0"
+                                         onkeypress="if(event.key==='Enter') openStaffModal(<?php echo $memberDataJson; ?>)">
+                                        <?php if (!empty($imageDataUrl)): ?>
+                                            <img src="<?php echo htmlspecialchars($imageDataUrl); ?>" 
+                                                 alt="<?php echo htmlspecialchars($employeeName); ?>">
+                                        <?php else: ?>
+                                            <div class="staff-placeholder">
+                                                <i class="bi bi-person-fill"></i>
+                                            </div>
+                                        <?php endif; ?>
+                                        <h6 class="mb-0"><?php echo htmlspecialchars($employeeName); ?></h6>
+                                        <small class="text-muted"><?php echo htmlspecialchars($member['specialization'] ?? ''); ?></small>
+                                    </div>
+                                <?php endforeach; ?>
                             </div>
                         <?php endif; ?>
-                        <h6 class="mb-0"><?php echo htmlspecialchars($employeeName); ?></h6>
-                        <small class="text-muted"><?php echo htmlspecialchars($member['specialization'] ?? ''); ?></small>
                     </div>
-                <?php endforeach; ?>
-            </div>
-        <?php endif; ?>
-    </div>
-</div>
+                </div>
 
                 <!-- Location Map -->
                 <div class="card mb-4">
