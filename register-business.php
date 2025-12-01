@@ -130,13 +130,24 @@ include 'includes/header.php';
                             
                             <div class="mb-3">
                                 <label for="business_password" class="form-label">Password *</label>
-                                <input type="password" class="form-control" id="business_password" name="business_password" minlength="8" required>
+                                <div class="input-group">
+                                    <input type="password" class="form-control" id="business_password" name="business_password" minlength="8" required>
+                                    <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('business_password', 'businessPasswordEye')">
+                                        <i class="bi bi-eye" id="businessPasswordEye"></i>
+                                    </button>
+                                </div>
                                 <small class="text-muted">Minimum 8 characters with numbers and symbols</small>
                             </div>
                             
                             <div class="mb-3">
                                 <label for="confirm_password" class="form-label">Confirm Password *</label>
-                                <input type="password" class="form-control" id="confirm_password" name="confirm_password" minlength="8" required>
+                                <div class="input-group">
+                                    <input type="password" class="form-control" id="confirm_password" name="confirm_password" minlength="8" required>
+                                    <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('confirm_password', 'businessConfirmPasswordEye')">
+                                        <i class="bi bi-eye" id="businessConfirmPasswordEye"></i>
+                                    </button>
+                                </div>
+                                <div class="form-text text-danger small d-none" id="businessPwMismatch" role="alert">Passwords do not match</div>
                             </div>
                             
                             <hr class="my-4">
@@ -268,19 +279,41 @@ document.addEventListener('keydown', function(e) {
 });
 
 // ========================================
-// FORM VALIDATION WITH PASSWORD CHECKS
+// PASSWORD VISIBILITY TOGGLE
 // ========================================
-document.getElementById('businessRegisterForm').addEventListener('submit', function(e) {
-    const password = document.getElementById('business_password').value;
-    const confirmPassword = document.getElementById('confirm_password').value;
+function togglePassword(inputId, eyeId) {
+    const passwordInput = document.getElementById(inputId);
+    const eyeIcon = document.getElementById(eyeId);
     
-    // Check if passwords match
-    if (password !== confirmPassword) {
-        e.preventDefault();
-        showErrorModal('Passwords do not match! Please make sure both password fields are identical.');
-        document.getElementById('confirm_password').focus();
-        return false;
+    if (passwordInput.type === 'password') {
+        // Show password
+        passwordInput.type = 'text';
+        eyeIcon.classList.remove('bi-eye');
+        eyeIcon.classList.add('bi-eye-slash');
+    } else {
+        // Hide password
+        passwordInput.type = 'password';
+        eyeIcon.classList.remove('bi-eye-slash');
+        eyeIcon.classList.add('bi-eye');
     }
+}
+
+
+        document.getElementById('businessRegisterForm').addEventListener('submit', function(e) {
+        const password = document.getElementById('business_password').value;
+        const confirmPassword = document.getElementById('confirm_password').value;
+        
+        // Check if passwords match
+        if (password !== confirmPassword) {
+            e.preventDefault();
+            const pwMismatch = document.getElementById('businessPwMismatch');
+            if (pwMismatch) {
+                pwMismatch.classList.remove('d-none');
+                pwMismatch.textContent = 'Passwords do not match! Please make sure both password fields are correct.';
+            }
+            document.getElementById('confirm_password').focus();
+            return false;
+        }
     
     // Validate password length
     if (password.length < 8) {
@@ -411,6 +444,17 @@ async function reverseGeocode(lat, lng) {
                 document.getElementById('city').value = city;
             }
             
+            // If reverse geocode filled fields, trigger input events so live validation picks up the changes
+            const addrEl = document.getElementById('business_address');
+            const cityEl = document.getElementById('city');
+            if (addrEl) {
+                addrEl.dispatchEvent(new Event('input', { bubbles: true }));
+                addrEl.dispatchEvent(new Event('blur', { bubbles: true }));
+            }
+            if (cityEl) {
+                cityEl.dispatchEvent(new Event('input', { bubbles: true }));
+                cityEl.dispatchEvent(new Event('blur', { bubbles: true }));
+            }
             // Show a small notification
             showAddressNotification(streetAddress || 'Location selected');
         }
@@ -711,6 +755,165 @@ cropModal.addEventListener('click', function(e) {
         closeCropModal();
     }
 });
+</script>
+
+<script>
+// Live validation for business contact and location fields
+// Live validation for business information, hours, contact and location fields
+(function() {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    function validateEmail(val) {
+        const v = val.trim().toLowerCase();
+        return emailRegex.test(v) && v.endsWith('.com');
+    }
+
+    function validatePhone(val) {
+        if (!val) return false;
+        const digits = val.replace(/\D/g, '');
+        return digits.length === 11;
+    }
+
+    function validateNonEmpty(val) {
+        return val.trim().length > 0;
+    }
+
+    function validateTime(val) {
+        return val.trim().length > 0;
+    }
+
+    function setState(el, ok) {
+        if (!el) return;
+        el.classList.remove('valid','invalid');
+        const val = (el.tagName === 'SELECT') ? el.value : el.value.trim();
+        if (!val) {
+            el.removeAttribute('aria-invalid');
+            return;
+        }
+        if (ok) {
+            el.classList.add('valid');
+            el.setAttribute('aria-invalid','false');
+        } else {
+            el.classList.add('invalid');
+            el.setAttribute('aria-invalid','true');
+        }
+    }
+
+    function validatePassword(val) {
+        if (!val) return false;
+        return val.length >= 8 &&
+               /\d/.test(val) &&
+               /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(val);
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const fields = [
+            // Business Information
+            { id: 'business_name', validator: (el)=> validateNonEmpty(el.value) },
+            { id: 'business_type', validator: (el)=> el.value !== '' },
+            { id: 'business_desc', validator: (el)=> validateNonEmpty(el.value) },
+            
+            // Business Hours
+            { id: 'opening_hour', validator: (el)=> validateTime(el.value) },
+            { id: 'closing_hour', validator: (el)=> validateTime(el.value) },
+            
+            // Contact Information
+            { id: 'business_email', validator: (el)=> validateEmail(el.value) },
+            { id: 'business_num', validator: (el)=> validatePhone(el.value) },
+            { id: 'business_password', validator: (el)=> validatePassword(el.value) },
+            { id: 'confirm_password', validator: (el)=> {
+                    const pw = document.getElementById('business_password') ? document.getElementById('business_password').value : '';
+                    return el.value === pw && validatePassword(pw);
+                }
+            },
+            
+            // Location
+            { id: 'business_address', validator: (el)=> validateNonEmpty(el.value) },
+            { id: 'city', validator: (el)=> validateNonEmpty(el.value) }
+        ];
+
+        fields.forEach(item => {
+            const el = document.getElementById(item.id);
+            if (!el) return;
+            el.classList.add('validate-field');
+            // initial
+            setState(el, item.validator(el));
+
+            const handler = function() {
+                setState(el, item.validator(el));
+                // if business_password changes, revalidate confirm_password and hide mismatch if resolved
+                if (item.id === 'business_password') {
+                    const confirm = document.getElementById('confirm_password');
+                    if (confirm) {
+                        const confirmValidator = fields.find(f => f.id === 'confirm_password');
+                        if (confirmValidator) setState(confirm, confirmValidator.validator(confirm));
+                        if (confirm.classList.contains('valid')) {
+                            const pwMismatch = document.getElementById('businessPwMismatch');
+                            if (pwMismatch) pwMismatch.classList.add('d-none');
+                        }
+                    }
+                }
+
+                // if confirm_password changes, hide mismatch when valid
+                if (item.id === 'confirm_password') {
+                    const pwMismatch = document.getElementById('businessPwMismatch');
+                    if (pwMismatch && el.classList.contains('valid')) pwMismatch.classList.add('d-none');
+                }
+            };
+
+            // For select elements, use 'change' event
+            if (el.tagName === 'SELECT') {
+                el.addEventListener('change', handler);
+                el.addEventListener('blur', handler);
+            } else {
+                el.addEventListener('input', handler);
+                el.addEventListener('blur', handler);
+            }
+        });
+
+        // On submit, ensure all required fields are valid
+        const form = document.getElementById('businessRegisterForm');
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                const requiredIds = [
+                    'business_name', 'business_type', 'business_desc',
+                    'opening_hour', 'closing_hour',
+                    'business_email', 'business_num',
+                    'business_address', 'city'
+                ];
+                let firstInvalid = null;
+                let anyInvalid = false;
+
+                requiredIds.forEach(id => {
+                    const el = document.getElementById(id);
+                    if (!el) return;
+                    const val = (el.tagName === 'SELECT') ? el.value : el.value.trim();
+                    if (!val) {
+                        el.classList.add('invalid');
+                        anyInvalid = true;
+                        firstInvalid = firstInvalid || el;
+                        return;
+                    }
+                    if (!el.classList.contains('valid')) {
+                        el.classList.add('invalid');
+                        anyInvalid = true;
+                        firstInvalid = firstInvalid || el;
+                    }
+                });
+
+                if (anyInvalid) {
+                    e.preventDefault();
+                    if (firstInvalid) firstInvalid.focus();
+                    if (typeof showErrorModal === 'function') {
+                        showErrorModal('Please fix all highlighted fields before continuing.');
+                    } else {
+                        alert('Please fix all highlighted fields before continuing.');
+                    }
+                }
+            });
+        }
+    });
+})();
 </script>
 
 <?php include 'includes/footer.php'; ?>

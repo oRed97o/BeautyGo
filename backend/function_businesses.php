@@ -37,51 +37,60 @@ function getBusinessByEmail($email) {
 // Create new business
 function createBusiness($data) {
     $conn = getDbConnection();
+    
+    // Hash the password
     $hashedPassword = password_hash($data['business_password'], PASSWORD_DEFAULT);
-
-    $email = $data['business_email'];
-    $businessName = $data['business_name'];
-    $businessType = $data['business_type'] ?? '';
-    $businessDesc = $data['business_desc'] ?? '';
-    $businessNum = $data['business_num'] ?? '';
-    $businessAddress = $data['business_address'] ?? '';
-    $city = $data['city'] ?? '';
-    $openingHour = $data['opening_hour'] ?? '09:00';
-    $closingHour = $data['closing_hour'] ?? '18:00';
-
-    $longitude = $data['longitude'] ?? 120.6328;
-    $latitude = $data['latitude'] ?? 14.0697;
-    $location = "POINT($longitude $latitude)";
-
-    $stmt = $conn->prepare("
-        INSERT INTO businesses 
-        (business_email, business_password, business_name, business_type, business_desc, business_num, business_address, city, opening_hour, closing_hour, location)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ST_GeomFromText(?))
-    ");
-    $stmt->bind_param("sssssssss",
-        $email,
-        $hashedPassword,
-        $businessName,
-        $businessType,
-        $businessDesc,
-        $businessNum,
-        $businessAddress,
-        $city,
-        $openingHour,
-        $closingHour,
-        $location
-    );
-
-    if ($stmt->execute()) {
-        $businessId = $conn->insert_id;
-        $stmt->close();
-        createAlbumForBusiness($businessId);
-        return $businessId;
+    
+    // Create POINT geometry for location
+    $point = "POINT(" . $data['longitude'] . " " . $data['latitude'] . ")";
+    
+    $sql = "INSERT INTO businesses (
+        business_email, 
+        business_password, 
+        business_name, 
+        business_type, 
+        business_desc, 
+        business_num, 
+        business_address, 
+        city, 
+        opening_hour, 
+        closing_hour, 
+        location
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ST_GeomFromText(?))";
+    
+    $stmt = $conn->prepare($sql);
+    
+    if (!$stmt) {
+        error_log("Prepare failed: " . $conn->error);
+        return false;
     }
-
-    error_log("Business creation failed: " . $stmt->error);
-    $stmt->close();
-    return false;
+    
+    // Bind parameters: 11 parameters total (10 strings + 1 POINT string)
+    // Type string: 's' for each parameter (all strings)
+    $stmt->bind_param(
+        'sssssssssss',  // 11 's' characters for 11 parameters
+        $data['business_email'],
+        $hashedPassword,
+        $data['business_name'],
+        $data['business_type'],
+        $data['business_desc'],
+        $data['business_num'],
+        $data['business_address'],
+        $data['city'],
+        $data['opening_hour'],
+        $data['closing_hour'],
+        $point
+    );
+    
+    if ($stmt->execute()) {
+        $businessId = $stmt->insert_id;
+        $stmt->close();
+        return $businessId;
+    } else {
+        error_log("Execute failed: " . $stmt->error);
+        $stmt->close();
+        return false;
+    }
 }
 
 // Update business

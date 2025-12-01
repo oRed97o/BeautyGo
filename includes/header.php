@@ -111,6 +111,43 @@
             50% { transform: scale(1.1); }
         }
         
+        /* Responsive icon adjustments for mobile */
+        @media (max-width: 576px) {
+            .notification-bell,
+            .favorites-heart,
+            .bookings-calendar {
+                font-size: 1.1rem;
+                padding: 4px 8px;
+            }
+            
+            .notification-badge, 
+            .favorites-badge, 
+            .bookings-badge {
+                top: -5px;
+                right: -5px;
+                padding: 2px 5px;
+                font-size: 0.6rem;
+                min-width: 16px;
+            }
+            
+            .style-recommendations-btn span {
+                display: none;
+            }
+            
+            .style-recommendations-btn {
+                padding: 6px 12px;
+            }
+        }
+        
+        /* Tablet responsive adjustments */
+        @media (max-width: 768px) {
+            .notification-bell,
+            .favorites-heart,
+            .bookings-calendar {
+                font-size: 1.2rem;
+            }
+        }
+        
         /* Style Recommendations Button */
         .style-recommendations-btn {
             border: 2px solid var(--color-burgundy);
@@ -272,11 +309,18 @@
             border-radius: 8px;
             transition: all 0.3s ease;
             color: var(--color-burgundy);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
         
         .nav-item.profile-dropdown .nav-link i {
             font-size: 1.4rem;
             margin-right: 6px;
+            flex-shrink: 0;
         }
         
         .nav-item.profile-dropdown .nav-link:hover {
@@ -309,6 +353,7 @@
             text-align: center;
             color: var(--color-burgundy);
             transition: all 0.3s ease;
+            flex-shrink: 0;
         }
         
         .profile-dropdown .dropdown-item:hover {
@@ -339,6 +384,54 @@
         
         .profile-dropdown .dropdown-item.text-danger i {
             color: #dc3545;
+            transition: all 0.3s ease;
+        }
+        
+        .profile-dropdown .dropdown-item.text-danger:hover i {
+            color: #c82333;
+            transform: translateX(8px);
+        }
+        
+        /* Responsive profile dropdown */
+        @media (max-width: 576px) {
+            .nav-item.profile-dropdown .nav-link {
+                font-size: 0.95rem;
+                padding: 6px 12px;
+            }
+            
+            .nav-item.profile-dropdown .nav-link i {
+                font-size: 1.2rem;
+                margin-right: 4px;
+            }
+            
+            .profile-dropdown .dropdown-menu {
+                min-width: 180px;
+            }
+            
+            .profile-dropdown .dropdown-item {
+                padding: 0.6rem 1rem;
+                font-size: 0.9rem;
+            }
+            
+            .profile-dropdown .dropdown-item i {
+                font-size: 1.1rem;
+                width: 20px;
+            }
+            
+            .profile-dropdown .dropdown-item:hover {
+                padding-left: 1.5rem;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .nav-item.profile-dropdown .nav-link {
+                font-size: 1rem;
+                padding: 6px 14px;
+            }
+            
+            .nav-item.profile-dropdown .nav-link i {
+                font-size: 1.2rem;
+            }
         }
 
         /* Hover to show dropdown */
@@ -349,6 +442,37 @@
 
         .nav-item.dropdown > .dropdown-toggle:active {
             pointer-events: none;
+        }
+        
+        /* Responsive navbar items */
+        @media (max-width: 576px) {
+            .navbar {
+                padding: 0.75rem 0;
+            }
+            
+            .navbar-collapse {
+                padding-top: 10px;
+            }
+            
+            .nav-item {
+                margin-right: 8px !important;
+                margin-bottom: 4px;
+            }
+            
+            .nav-link {
+                font-size: 0.95rem;
+                padding: 6px 8px !important;
+            }
+            
+            .dropdown-menu {
+                min-width: 160px;
+            }
+        }
+        
+        @media (max-width: 992px) {
+            .navbar-nav {
+                gap: 4px;
+            }
         }
     </style>
 </head>
@@ -549,10 +673,12 @@
                         
                         <!-- User/Business Profile Dropdown -->
                         <?php if (isBusinessLoggedIn()): ?>
-                            <li class="nav-item dropdown profile-dropdown">
-                                <a class="nav-link dropdown-toggle" href="#" id="businessDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                    <i class="bi bi-buildings"></i> <?php echo htmlspecialchars($displayName); ?>
-                                </a>
+                        <!-- Business Profile Dropdown -->
+                        <li class="nav-item dropdown profile-dropdown">
+                            <a class="nav-link dropdown-toggle d-flex align-items-center gap-2" href="#" id="businessDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-building"></i>
+                                <span><?php echo htmlspecialchars($currentUser['business_name']); ?></span>
+                            </a>
                                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="businessDropdown">
                                     <li><a class="dropdown-item" href="business-dashboard.php"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
                                     <li><a class="dropdown-item" href="business-profile.php"><i class="bi bi-person-circle"></i> Profile</a></li>

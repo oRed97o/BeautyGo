@@ -533,13 +533,24 @@ include 'includes/header.php';
                             <div class="row">
                                 <div class="col-md-6 mb-3">
                                     <label for="password" class="form-label">Password *</label>
-                                    <input type="password" class="form-control" id="password" name="password" minlength="8" required>
+                                    <div class="input-group">
+                                        <input type="password" class="form-control" id="password" name="password" minlength="8" required>
+                                        <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('password', 'passwordEye')">
+                                            <i class="bi bi-eye" id="passwordEye"></i>
+                                        </button>
+                                    </div>
                                     <small class="text-muted">Minimum 8 characters with numbers and symbols</small>
                                 </div>
                                 
                                 <div class="col-md-6 mb-3">
                                     <label for="confirm_password" class="form-label">Confirm Password *</label>
-                                    <input type="password" class="form-control" id="confirm_password" name="confirm_password" minlength="8" required>
+                                    <div class="input-group">
+                                        <input type="password" class="form-control" id="confirm_password" name="confirm_password" minlength="8" required>
+                                        <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('confirm_password', 'confirmPasswordEye')">
+                                            <i class="bi bi-eye" id="confirmPasswordEye"></i>
+                                        </button>
+                                    </div>
+                                    <div class="form-text text-danger small d-none" id="pwMismatch" role="alert">Passwords do not match</div>
                                 </div>
                             </div>
 
@@ -684,18 +695,40 @@ document.addEventListener('keydown', function(e) {
     }
 });
 
-// Form validation with custom modal
-document.getElementById('userRegisterForm').addEventListener('submit', function(e) {
-    const password = document.getElementById('password').value;
-    const confirmPassword = document.getElementById('confirm_password').value;
+// Toggle password visibility
+function togglePassword(inputId, eyeId) {
+    const passwordInput = document.getElementById(inputId);
+    const eyeIcon = document.getElementById(eyeId);
     
-    // Check if passwords match
-    if (password !== confirmPassword) {
-        e.preventDefault();
-        showErrorModal('Passwords do not match! Please make sure both password fields are identical.');
-        document.getElementById('confirm_password').focus();
-        return false;
+    if (passwordInput.type === 'password') {
+        // Show password
+        passwordInput.type = 'text';
+        eyeIcon.classList.remove('bi-eye');
+        eyeIcon.classList.add('bi-eye-slash');
+    } else {
+        // Hide password
+        passwordInput.type = 'password';
+        eyeIcon.classList.remove('bi-eye-slash');
+        eyeIcon.classList.add('bi-eye');
     }
+}
+
+// Form validation with custom modal
+        document.getElementById('userRegisterForm').addEventListener('submit', function(e) {
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirm_password').value;
+            
+            // Check if passwords match
+            if (password !== confirmPassword) {
+                e.preventDefault();
+                const pwMismatch = document.getElementById('pwMismatch');
+                if (pwMismatch) {
+                    pwMismatch.classList.remove('d-none');
+                    pwMismatch.textContent = 'Passwords do not match! Please make sure both password fields are correct.';
+                }
+                document.getElementById('confirm_password').focus();
+                return false;
+            }
     
     // Validate password length
     if (password.length < 8) {
@@ -1014,5 +1047,150 @@ cropModal.addEventListener('click', function(e) {
 });
 </script>
 </main>
+
+<script>
+(function() {
+    // Email validation updated to only require @ symbol (not .com)
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const passwordRules = {
+        minLength: 8,
+        hasNumber: /\d/,
+        hasSpecial: /[!@#$%^&*()_+\-\=\[\]{};':"\\|,.<>\/\?]/
+    };
+
+    function validateName(val) {
+        return val.trim().length >= 1;
+    }
+
+    function validateEmail(val) {
+        const v = val.trim().toLowerCase();
+        return emailRegex.test(v); // Only requires @ symbol and valid format
+    }
+
+    function validatePhone(val) {
+        if (!val) return false;
+        const digits = val.replace(/\D/g, '');
+        return digits.length === 11;
+    }
+
+    function validatePassword(val) {
+        if (!val) return false;
+        return val.length >= passwordRules.minLength &&
+               passwordRules.hasNumber.test(val) &&
+               passwordRules.hasSpecial.test(val);
+    }
+
+    function validateSelect(el) {
+        return el.value !== '';
+    }
+
+    function setState(el, ok) {
+        el.classList.remove('valid','invalid');
+        // For selects, value may be empty string
+        const val = (el.tagName === 'SELECT') ? el.value : el.value.trim();
+        if (!val) {
+            el.removeAttribute('aria-invalid');
+            return;
+        }
+        if (ok) {
+            el.classList.add('valid');
+            el.setAttribute('aria-invalid','false');
+        } else {
+            el.classList.add('invalid');
+            el.setAttribute('aria-invalid','true');
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const map = [
+            { id: 'fname', validator: (el)=> validateName(el.value) },
+            { id: 'mname', validator: (el)=> el.value.trim() === '' ? false : validateName(el.value) },
+            { id: 'surname', validator: (el)=> validateName(el.value) },
+            { id: 'cstmr_email', validator: (el)=> validateEmail(el.value) },
+            { id: 'cstmr_num', validator: (el)=> validatePhone(el.value) },
+            { id: 'password', validator: (el)=> validatePassword(el.value) },
+            { id: 'confirm_password', validator: (el)=> {
+                    const pw = document.getElementById('password').value;
+                    return el.value === pw && validatePassword(pw);
+                }
+            },
+            { id: 'cstmr_address', validator: (el)=> validateSelect(el) }
+        ];
+
+        map.forEach(item => {
+            const el = document.getElementById(item.id);
+            if (!el) return;
+            el.classList.add('validate-field');
+            // initial state (use setState so selects handled)
+            setState(el, item.validator(el));
+
+            const inputEvent = (e) => {
+                setState(el, item.validator(el));
+                if (item.id === 'password') {
+                    const confirm = document.getElementById('confirm_password');
+                    if (confirm) setState(confirm, map.find(m=>m.id==='confirm_password').validator(confirm));
+                    if (confirm && confirm.classList.contains('valid')) {
+                        const pwMismatch = document.getElementById('pwMismatch');
+                        if (pwMismatch) pwMismatch.classList.add('d-none');
+                    }
+                }
+                // Hide inline mismatch message when confirm becomes valid
+                if (item.id === 'confirm_password') {
+                    const pwMismatch = document.getElementById('pwMismatch');
+                    if (pwMismatch && el.classList.contains('valid')) pwMismatch.classList.add('d-none');
+                }
+            };
+
+            // For select elements, listen to 'change'
+            if (el.tagName === 'SELECT') {
+                el.addEventListener('change', inputEvent);
+                el.addEventListener('blur', inputEvent);
+            } else {
+                el.addEventListener('input', inputEvent);
+                el.addEventListener('blur', inputEvent);
+            }
+        });
+
+        // Form submit: prevent if invalid required fields exist (include location)
+        const form = document.getElementById('userRegisterForm');
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                const requiredIds = ['fname','surname','cstmr_email','cstmr_num','password','confirm_password','cstmr_address'];
+                let firstInvalid = null;
+                let anyInvalid = false;
+
+                requiredIds.forEach(id => {
+                    const el = document.getElementById(id);
+                    if (!el) return;
+                    // For selects, check value; for inputs, check trimmed value
+                    const val = (el.tagName === 'SELECT') ? el.value : el.value.trim();
+                    if (!val) {
+                        el.classList.add('invalid');
+                        anyInvalid = true;
+                        firstInvalid = firstInvalid || el;
+                        return;
+                    }
+                    if (!el.classList.contains('valid')) {
+                        el.classList.add('invalid');
+                        anyInvalid = true;
+                        firstInvalid = firstInvalid || el;
+                    }
+                });
+
+                if (anyInvalid) {
+                    e.preventDefault();
+                    if (firstInvalid) firstInvalid.focus();
+                    if (typeof showErrorModal === 'function') {
+                        showErrorModal('Please fix highlighted fields before continuing.');
+                    } else {
+                        alert('Please fix highlighted fields before continuing.');
+                    }
+                }
+            });
+        }
+
+    });
+})();
+</script>
 
 <?php include 'includes/footer.php'; ?>

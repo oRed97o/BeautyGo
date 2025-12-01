@@ -1,4 +1,9 @@
 :root {
+  --color-burgundy: #850e35;
+  --color-rose: #ee6983;
+  --color-pink: #ffc4c4;
+  --color-cream: #fff5e4;
+  /* Fallback brand variables for compatibility */
   --brand-burgundy: #850e35;
   --brand-rose: #ee6983;
   --brand-pink: #ffc4c4;
@@ -417,7 +422,54 @@ footer {
   color: var(--brand-rose);
 }
 
-/* Responsive Design */
+/* Responsive Design - Mobile First */
+@media (max-width: 576px) {
+  .header-gradient h1 {
+    font-size: 1.35rem;
+    margin-bottom: 1rem;
+  }
+
+  .video-container,
+  .upload-area {
+    max-width: 100%;
+    height: 250px;
+  }
+
+  .prediction-text {
+    font-size: 1.5rem;
+    padding: 0.75rem;
+  }
+
+  .btn-lg {
+    padding: 0.6rem 1.5rem;
+    font-size: 0.95rem;
+  }
+
+  main {
+    padding: 1rem 0.5rem;
+  }
+
+  .container {
+    padding-left: 0.5rem !important;
+    padding-right: 0.5rem !important;
+  }
+
+  .card {
+    border-radius: 12px;
+    margin-bottom: 1rem !important;
+  }
+
+  .btn {
+    padding: 0.5rem 1.5rem;
+    font-size: 0.9rem;
+  }
+
+  .spinner-border {
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+}
+
 @media (max-width: 768px) {
   .header-gradient h1 {
     font-size: 1.8rem;
@@ -435,6 +487,12 @@ footer {
   .btn-lg {
     padding: 0.7rem 2rem;
     font-size: 1rem;
+  }
+}
+
+@media (min-width: 769px) {
+  .header-gradient h1 {
+    font-size: 2.5rem;
   }
 }
 

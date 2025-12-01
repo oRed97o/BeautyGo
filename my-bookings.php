@@ -58,6 +58,20 @@ include 'includes/header.php';
     font-size: 1.2rem;
 }
 
+/* My Bookings page heading */
+.bookings-heading {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 1.75rem;
+    margin-bottom: 24px;
+}
+
+.bookings-heading i {
+    color: var(--color-burgundy);
+    font-size: 2rem;
+}
+
 /* Status badges */
 .status-pending { background-color: #ffc107; color: #000; }
 .status-confirmed { background-color: #28a745; color: #fff; }
@@ -74,32 +88,133 @@ include 'includes/header.php';
     color: var(--color-rose);
     margin-bottom: 20px;
 }
+
+/* Card content responsiveness */
+.appointment-card-content {
+    display: flex;
+    flex-direction: column;
+}
+
+.appointment-details {
+    row-gap: 1rem;
+}
+
+.appointment-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 576px) {
+    .back-button {
+        padding: 6px 12px;
+        font-size: 0.9rem;
+        margin-bottom: 15px;
+    }
+    
+    .back-button i {
+        font-size: 1rem;
+    }
+    
+    .bookings-heading {
+        font-size: 1.35rem;
+    }
+    
+    .bookings-heading i {
+        font-size: 1.5rem;
+    }
+    
+    .card {
+        margin-bottom: 0.75rem !important;
+    }
+    
+    .card-body {
+        padding: 1rem !important;
+    }
+    
+    .row {
+        margin-left: -0.25rem;
+        margin-right: -0.25rem;
+    }
+    
+    [class*='col-'] {
+        padding-left: 0.25rem;
+        padding-right: 0.25rem;
+    }
+    
+    .col-md-8 {
+        margin-bottom: 1rem;
+    }
+    
+    .col-md-4.text-end {
+        text-align: left !important;
+    }
+    
+    .appointment-card-content {
+        row-gap: 0.75rem;
+    }
+    
+    .appointment-details p {
+        font-size: 0.9rem;
+        margin-bottom: 0.5rem !important;
+    }
+    
+    .d-grid gap-2 {
+        row-gap: 0.5rem !important;
+    }
+    
+    .btn-sm {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.8rem;
+    }
+    
+    h3 {
+        font-size: 1.35rem !important;
+    }
+}
+
+@media (max-width: 768px) {
+    .bookings-heading {
+        font-size: 1.5rem;
+    }
+    
+    .bookings-heading i {
+        font-size: 1.75rem;
+    }
+    
+    .card-body {
+        padding: 16px !important;
+    }
+}
 </style>
 
 <main>
-    <div class="container my-4">
-        <!-- Back Button -->
-        <a href="index.php" class="back-button">
-            <i class="bi bi-arrow-left-circle"></i>
-            <span>Back to Home</span>
-        </a>
+    <div class="container-fluid px-2 px-md-3 py-3 py-md-4">
+        <div class="row">
+            <div class="col-12">
+                <a href="index.php" class="back-button">
+                    <i class="bi bi-arrow-left-circle"></i>
+                    <span>Back to Home</span>
+                </a>
 
-        <h2 class="mb-4">My Bookings</h2>
-        
-        <?php if (empty($appointments)): ?>
-            <div class="card">
-                <div class="card-body">
-                    <div class="empty-state">
-                        <i class="bi bi-calendar-x"></i>
-                        <h4>No Appointments Yet</h4>
-                        <p>You haven't made any appointments. Browse our businesses to get started!</p>
-                        <a href="index.php" class="btn btn-primary">Browse Businesses</a>
+                        <h2 class="bookings-heading"><i class="bi bi-calendar-check-fill"></i> My Bookings</h2>
+                
+                <?php if (empty($appointments)): ?>
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="empty-state">
+                                <i class="bi bi-calendar-x"></i>
+                                <h4>No Appointments Yet</h4>
+                                <p>You haven't made any appointments. Browse our businesses to get started!</p>
+                                <a href="index.php" class="btn btn-primary">Browse Businesses</a>
+                            </div>
+                        </div>
                     </div>
-                </div>
-            </div>
-        <?php else: ?>
-            <?php foreach ($appointments as $appointment): ?>
-                <div class="card mb-3">
+                <?php else: ?>
+                    <?php foreach ($appointments as $appointment): ?>
+                        <div class="card mb-3">
                     <div class="card-body">
                         <div class="row">
                             <div class="col-md-8">
@@ -241,6 +356,8 @@ include 'includes/header.php';
                 <?php endif; ?>
             <?php endforeach; ?>
         <?php endif; ?>
+            </div>
+        </div>
     </div>
 </main>
 

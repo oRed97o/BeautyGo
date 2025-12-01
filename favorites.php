@@ -25,23 +25,116 @@ markFavoritesAsSeen($_SESSION['customer_id']);
 include 'includes/header.php';
 ?>
 
-<main class="container my-5">
-    <h2 class="mb-4">
-        <i class="bi bi-heart-fill text-danger"></i> My Favorite Businesses
-    </h2>
+<style>
+    /* Back button styling */
+    .back-button {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--color-burgundy);
+        text-decoration: none;
+        font-weight: 500;
+        padding: 8px 16px;
+        border-radius: 8px;
+        transition: all 0.3s ease;
+        margin-bottom: 20px;
+    }
 
-    <?php if (empty($favorites)): ?>
-        <div class="text-center py-5">
-            <i class="bi bi-heart" style="font-size: 4rem; color: var(--brand-burgundy);"></i>
-            <h4 class="mt-3">No favorites yet</h4>
-            <p class="text-muted">Start adding your favorite beauty businesses!</p>
-            <a href="index.php" class="btn btn-primary mt-3">
-                <i class="bi bi-search"></i> Browse Businesses
+    .back-button:hover {
+        background-color: var(--color-cream);
+        color: var(--color-rose);
+        transform: translateX(-4px);
+    }
+
+    .back-button i {
+        font-size: 1.2rem;
+    }
+    
+    /* Favorites page heading */
+    .favorites-heading {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-size: 1.75rem;
+        margin-bottom: 24px;
+    }
+    
+    .favorites-heading i {
+        color: #dc3545;
+        font-size: 2rem;
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 576px) {
+        .back-button {
+            padding: 6px 12px;
+            font-size: 0.9rem;
+            margin-bottom: 15px;
+        }
+        
+        .back-button i {
+            font-size: 1rem;
+        }
+        
+        .favorites-heading {
+            font-size: 1.35rem;
+        }
+        
+        .favorites-heading i {
+            font-size: 1.5rem;
+        }
+        
+        .card {
+            margin-bottom: 0.75rem !important;
+        }
+
+        .row {
+            margin-left: -0.25rem;
+            margin-right: -0.25rem;
+        }
+
+        [class*='col-'] {
+            padding-left: 0.25rem;
+            padding-right: 0.25rem;
+        }
+    }
+    
+    @media (max-width: 768px) {
+        .favorites-heading {
+            font-size: 1.5rem;
+        }
+        
+        .favorites-heading i {
+            font-size: 1.75rem;
+        }
+    }
+</style>
+
+<main class="container-fluid px-2 px-md-3 py-3 py-md-4">
+    <div class="row">
+        <div class="col-12">
+            <!-- Back Button -->
+            <a href="index.php" class="back-button">
+                <i class="bi bi-arrow-left-circle"></i>
+                <span>Back to Home</span>
             </a>
-        </div>
-    <?php else: ?>
-        <div class="row">
-            <?php foreach ($favorites as $business): ?>
+            
+            <h2 class="mb-4 favorites-heading">
+                <i class="bi bi-heart-fill text-danger"></i> My Favorite Businesses
+            </h2>
+
+            <?php if (empty($favorites)): ?>
+                <div class="text-center py-5">
+                    <i class="bi bi-heart" style="font-size: 4rem; color: var(--brand-burgundy);"></i>
+                    <h4 class="mt-3">No favorites yet</h4>
+                    <p class="text-muted">Start adding your favorite beauty businesses!</p>
+                    <a href="index.php" class="btn btn-primary mt-3">
+                        <i class="bi bi-search"></i> Browse Businesses
+                    </a>
+                </div>
+            <?php else: ?>
+                <div class="row">
+                    <?php foreach ($favorites as $business): ?>
                 <?php 
                 $album = getBusinessAlbum($business['business_id']);
                 $businessImage = null;
@@ -96,9 +189,11 @@ include 'includes/header.php';
                         </div>
                     </div>
                 </div>
-            <?php endforeach; ?>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
         </div>
-    <?php endif; ?>
+    </div>
 </main>
 
 <script>

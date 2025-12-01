@@ -278,7 +278,10 @@ function login() {
         }
     }
 
+    // Store failed login info to display in login form
     $_SESSION['error'] = 'Invalid email or password.';
+    $_SESSION['failed_email'] = $email;
+    $_SESSION['failed_type'] = $type;
     header('Location: ../login.php');
     exit;
 }

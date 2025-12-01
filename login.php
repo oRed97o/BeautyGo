@@ -19,6 +19,14 @@ if (isLoggedIn()) {
 
 $pageTitle = 'Login - BeautyGo';
 include 'includes/header.php';
+
+// Store failed login info if available
+$failedEmail = $_SESSION['failed_email'] ?? '';
+$failedType = $_SESSION['failed_type'] ?? '';
+
+// Clear session variables after storing them
+unset($_SESSION['failed_email']);
+unset($_SESSION['failed_type']);
 ?>
 
 <main>
@@ -53,7 +61,7 @@ include 'includes/header.php';
                                     
                                     <div class="mb-3">
                                         <label for="customerEmail" class="form-label">Email Address</label>
-                                        <input type="email" class="form-control" id="customerEmail" name="email" required>
+                                        <input type="email" class="form-control" id="customerEmail" name="email" value="<?php echo $failedType === 'customer' ? htmlspecialchars($failedEmail) : ''; ?>" required>
                                     </div>
                                     
                                     <div class="mb-3">
@@ -84,7 +92,7 @@ include 'includes/header.php';
                                     
                                     <div class="mb-3">
                                         <label for="businessEmail" class="form-label">Email Address</label>
-                                        <input type="email" class="form-control" id="businessEmail" name="email" required>
+                                        <input type="email" class="form-control" id="businessEmail" name="email" value="<?php echo $failedType === 'business' ? htmlspecialchars($failedEmail) : ''; ?>" required>
                                     </div>
                                     
                                     <div class="mb-3">
@@ -118,3 +126,134 @@ include 'includes/header.php';
 </main>
 
 <?php include 'includes/footer.php'; ?>
+
+<script>
+    // Live validation
+(function() {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    function validateEmail(val) {
+        const v = val.trim().toLowerCase();
+        return emailRegex.test(v); // Removed the .endsWith('.com') requirement
+    }
+
+    function validatePassword(val) {
+        return val.trim().length >= 8;
+    }
+
+    function setState(el, ok) {
+        if (!el) return;
+        el.classList.remove('valid', 'invalid');
+        const val = el.value.trim();
+        if (!val) {
+            el.removeAttribute('aria-invalid');
+            return;
+        }
+        if (ok) {
+            el.classList.add('valid');
+            el.setAttribute('aria-invalid', 'false');
+        } else {
+            el.classList.add('invalid');
+            el.setAttribute('aria-invalid', 'true');
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const fields = [
+            { id: 'customerEmail', validator: (el) => validateEmail(el.value) },
+            { id: 'customerPassword', validator: (el) => validatePassword(el.value) },
+            { id: 'businessEmail', validator: (el) => validateEmail(el.value) },
+            { id: 'businessPassword', validator: (el) => validatePassword(el.value) }
+        ];
+
+        fields.forEach(item => {
+            const el = document.getElementById(item.id);
+            if (!el) return;
+            el.classList.add('validate-field');
+            
+            // Initial state
+            setState(el, item.validator(el));
+
+            const handler = function() {
+                setState(el, item.validator(el));
+            };
+
+            el.addEventListener('input', handler);
+            el.addEventListener('blur', handler);
+        });
+
+        // Clear form fields when switching tabs
+        const customerTab = document.getElementById('customer-tab');
+        const businessTab = document.getElementById('business-tab');
+        
+        // Function to reset form fields but keep email
+        function resetCustomerPassword() {
+            const pwField = document.getElementById('customerPassword');
+            pwField.value = '';
+            pwField.classList.remove('valid', 'invalid');
+            // Reset password field type to 'password'
+            pwField.type = 'password';
+            // Reset eye icon
+            const customerEye = document.getElementById('customerEye');
+            customerEye.classList.remove('bi-eye-slash');
+            customerEye.classList.add('bi-eye');
+        }
+        
+        function resetBusinessPassword() {
+            const pwField = document.getElementById('businessPassword');
+            pwField.value = '';
+            pwField.classList.remove('valid', 'invalid');
+            // Reset password field type to 'password'
+            pwField.type = 'password';
+            // Reset eye icon
+            const businessEye = document.getElementById('businessEye');
+            businessEye.classList.remove('bi-eye-slash');
+            businessEye.classList.add('bi-eye');
+        }
+        
+        function resetCustomerForm() {
+            const emailField = document.getElementById('customerEmail');
+            emailField.value = '';
+            emailField.classList.remove('valid', 'invalid');
+            resetCustomerPassword();
+        }
+        
+        function resetBusinessForm() {
+            const emailField = document.getElementById('businessEmail');
+            emailField.value = '';
+            emailField.classList.remove('valid', 'invalid');
+            resetBusinessPassword();
+        }
+        
+        // Check if we're coming from a failed login
+        const customerEmail = document.getElementById('customerEmail').value;
+        const businessEmail = document.getElementById('businessEmail').value;
+        
+        // If customer email is populated (failed login), only clear password and switch to customer tab
+        if (customerEmail) {
+            resetCustomerPassword();
+            customerTab.click();
+        }
+        
+        // If business email is populated (failed login), only clear password and switch to business tab
+        if (businessEmail) {
+            resetBusinessPassword();
+            businessTab.click();
+        }
+        
+        // Reset forms when switching tabs (clears both email and password)
+        customerTab.addEventListener('click', function() {
+            resetBusinessForm();
+            if (!customerEmail) {
+                resetCustomerForm();
+            }
+        });
+        
+        businessTab.addEventListener('click', function() {
+            resetCustomerForm();
+            if (!businessEmail) {
+                resetBusinessForm();
+            }
+        });
+    });
+})();

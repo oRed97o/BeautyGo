@@ -66,6 +66,24 @@
                     }
                 });
             });
+            
+            // Auto-dismiss success and error alerts after 5 seconds
+            const successAlert = document.querySelector('.alert-success');
+            const errorAlert = document.querySelector('.alert-danger');
+            
+            const dismissAlert = function(alert) {
+                if (alert) {
+                    setTimeout(function() {
+                        // Create a Bootstrap Alert instance and close it
+                        const bsAlert = new bootstrap.Alert(alert);
+                        bsAlert.close();
+                    }, 5000); // 5 seconds
+                }
+            };
+            
+            // Dismiss both alerts
+            dismissAlert(successAlert);
+            dismissAlert(errorAlert);
         });
     </script>
     
