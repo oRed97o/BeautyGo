@@ -464,79 +464,79 @@ include 'includes/header.php';
                     <div class="card-body p-4">
                         <h2 class="mb-4">My Profile</h2>
                         
-                        <form action="" method="POST" enctype="multipart/form-data">
-                            <!-- Profile Picture -->
-                            <div class="profile-image-container">
-                                <div class="profile-image-wrapper">
-                                    <?php if (!empty($user['profile_pic'])): ?>
-                                        <img src="data:image/jpeg;base64,<?php echo base64_encode($user['profile_pic']); ?>" 
-                                            class="profile-image" 
-                                            alt="Profile Picture"
-                                            id="profilePreview">
-                                    <?php else: ?>
-                                        <div class="default-avatar" id="profilePreview">
-                                            <i class="bi bi-person-circle"></i>
-                                        </div>
-                                    <?php endif; ?>
-                                    
-                                    <label for="profile_pic" class="image-upload-overlay" title="Change profile picture">
-                                        <i class="bi bi-camera-fill"></i>
-                                    </label>
-                                    <input type="file" 
-                                        class="form-control" 
-                                        id="profile_pic" 
-                                        name="profile_pic" 
-                                        accept="image/jpeg,image/jpg,image/png">
-                                    <input type="hidden" id="remove_profile_pic" name="remove_profile_pic" value="0">
-                                </div>
-                                <div id="imagePreviewName" class="image-preview-name"></div>
-                                
+                        <form action="" method="POST" enctype="multipart/form-data" id="profileForm">
+                        <!-- Profile Picture -->
+                        <div class="profile-image-container">
+                            <div class="profile-image-wrapper">
                                 <?php if (!empty($user['profile_pic'])): ?>
-                                    <button type="button" class="btn btn-sm btn-outline-danger mt-2" id="removePhotoBtn">
-                                        <i class="bi bi-trash"></i> Remove Photo
-                                    </button>
+                                    <img src="data:image/jpeg;base64,<?php echo base64_encode($user['profile_pic']); ?>" 
+                                        class="profile-image" 
+                                        alt="Profile Picture"
+                                        id="profilePreview">
+                                <?php else: ?>
+                                    <div class="default-avatar" id="profilePreview">
+                                        <i class="bi bi-person-circle"></i>
+                                    </div>
                                 <?php endif; ?>
                                 
-                                <small class="text-muted d-block mt-2">Click camera icon to change picture (JPG, PNG - Max 5MB)</small>
+                                <label for="profile_pic" class="image-upload-overlay" title="Change profile picture">
+                                    <i class="bi bi-camera-fill"></i>
+                                </label>
+                                <input type="file" 
+                                    class="form-control" 
+                                    id="profile_pic" 
+                                    name="profile_pic" 
+                                    accept="image/jpeg,image/jpg,image/png">
+                                <input type="hidden" id="remove_profile_pic" name="remove_profile_pic" value="0">
                             </div>
+                            <div id="imagePreviewName" class="image-preview-name"></div>
+                            
+                            <?php if (!empty($user['profile_pic'])): ?>
+                                <button type="button" class="btn btn-sm btn-outline-danger mt-2" id="removePhotoBtn">
+                                    <i class="bi bi-trash"></i> Remove Photo
+                                </button>
+                            <?php endif; ?>
+                            
+                            <small class="text-muted d-block mt-2">Click camera icon to change picture (JPG, PNG - Max 5MB)</small>
+                        </div>
 
-                            <!-- Personal Information -->
-                            <h5 class="mb-3">Personal Information</h5>
+                        <!-- Personal Information -->
+                        <h5 class="mb-3">Personal Information</h5>
 
-                            <div class="row">
-                                <div class="col-md-4 mb-3">
-                                    <label for="fname" class="form-label">First Name *</label>
-                                    <input type="text" class="form-control" id="fname" name="fname" 
-                                           value="<?php echo htmlspecialchars($user['fname'] ?? ''); ?>" required>
-                                </div>
-                                
-                                <div class="col-md-4 mb-3">
-                                    <label for="mname" class="form-label">Middle Name</label>
-                                    <input type="text" class="form-control" id="mname" name="mname" 
-                                           value="<?php echo htmlspecialchars($user['mname'] ?? ''); ?>">
-                                </div>
-                                
-                                <div class="col-md-4 mb-3">
-                                    <label for="surname" class="form-label">Last Name</label>
-                                    <input type="text" class="form-control" id="surname" name="surname" 
-                                           value="<?php echo htmlspecialchars($user['surname'] ?? ''); ?>">
-                                </div>
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="fname" class="form-label">First Name *</label>
+                                <input type="text" class="form-control" id="fname" name="fname" 
+                                    value="<?php echo htmlspecialchars($user['fname'] ?? ''); ?>" required>
                             </div>
                             
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <label for="cstmr_email" class="form-label">Email Address</label>
-                                    <input type="email" class="form-control" id="cstmr_email" 
-                                           value="<?php echo htmlspecialchars($user['cstmr_email'] ?? ''); ?>" disabled>
-                                    <small class="text-muted">Email cannot be changed</small>
-                                </div>
-                                
-                                <div class="col-md-6 mb-3">
-                                    <label for="cstmr_num" class="form-label">Phone Number *</label>
-                                    <input type="tel" class="form-control" id="cstmr_num" name="cstmr_num" 
-                                           value="<?php echo htmlspecialchars($user['cstmr_num'] ?? ''); ?>" required>
-                                </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="mname" class="form-label">Middle Name</label>
+                                <input type="text" class="form-control" id="mname" name="mname" 
+                                    value="<?php echo htmlspecialchars($user['mname'] ?? ''); ?>">
                             </div>
+                            
+                            <div class="col-md-4 mb-3">
+                                <label for="surname" class="form-label">Last Name</label>
+                                <input type="text" class="form-control" id="surname" name="surname" 
+                                    value="<?php echo htmlspecialchars($user['surname'] ?? ''); ?>">
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="cstmr_email" class="form-label">Email Address</label>
+                                <input type="email" class="form-control" id="cstmr_email" 
+                                    value="<?php echo htmlspecialchars($user['cstmr_email'] ?? ''); ?>" disabled>
+                                <small class="text-muted">Email cannot be changed</small>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="cstmr_num" class="form-label">Phone Number *</label>
+                                <input type="tel" class="form-control" id="cstmr_num" name="cstmr_num" 
+                                    value="<?php echo htmlspecialchars($user['cstmr_num'] ?? ''); ?>" required>
+                            </div>
+                        </div>
                             
                             <div class="row">
                                 <div class="col-md-6 mb-3">
@@ -591,6 +591,19 @@ include 'includes/header.php';
                             </div>
                             
                             <hr class="my-4">
+
+                            <!-- Save Button Section -->
+                    
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-outline-secondary" onclick="resetForm()">
+                                <i class="bi bi-arrow-counterclockwise"></i> Reset
+                            </button>
+                            <button type="submit" name="update_profile" class="btn btn-burgundy">
+                                <i class="bi bi-check-circle-fill"></i> Save Changes
+                            </button>
+                        </div>
+                    </div>
+                </form> 
                 
                 <!-- Booking Stats -->
                 <div class="card mt-3">
@@ -700,6 +713,37 @@ let currentZoom = 1;
 let currentFile = null;
 let originalImageSrc = '';
 let hasCroppedImage = false;
+
+
+// Form reset function
+function resetForm() {
+    if (confirm('Are you sure you want to reset all changes?')) {
+        document.getElementById('profileForm').reset();
+        location.reload();
+    }
+}
+
+// Show unsaved changes warning
+let formChanged = false;
+const form = document.getElementById('profileForm');
+const formInputs = form.querySelectorAll('input:not([type="hidden"]), select, textarea');
+
+formInputs.forEach(input => {
+    input.addEventListener('change', () => {
+        formChanged = true;
+    });
+});
+
+window.addEventListener('beforeunload', (e) => {
+    if (formChanged) {
+        e.preventDefault();
+        e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
+    }
+});
+
+form.addEventListener('submit', () => {
+    formChanged = false;
+});
 
 // When user selects a file
 profilePicInput.addEventListener('change', function(e) {

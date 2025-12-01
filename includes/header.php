@@ -692,9 +692,33 @@
                                 </ul>
                             </li>
                         <?php else: ?>
+                            <!-- Customer Profile Dropdown with Picture -->
+                            <?php
+                            // Get customer profile picture
+                            $customerProfilePic = null;
+                            if (isset($currentUser['customer_id'])) {
+                                $conn = getDbConnection();
+                                $stmt = $conn->prepare("SELECT profile_pic FROM customers WHERE customer_id = ?");
+                                $stmt->bind_param("i", $currentUser['customer_id']);
+                                $stmt->execute();
+                                $result = $stmt->get_result();
+                                if ($row = $result->fetch_assoc()) {
+                                    $customerProfilePic = $row['profile_pic'];
+                                }
+                                $stmt->close();
+                            }
+                            ?>
+                            
                             <li class="nav-item dropdown profile-dropdown">
-                                <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                    <i class="bi bi-person-circle"></i> <?php echo htmlspecialchars($displayName); ?>
+                                <a class="nav-link dropdown-toggle d-flex align-items-center gap-2" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <?php if (!empty($customerProfilePic)): ?>
+                                        <img src="data:image/jpeg;base64,<?php echo base64_encode($customerProfilePic); ?>" 
+                                             alt="Profile" 
+                                             style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 2px solid var(--color-burgundy);">
+                                    <?php else: ?>
+                                        <i class="bi bi-person-circle"></i>
+                                    <?php endif; ?>
+                                    <span><?php echo htmlspecialchars($displayName); ?></span>
                                 </a>
                                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
                                     <li><a class="dropdown-item" href="user-profile.php"><i class="bi bi-person"></i> Profile</a></li>
