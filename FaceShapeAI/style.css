@@ -507,3 +507,90 @@ footer {
 .form-check-input {
   transition: all 0.3s ease;
 }
+
+/* Back Button Styling */
+.btn-back {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    background: linear-gradient(
+        135deg,
+        var(--brand-burgundy) 0%,
+        var(--brand-rose) 100%
+    );
+    color: white;
+    border: none;
+    border-radius: 25px;
+    padding: 0.5rem 1.25rem 0.5rem 1rem;
+    font-weight: 600;
+    font-size: 0.95rem;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(133, 14, 53, 0.3);
+    display: flex;
+    align-items: center;
+    z-index: 100;
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.btn-back:hover {
+    transform: translateY(-50%) translateX(-5px);
+    box-shadow: 0 6px 20px rgba(133, 14, 53, 0.5);
+    background: linear-gradient(
+        135deg,
+        var(--brand-rose) 0%,
+        var(--brand-burgundy) 100%
+    );
+    color: white;
+    text-decoration: none;
+}
+
+.btn-back:active {
+    transform: translateY(-50%) scale(0.98);
+}
+
+.btn-back i {
+    font-size: 0.9rem;
+    transition: transform 0.3s ease;
+}
+
+.btn-back:hover i {
+    transform: translateX(-3px);
+}
+
+/* Responsive adjustments for back button */
+@media (max-width: 768px) {
+    .btn-back {
+        position: relative;
+        left: 0;
+        top: 0;
+        transform: none;
+        margin-bottom: 1rem;
+        display: inline-flex;
+        width: auto;
+    }
+    
+    .btn-back:hover {
+        transform: translateX(-5px);
+    }
+    
+    .btn-back:active {
+        transform: scale(0.98);
+    }
+    
+    .header-gradient .container {
+        padding-top: 1.5rem !important;
+    }
+}
+
+@media (max-width: 576px) {
+    .btn-back {
+        padding: 0.4rem 1rem 0.4rem 0.8rem;
+        font-size: 0.85rem;
+    }
+    
+    .btn-back i {
+        font-size: 0.8rem;
+    }
+}

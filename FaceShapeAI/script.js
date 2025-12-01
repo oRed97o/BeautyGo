@@ -449,3 +449,14 @@ function displayError(message) {
         predictionResult.style.color = '';
     }, 3000);
 }
+    // Back Button Functionality
+    document.addEventListener('DOMContentLoaded', function() {
+        const backButton = document.getElementById('backButton');
+        
+        if (backButton) {
+            backButton.addEventListener('click', function() {
+                // Always go to the main index.php from the FaceShapeAI tool
+                window.location.href = '../index.php';
+            });
+        }
+    });
