@@ -121,52 +121,54 @@ include 'includes/header.php';
                         <h2 class="mb-4">Book Appointment at <?php echo htmlspecialchars($business['business_name']); ?></h2>
                         
                         <form action="" method="POST" id="bookingForm">
-                            <!-- Select Services (Multiple) -->
-                            <div class="mb-4">
-                                <label class="form-label">
-                                    Select Services *
-                                    <span id="selectedCountBadge" class="selected-count-badge" style="display: none;">0 selected</span>
-                                </label>
-                                <?php if (empty($services)): ?>
-                                    <div class="alert alert-warning">
-                                        No services available. Please contact the business directly.
-                                    </div>
-                                <?php else: ?>
-                                    <div class="services-container">
-                                        <?php foreach ($services as $service): ?>
-                                            <div class="service-checkbox-card" onclick="toggleServiceCard(this)">
-                                                <div class="d-flex align-items-start gap-3">
-                                                    <input 
-                                                        class="form-check-input mt-1" 
-                                                        type="checkbox" 
-                                                        name="service_ids[]" 
-                                                        id="service_<?php echo $service['service_id']; ?>" 
-                                                        value="<?php echo $service['service_id']; ?>" 
-                                                        data-name="<?php echo htmlspecialchars($service['service_name']); ?>"
-                                                        data-price="<?php echo $service['cost']; ?>"
-                                                        data-duration="<?php echo htmlspecialchars($service['duration']); ?>"
-                                                        onchange="updateServiceSelection()"
-                                                        onclick="event.stopPropagation()">
-                                                    <label class="flex-grow-1" for="service_<?php echo $service['service_id']; ?>" style="cursor: pointer;">
-                                                        <div class="d-flex justify-content-between align-items-start">
-                                                            <div>
-                                                                <strong style="font-size: 1.1rem;"><?php echo htmlspecialchars($service['service_name']); ?></strong>
-                                                                <?php if (!empty($service['service_desc'])): ?>
-                                                                    <p class="text-muted small mb-1"><?php echo htmlspecialchars($service['service_desc']); ?></p>
-                                                                <?php endif; ?>
-                                                                <small class="text-muted">
-                                                                    <i class="bi bi-clock"></i> <?php echo htmlspecialchars($service['duration']); ?> min
-                                                                </small>
-                                                            </div>
-                                                            <strong style="color: var(--color-burgundy); font-size: 1.2rem;">₱<?php echo number_format($service['cost'], 2); ?></strong>
-                                                        </div>
-                                                    </label>
-                                                </div>
-                                            </div>
-                                        <?php endforeach; ?>
-                                    </div>
-                                <?php endif; ?>
+                            <!-- Select Services (Multiple) - FIXED VERSION -->
+<div class="mb-4">
+    <label class="form-label">
+        Select Services *
+        <span id="selectedCountBadge" class="selected-count-badge" style="display: none;">0 selected</span>
+    </label>
+    <?php if (empty($services)): ?>
+        <div class="alert alert-warning">
+            No services available. Please contact the business directly.
+        </div>
+    <?php else: ?>
+        <div class="services-container">
+            <?php foreach ($services as $service): ?>
+                <!-- FIXED: Removed onclick from card div -->
+                <div class="service-checkbox-card">
+                    <div class="d-flex align-items-start gap-3">
+                        <!-- FIXED: Checkbox now handles its own click -->
+                        <input 
+                            class="form-check-input mt-1" 
+                            type="checkbox" 
+                            name="service_ids[]" 
+                            id="service_<?php echo $service['service_id']; ?>" 
+                            value="<?php echo $service['service_id']; ?>" 
+                            data-name="<?php echo htmlspecialchars($service['service_name']); ?>"
+                            data-price="<?php echo $service['cost']; ?>"
+                            data-duration="<?php echo htmlspecialchars($service['duration']); ?>"
+                            onchange="updateServiceSelection()">
+                        <!-- FIXED: Label now only triggers checkbox when clicked directly -->
+                        <label class="flex-grow-1 service-label" for="service_<?php echo $service['service_id']; ?>">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <strong style="font-size: 1.1rem;"><?php echo htmlspecialchars($service['service_name']); ?></strong>
+                                    <?php if (!empty($service['service_desc'])): ?>
+                                        <p class="text-muted small mb-1"><?php echo htmlspecialchars($service['service_desc']); ?></p>
+                                    <?php endif; ?>
+                                    <small class="text-muted">
+                                        <i class="bi bi-clock"></i> <?php echo htmlspecialchars($service['duration']); ?> min
+                                    </small>
+                                </div>
+                                <strong style="color: var(--color-burgundy); font-size: 1.2rem;">₱<?php echo number_format($service['cost'], 2); ?></strong>
                             </div>
+                        </label>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+        </div>
+    <?php endif; ?>
+</div>
                             
                             <!-- Select Staff (Optional) -->
                             <?php if (!empty($staff)): ?>

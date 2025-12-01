@@ -1,93 +1,105 @@
-/* Sticky sidebar for customer/business info cards */
-.sticky-sidebar {
-    position: sticky;
-    top: 100px; 
-    max-height: calc(100vh - 120px); 
-    overflow-y: auto;
-}
-
-/* Services container with scrollbar */
+/* Service Selection Cards - IMPROVED */
 .services-container {
-    max-height: 450px;
-    overflow-y: auto;
-    padding-right: 10px;
-    margin-bottom: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
 }
 
-/* Custom scrollbar styling */
-.services-container::-webkit-scrollbar {
-    width: 8px;
-}
-
-.services-container::-webkit-scrollbar-track {
-    background: #f1f1f1;
-    border-radius: 10px;
-}
-
-.services-container::-webkit-scrollbar-thumb {
-    background: var(--color-burgundy);
-    border-radius: 10px;
-}
-
-.services-container::-webkit-scrollbar-thumb:hover {
-    background: var(--color-rose);
-}
-
-/* Service checkbox card styling */
 .service-checkbox-card {
+    padding: 1rem;
     border: 2px solid #e0e0e0;
-    border-radius: 8px;
-    padding: 15px;
-    margin-bottom: 10px;
-    cursor: pointer;
-    transition: all 0.3s ease;
+    border-radius: 12px;
     background: white;
+    transition: all 0.3s ease;
+    /* REMOVED: cursor: pointer; - Card itself is not clickable */
 }
 
-.service-checkbox-card:hover {
-    border-color: var(--color-burgundy, #8B0000);
-    box-shadow: 0 2px 8px rgba(139, 0, 0, 0.1);
-}
-
+/* Only highlight when checkbox is checked */
 .service-checkbox-card.selected {
-    border-color: var(--color-burgundy, #8B0000);
-    background-color: rgba(139, 0, 0, 0.05);
+    border-color: var(--color-burgundy);
+    background-color: #fff5f7;
+    box-shadow: 0 2px 8px rgba(133, 14, 53, 0.15);
+}
+
+/* Make checkbox more prominent */
+.service-checkbox-card .form-check-input {
+    width: 1.25rem;
+    height: 1.25rem;
+    cursor: pointer;
+    border: 2px solid #ccc;
+    transition: all 0.2s ease;
+}
+
+.service-checkbox-card .form-check-input:hover {
+    border-color: var(--color-burgundy);
+    transform: scale(1.1);
+}
+
+.service-checkbox-card .form-check-input:checked {
+    background-color: var(--color-burgundy);
+    border-color: var(--color-burgundy);
+}
+
+/* Label is clickable and triggers checkbox */
+.service-label {
+    cursor: pointer;
+    margin-bottom: 0;
+    user-select: none;
+}
+
+.service-label:hover {
+    color: var(--color-burgundy);
+}
+
+/* Visual feedback when hovering over checkbox or label */
+.service-checkbox-card:has(.form-check-input:hover),
+.service-checkbox-card:has(.service-label:hover) {
+    border-color: var(--color-rose);
+    box-shadow: 0 2px 6px rgba(133, 14, 53, 0.1);
 }
 
 /* Selected count badge */
 .selected-count-badge {
-    background: var(--color-burgundy, #8B0000);
+    background: linear-gradient(135deg, var(--color-burgundy), var(--color-rose));
     color: white;
-    padding: 4px 12px;
+    padding: 0.25rem 0.75rem;
     border-radius: 20px;
-    font-size: 0.875rem;
+    font-size: 0.85rem;
     font-weight: 600;
-    margin-left: 10px;
+    margin-left: 0.5rem;
+    animation: slideIn 0.3s ease;
 }
 
-/* Ensure gradient shows on booking summary */
-.booking-summary-card.card {
-    background: linear-gradient(135deg, #FFF5E4 0%, #FFC4C4 50%, #EE6983 100%);
-    border: none;
-    border-radius: 15px;
-    box-shadow: 0 8px 20px rgba(133, 14, 53, 0.15);
-    margin-top: 0;
-}
-
-.booking-summary-card .card-body {
-    padding: 25px;
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
 }
 
 /* Booking summary styling */
 .booking-summary-card {
-    margin-top: 1.5rem;
+    background: linear-gradient(135deg, #fff5f7 0%, #ffffff 100%);
+    border: 2px solid var(--color-burgundy);
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(133, 14, 53, 0.1);
 }
 
 .summary-total {
     font-size: 2rem;
-    font-weight: bold;
-    color: var(--color-burgundy, #8B0000);
+    font-weight: 700;
+    color: var(--color-burgundy);
     margin-top: 0.5rem;
+}
+
+/* Sticky sidebar */
+.sticky-sidebar {
+    position: sticky;
+    top: 20px;
 }
 
 /* Back button styling */
@@ -95,30 +107,144 @@
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    color: var(--color-burgundy, #8B0000);
+    color: var(--color-burgundy);
     text-decoration: none;
-    font-weight: 600;
-    margin-bottom: 1.5rem;
+    font-weight: 500;
+    padding: 8px 16px;
+    border-radius: 8px;
     transition: all 0.3s ease;
+    margin-bottom: 20px;
 }
 
 .back-button:hover {
-    color: #6B0000;
-    gap: 12px;
+    background-color: var(--color-cream);
+    color: var(--color-rose);
+    transform: translateX(-4px);
 }
 
 .back-button i {
-    font-size: 1.5rem;
+    font-size: 1.2rem;
+}
+
+/* Form controls */
+.form-control:focus,
+.form-select:focus {
+    border-color: var(--color-burgundy);
+    box-shadow: 0 0 0 0.2rem rgba(133, 14, 53, 0.15);
+}
+
+/* Button styling */
+.btn-primary {
+    background: linear-gradient(135deg, var(--color-burgundy), var(--color-rose));
+    border: none;
+    padding: 0.75rem 2rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(133, 14, 53, 0.3);
+}
+
+/* Flatpickr custom styles */
+.flatpickr-day.disabled {
+    color: #999 !important;
+    background-color: #f8d7da !important;
+    cursor: not-allowed !important;
+}
+
+/* Style for unavailable time slots */
+#time option:disabled {
+    color: #999 !important;
+    background-color: #f8d7da !important;
+    text-decoration: line-through;
+    font-style: italic;
+}
+
+/* Loading state for time select */
+#time:disabled {
+    background-color: #f8f9fa;
+    cursor: wait;
+}
+
+/* Highlight fully booked dates in calendar */
+.flatpickr-calendar .flatpickr-day.fully-booked {
+    background-color: #f8d7da !important;
+    color: #721c24 !important;
+    font-weight: bold;
 }
 
 /* Responsive adjustments */
-@media (max-width: 991px) {
+@media (max-width: 768px) {
     .sticky-sidebar {
-        position: static;
-        max-height: none;
+        position: relative;
+        top: 0;
+        margin-top: 2rem;
     }
     
-    .services-container {
-        max-height: 300px;
+    .service-checkbox-card {
+        padding: 0.75rem;
     }
+    
+    .summary-total {
+        font-size: 1.5rem;
+    }
+}
+
+/* Smooth transitions */
+* {
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Card hover effects */
+.card {
+    transition: all 0.3s ease;
+}
+
+.card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Info icons */
+.bi-info-circle {
+    color: var(--color-burgundy);
+}
+
+/* Alert styling */
+.alert {
+    border-radius: 10px;
+    border-left: 4px solid;
+}
+
+.alert-warning {
+    border-left-color: #ffc107;
+}
+
+.alert-danger {
+    border-left-color: #dc3545;
+}
+
+/* Service description text */
+.service-label p {
+    line-height: 1.4;
+    margin-bottom: 0.5rem;
+}
+
+/* Price display */
+.service-label strong[style*="font-size: 1.2rem"] {
+    white-space: nowrap;
+}
+
+/* Duration badge */
+.service-label small {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    background-color: #f8f9fa;
+    border-radius: 6px;
+    margin-top: 0.25rem;
+}
+
+.service-label small i {
+    margin-right: 0.25rem;
 }
