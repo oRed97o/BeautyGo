@@ -498,7 +498,12 @@ include 'includes/header.php';
                 <div class="card mb-4">
                     <div class="card-body">
                         <h4 class="mb-3"><i class="bi bi-geo-alt-fill"></i> Location</h4>
-                        <div id="businessMap" style="height: 250px; border-radius: 10px; overflow: hidden;"></div>
+                        <div id="businessMap" style="height: 250px; border-radius: 10px; overflow: hidden; cursor: pointer;" 
+                             onclick="openMapModal()" 
+                             role="button" 
+                             tabindex="0"
+                             title="Click to enlarge map">
+                        </div>
                         <div class="mt-2">
                             <small class="text-muted">
                                 <i class="bi bi-pin-map"></i> 
@@ -565,6 +570,24 @@ include 'includes/header.php';
                         <p id="staffStatus" class="mb-0"></p>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Enlarged Location Map Modal -->
+<div class="modal fade" id="mapModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-geo-alt-fill"></i> 
+                    <?php echo htmlspecialchars($business['business_name']); ?> - Location
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div id="enlargedBusinessMap" style="height: 500px; width: 100%;"></div>
             </div>
         </div>
     </div>
@@ -737,6 +760,54 @@ function openStaffModal(staffMember) {
     const modal = new bootstrap.Modal(document.getElementById('staffModal'));
     modal.show();
 }
+
+// Enlarged Map Modal Functionality
+let enlargedMap = null;
+let mapModalInstance = null;
+
+function openMapModal() {
+    const mapModal = document.getElementById('mapModal');
+    if (!mapModalInstance) {
+        mapModalInstance = new bootstrap.Modal(mapModal);
+    }
+    
+    mapModalInstance.show();
+    
+    // Initialize the enlarged map after modal is shown
+    mapModal.addEventListener('shown.bs.modal', function() {
+        setTimeout(function() {
+            if (!enlargedMap) {
+                enlargedMap = L.map('enlargedBusinessMap').setView([bizLat, bizLng], 16);
+                
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap',
+                    maxZoom: 19
+                }).addTo(enlargedMap);
+                
+                L.marker([bizLat, bizLng], { icon: markerIcon })
+                    .addTo(enlargedMap)
+                    .bindPopup('<strong>' + businessName + '</strong><br>' + businessAddress)
+                    .openPopup();
+            } else {
+                // Refresh existing map
+                enlargedMap.invalidateSize();
+            }
+        }, 100);
+    }, { once: true });
+}
+
+// Clean up map when modal is closed
+document.addEventListener('DOMContentLoaded', function() {
+    const mapModal = document.getElementById('mapModal');
+    if (mapModal) {
+        mapModal.addEventListener('hide.bs.modal', function() {
+            if (enlargedMap) {
+                enlargedMap.remove();
+                enlargedMap = null;
+            }
+        });
+    }
+});
 
 // Show/hide customer reply form
 function showCustomerReplyForm(reviewId) {
