@@ -130,6 +130,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_staff'])) {
         'employ_status' => 'available'
     ];
     
+    // Handle image upload
+    if (isset($_FILES['employ_img']) && $_FILES['employ_img']['error'] === UPLOAD_ERR_OK) {
+        $file = $_FILES['employ_img'];
+        
+        // Validate file type
+        $allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mimeType = finfo_file($finfo, $file['tmp_name']);
+        finfo_close($finfo);
+        
+        if (!in_array($mimeType, $allowedTypes)) {
+            $_SESSION['error'] = 'Invalid file type. Only JPG, PNG, GIF, and WebP are allowed.';
+            header('Location: business-dashboard.php#staff');
+            exit;
+        }
+        
+        // Validate file size (5MB max)
+        $maxSize = 5 * 1024 * 1024;
+        if ($file['size'] > $maxSize) {
+            $_SESSION['error'] = 'File size must be less than 5MB.';
+            header('Location: business-dashboard.php#staff');
+            exit;
+        }
+        
+        // Read file contents
+        $staffData['employ_img'] = file_get_contents($file['tmp_name']);
+    }
+    
     if (createEmployee($staffData)) {
         $_SESSION['success'] = 'Staff member added successfully!';
     } else {
@@ -161,6 +189,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_staff'])) {
         'employ_status' => sanitize($_POST['employ_status'])
     ];
     
+    // Handle image upload
+    if (isset($_FILES['employ_img']) && $_FILES['employ_img']['error'] === UPLOAD_ERR_OK) {
+        $file = $_FILES['employ_img'];
+        
+        // Validate file type
+        $allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mimeType = finfo_file($finfo, $file['tmp_name']);
+        finfo_close($finfo);
+        
+        if (!in_array($mimeType, $allowedTypes)) {
+            $_SESSION['error'] = 'Invalid file type. Only JPG, PNG, GIF, and WebP are allowed.';
+            header('Location: business-dashboard.php#staff');
+            exit;
+        }
+        
+        // Validate file size (5MB max)
+        $maxSize = 5 * 1024 * 1024;
+        if ($file['size'] > $maxSize) {
+            $_SESSION['error'] = 'File size must be less than 5MB.';
+            header('Location: business-dashboard.php#staff');
+            exit;
+        }
+        
+        // Read file contents
+        $staffData['employ_img'] = file_get_contents($file['tmp_name']);
+    }
+    
     if (updateEmployee($employId, $staffData)) {
         $_SESSION['success'] = 'Staff member updated successfully!';
     } else {
@@ -171,30 +227,62 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_staff'])) {
     exit;
 }
 
-// Handle DELETE staff
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_staff'])) {
-    $employId = intval($_POST['employ_id']);
-    
-    if (deleteEmployee($employId)) {
-        $_SESSION['success'] = 'Staff member removed successfully!';
-    } else {
-        $_SESSION['error'] = 'Failed to remove staff member';
-    }
-    
-    header('Location: business-dashboard.php#staff');
-    exit;
-}
-
 // Handle review reply - FIXED: Now passes all 4 required parameters
+// Handle review reply - FIXED: Now handles images
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reply_review'])) {
     $reviewId = intval($_POST['review_id']);
     $replyText = sanitize($_POST['reply_text']);
     
-    // Add reply as business with all 4 parameters: reviewId, senderType, senderId, replyText
-    if (addReviewReply($reviewId, 'business', $businessId, $replyText)) {
-        $_SESSION['success'] = 'Reply posted successfully!';
+    // Process image if uploaded
+    $replyImage = null;
+    if (isset($_FILES['reply_image']) && $_FILES['reply_image']['error'] === UPLOAD_ERR_OK) {
+        $file = $_FILES['reply_image'];
+        
+        // Validate file type using finfo
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mimeType = finfo_file($finfo, $file['tmp_name']);
+        finfo_close($finfo);
+        
+        $allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+        
+        if (!in_array($mimeType, $allowedTypes)) {
+            $_SESSION['error'] = 'Invalid file type. Only JPG, PNG, GIF, and WebP are allowed.';
+            header('Location: business-dashboard.php#reviews');
+            exit;
+        }
+        
+        // Validate file size (max 5MB)
+        if ($file['size'] > 5242880) {
+            $_SESSION['error'] = 'File size must be less than 5MB.';
+            header('Location: business-dashboard.php#reviews');
+            exit;
+        }
+        
+        // Read file content as binary
+        $replyImage = file_get_contents($file['tmp_name']);
+        
+        if ($replyImage === false) {
+            $_SESSION['error'] = 'Failed to read image file.';
+            header('Location: business-dashboard.php#reviews');
+            exit;
+        }
+        
+        error_log("Business reply image read successfully. Size: " . strlen($replyImage) . " bytes, Type: " . $mimeType);
+    }
+    
+    // Add reply as business with all 5 parameters: reviewId, senderType, senderId, replyText, replyImage
+    $result = addReviewReply($reviewId, 'business', $businessId, $replyText, $replyImage);
+    
+    if ($result) {
+        if ($replyImage) {
+            $_SESSION['success'] = 'Reply with image posted successfully!';
+        } else {
+            $_SESSION['success'] = 'Reply posted successfully!';
+        }
+        error_log("Business reply created successfully with ID: " . $result);
     } else {
         $_SESSION['error'] = 'Failed to post reply';
+        error_log("Failed to create business reply for review ID: " . $reviewId);
     }
     
     header('Location: business-dashboard.php#reviews');
@@ -717,10 +805,28 @@ include 'includes/header.php';
                         <?php else: ?>
                             <div class="row">
                                 <?php foreach ($staff as $member): ?>
-                                    <?php 
-                                        $employeeName = trim(($member['employ_fname'] ?? '') . ' ' . ($member['employ_lname'] ?? '')) ?: 'Staff Member';
-                                        $specialty = $member['specialization'] ?? 'General Services';
-                                    ?>
+                                   <?php 
+    // Step 1: Get basic staff info
+    $employeeName = trim(($member['employ_fname'] ?? '') . ' ' . ($member['employ_lname'] ?? '')) ?: 'Staff Member';
+    $specialty = $member['specialization'] ?? 'General Services';
+    
+    // Step 2: Prepare data for JavaScript - encode image to base64
+    $memberForJs = array(
+        'employ_id' => $member['employ_id'],
+        'employ_fname' => $member['employ_fname'] ?? '',
+        'employ_lname' => $member['employ_lname'] ?? '',
+        'specialization' => $member['specialization'] ?? '',
+        'skills' => $member['skills'] ?? '',
+        'employ_bio' => $member['employ_bio'] ?? '',
+        'employ_status' => $member['employ_status'] ?? 'available',
+        'employ_img' => ''  // Start with empty string
+    );
+    
+    // Step 3: Encode image if it exists
+    if (isset($member['employ_img']) && !empty($member['employ_img'])) {
+        $memberForJs['employ_img'] = base64_encode($member['employ_img']);
+    }
+?>
                                     <div class="col-md-6 col-lg-4 mb-3">
                                         <div class="card h-100">
                                             <div class="card-body text-center">
@@ -758,112 +864,153 @@ include 'includes/header.php';
                 </div>
             </div>
             
-            <!-- Reviews Tab - UPDATED WITH THREADED REPLIES -->
-            <div class="tab-pane fade" id="reviews" role="tabpanel">
-                <div class="card">
-                    <div class="card-body">
-                        <h4 class="mb-3"><i class="bi bi-star-fill"></i> Customer Reviews</h4>
-                        <?php if (empty($reviews)): ?>
-                            <div class="empty-state text-center py-5">
-                                <i class="bi bi-chat-square-text" style="font-size: 4rem; color: #ccc;"></i>
-                                <p class="text-muted mt-3">No reviews yet</p>
+            <!-- Reviews Tab - UPDATED WITH IMAGE DISPLAY -->
+<div class="tab-pane fade" id="reviews" role="tabpanel">
+    <div class="card">
+        <div class="card-body">
+            <h4 class="mb-3"><i class="bi bi-star-fill"></i> Customer Reviews</h4>
+            <?php if (empty($reviews)): ?>
+                <div class="empty-state text-center py-5">
+                    <i class="bi bi-chat-square-text" style="font-size: 4rem; color: #ccc;"></i>
+                    <p class="text-muted mt-3">No reviews yet</p>
+                </div>
+            <?php else: ?>
+                <?php foreach ($reviews as $review): ?>
+                    <div class="review-item border-bottom pb-3 mb-3">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div>
+                                <strong><?php echo htmlspecialchars($review['customer_fname'] . ' ' . $review['customer_lname']); ?></strong>
+                                <br><small class="text-muted"><?php echo formatDate($review['review_date']); ?></small>
                             </div>
-                        <?php else: ?>
-                            <?php foreach ($reviews as $review): ?>
-                                <div class="review-item border-bottom pb-3 mb-3">
-                                    <div class="d-flex justify-content-between align-items-start mb-2">
-                                        <div>
-                                            <strong><?php echo htmlspecialchars($review['customer_fname'] . ' ' . $review['customer_lname']); ?></strong>
-                                            <br><small class="text-muted"><?php echo formatDate($review['review_date']); ?></small>
-                                        </div>
-                                        <div class="rating" style="color: #ffc107;">
-                                            <?php
-                                            $rating = $review['rating'] ?? 0;
-                                            for ($i = 1; $i <= 5; $i++) {
-                                                if ($i <= $rating) {
-                                                    echo '<i class="bi bi-star-fill"></i>';
-                                                } else {
-                                                    echo '<i class="bi bi-star"></i>';
-                                                }
-                                            }
-                                            ?>
-                                        </div>
-                                    </div>
-                                    <p class="mb-2"><?php echo htmlspecialchars($review['review_text']); ?></p>
-                                    
-                                    <!-- Display Review Images -->
-                                    <?php if (!empty($review['images'])): ?>
-                                        <div class="review-images mb-3">
-                                            <div class="d-flex gap-2 flex-wrap">
-                                                <?php foreach ($review['images'] as $image): ?>
-                                                    <img src="<?php echo htmlspecialchars($image); ?>" 
-                                                         alt="Review image" 
-                                                         class="review-image-thumb"
-                                                         onclick="window.open('<?php echo htmlspecialchars($image); ?>', '_blank')">
-                                                <?php endforeach; ?>
-                                            </div>
-                                        </div>
-                                    <?php endif; ?>
-                                    
-                                    <!-- Display existing replies -->
-                                    <?php if (!empty($review['replies'])): ?>
-                                        <div class="replies-section mt-3">
-                                            <strong class="text-muted d-block mb-2">
-                                                <i class="bi bi-chat-dots"></i> Conversation:
-                                            </strong>
-                                            <?php foreach ($review['replies'] as $reply): ?>
-                                                <div class="review-reply mb-2">
-                                                    <div class="d-flex align-items-start gap-2">
-                                                        <?php if ($reply['sender_type'] === 'business'): ?>
-                                                            <i class="bi bi-shop text-primary"></i>
-                                                        <?php else: ?>
-                                                            <i class="bi bi-person-circle text-secondary"></i>
-                                                        <?php endif; ?>
-                                                        <div class="flex-grow-1">
-                                                            <div class="d-flex justify-content-between">
-                                                                <strong class="<?php echo $reply['sender_type'] === 'business' ? 'text-primary' : ''; ?>">
-                                                                    <?php echo htmlspecialchars($reply['sender_name']); ?>
-                                                                    <?php if ($reply['sender_type'] === 'business'): ?>
-                                                                        <span class="badge bg-primary" style="font-size: 0.7rem;">You</span>
-                                                                    <?php endif; ?>
-                                                                </strong>
-                                                                <small class="text-muted"><?php echo formatDate($reply['reply_date']); ?></small>
-                                                            </div>
-                                                            <p class="mb-0 mt-1"><?php echo htmlspecialchars($reply['reply_text']); ?></p>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            <?php endforeach; ?>
-                                        </div>
-                                    <?php endif; ?>
-                                    
-                                    <!-- Reply button - always visible -->
-                                    <button class="btn btn-sm btn-outline-primary mt-2" 
-                                            onclick="showReplyForm(<?php echo $review['review_id']; ?>)">
-                                        <i class="bi bi-reply"></i> <?php echo !empty($review['replies']) ? 'Reply Again' : 'Reply'; ?>
-                                    </button>
-                                    
-                                    <!-- Reply form (hidden by default) -->
-                                    <form method="POST" id="replyForm<?php echo $review['review_id']; ?>" style="display: none;" class="mt-2">
-                                        <input type="hidden" name="review_id" value="<?php echo $review['review_id']; ?>">
-                                        <div class="input-group">
-                                            <textarea class="form-control" name="reply_text" rows="2" placeholder="Write your reply..." required></textarea>
-                                            <button type="submit" name="reply_review" class="btn btn-primary">
-                                                <i class="bi bi-send"></i> Send
-                                            </button>
-                                            <button type="button" class="btn btn-secondary" onclick="hideReplyForm(<?php echo $review['review_id']; ?>)">
-                                                Cancel
-                                            </button>
-                                        </div>
-                                    </form>
+                            <div class="rating" style="color: #ffc107;">
+                                <?php
+                                $rating = $review['rating'] ?? 0;
+                                for ($i = 1; $i <= 5; $i++) {
+                                    if ($i <= $rating) {
+                                        echo '<i class="bi bi-star-fill"></i>';
+                                    } else {
+                                        echo '<i class="bi bi-star"></i>';
+                                    }
+                                }
+                                ?>
+                            </div>
+                        </div>
+                        <p class="mb-2"><?php echo htmlspecialchars($review['review_text']); ?></p>
+                        
+                        <!-- Display Review Images -->
+                        <?php if (!empty($review['images'])): ?>
+                            <div class="review-images mb-3">
+                                <div class="d-flex gap-2 flex-wrap">
+                                    <?php foreach ($review['images'] as $image): ?>
+                                        <img src="<?php echo htmlspecialchars($image); ?>" 
+                                             alt="Review image" 
+                                             class="review-image-thumb"
+                                             onclick="openReviewImageModal('<?php echo htmlspecialchars($image); ?>')"
+                                             style="cursor: pointer; width: 80px; height: 80px; object-fit: cover; border-radius: 5px; border: 2px solid #e0e0e0;">
+                                    <?php endforeach; ?>
                                 </div>
-                            <?php endforeach; ?>
+                            </div>
+                        <?php endif; ?>
+                        
+                        <!-- Display existing replies -->
+<?php if (!empty($review['replies'])): ?>
+    <div class="replies-section mt-3">
+        <strong class="text-muted d-block mb-2">
+            <i class="bi bi-chat-dots"></i> Conversation:
+        </strong>
+        <?php foreach ($review['replies'] as $reply): ?>
+            <div class="review-reply mb-2">
+                <div class="d-flex align-items-start gap-2">
+                    <?php if ($reply['sender_type'] === 'business'): ?>
+                        <i class="bi bi-shop text-primary"></i>
+                    <?php else: ?>
+                        <i class="bi bi-person-circle text-secondary"></i>
+                    <?php endif; ?>
+                    <div class="flex-grow-1">
+                        <div class="d-flex justify-content-between">
+                            <strong class="<?php echo $reply['sender_type'] === 'business' ? 'text-primary' : ''; ?>">
+                                <?php echo htmlspecialchars($reply['sender_name']); ?>
+                                <?php if ($reply['sender_type'] === 'business'): ?>
+                                    <span class="badge bg-primary" style="font-size: 0.7rem;">You</span>
+                                <?php endif; ?>
+                            </strong>
+                            <small class="text-muted"><?php echo formatDate($reply['reply_date']); ?></small>
+                        </div>
+                        <p class="mb-1 mt-1"><?php echo htmlspecialchars($reply['reply_text']); ?></p>
+                        
+                        <!-- Display reply image if exists -->
+                        <?php if (!empty($reply['reply_image'])): ?>
+                            <img src="<?php echo htmlspecialchars($reply['reply_image']); ?>" 
+                                 alt="Reply image" 
+                                 class="reply-image" 
+                                 onclick="openReviewImageModal('<?php echo htmlspecialchars($reply['reply_image']); ?>')"
+                                 style="cursor: pointer; width: 80px; height: 80px; object-fit: cover; margin-top: 8px; border-radius: 5px; border: 1px solid #ddd;">
                         <?php endif; ?>
                     </div>
                 </div>
             </div>
+        <?php endforeach; ?>
+    </div>
+<?php endif; ?>
+                        
+                        <!-- Reply button - always visible -->
+                        <button class="btn btn-sm btn-outline-primary mt-2" 
+                                onclick="showReplyForm(<?php echo $review['review_id']; ?>)">
+                            <i class="bi bi-reply"></i> <?php echo !empty($review['replies']) ? 'Reply Again' : 'Reply'; ?>
+                        </button>
+                        
+                        <!-- Reply form (hidden by default) -->
+<form method="POST" id="replyForm<?php echo $review['review_id']; ?>" style="display: none;" class="mt-2" enctype="multipart/form-data">
+    <input type="hidden" name="review_id" value="<?php echo $review['review_id']; ?>">
+    <div class="input-group-vertical">
+        <textarea class="form-control" name="reply_text" rows="2" placeholder="Write your reply..." required></textarea>
+        
+        <div class="mt-2 mb-2">
+            <label for="businessReplyImage<?php echo $review['review_id']; ?>" class="form-label small">
+                <i class="bi bi-image"></i> Add Photo (Optional)
+            </label>
+            <input type="file" 
+                   class="form-control form-control-sm" 
+                   id="businessReplyImage<?php echo $review['review_id']; ?>" 
+                   name="reply_image" 
+                   accept="image/*"
+                   onchange="previewBusinessReplyImage(this, <?php echo $review['review_id']; ?>)">
+            <div id="businessReplyImagePreview<?php echo $review['review_id']; ?>" class="mt-2"></div>
+            <small class="text-muted d-block">Max 5MB (JPG, PNG, GIF, WebP)</small>
+        </div>
+        
+        <div class="btn-group btn-group-sm mt-2">
+            <button type="submit" name="reply_review" class="btn btn-primary">
+                <i class="bi bi-send"></i> Send
+            </button>
+            <button type="button" class="btn btn-secondary" onclick="hideReplyForm(<?php echo $review['review_id']; ?>)">
+                Cancel
+            </button>
         </div>
     </div>
+</form>
+                    </div>
+                <?php endforeach; ?>
+            <?php endif; ?>
+        </div>
+    </div>
+</div>
+        </div>
+    </div>
+            <!-- Review Image Modal -->
+<div class="modal fade" id="reviewImageModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Review Image</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center">
+                <img id="reviewModalImage" src="" alt="Review image" style="max-width: 100%; height: auto;">
+            </div>
+        </div>
+    </div>
+</div>
 </main>
 
 <!-- Add Service Modal -->
@@ -963,7 +1110,7 @@ include 'includes/header.php';
                 <h5 class="modal-title"><i class="bi bi-person-plus"></i> Add Staff Member</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <form method="POST">
+            <form method="POST" enctype="multipart/form-data">
                 <div class="modal-body">
                     <div class="row">
                         <div class="col-md-6 mb-3">
@@ -1003,6 +1150,13 @@ include 'includes/header.php';
                         <label for="employ_bio" class="form-label">Bio</label>
                         <textarea class="form-control" id="employ_bio" name="employ_bio" rows="2" placeholder="Brief description about the staff member"></textarea>
                     </div>
+                    <div class="mb-3">
+                        <label for="employ_img" class="form-label">Profile Image</label>
+                        <input type="file" class="form-control" id="employ_img" name="employ_img" accept="image/*">
+                        <div class="form-text text-muted">
+                            Upload a clear image for the staff member. Max size: 5MB.
+                        </div>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -1023,9 +1177,19 @@ include 'includes/header.php';
                 <h5 class="modal-title"><i class="bi bi-pencil"></i> Edit Staff Member</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <form method="POST">
+            <form method="POST" enctype="multipart/form-data">
                 <input type="hidden" id="edit_employ_id" name="employ_id">
                 <div class="modal-body">
+                    <div class="mb-3 text-center">
+                        <div class="bg-light rounded-circle d-inline-flex align-items-center justify-content-center" id="previewEdit" style="width: 100px; height: 100px; overflow: hidden; object-fit: cover;">
+                            <i class="bi bi-person-fill text-secondary" style="font-size: 2.5rem;"></i>
+                        </div>
+                        <label for="edit_employ_img" class="btn btn-sm btn-outline-primary mt-2">
+                            <i class="bi bi-cloud-upload"></i> Change Photo
+                        </label>
+                        <input type="file" id="edit_employ_img" name="employ_img" class="d-none" accept="image/*" onchange="previewImageEdit(this)">
+                        <small class="d-block text-muted mt-2">JPG, PNG, GIF, or WebP (Max 5MB)</small>
+                    </div>
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="edit_employ_fname" class="form-label">First Name *</label>
@@ -1088,6 +1252,11 @@ include 'includes/header.php';
 
 <script>
 // Auto-dismiss alerts after 5 seconds
+function openReviewImageModal(imageSrc) {
+    const modal = new bootstrap.Modal(document.getElementById('reviewImageModal'));
+    document.getElementById('reviewModalImage').src = imageSrc;
+    modal.show();
+}
 setTimeout(function() {
     const alerts = document.querySelectorAll('.alert');
     alerts.forEach(function(alert) {
@@ -1109,7 +1278,133 @@ function editService(service) {
     editModal.show();
 }
 
-// Edit Staff Function
+// Image preview functions
+function previewImageAdd(input) {
+    const preview = document.getElementById('previewAdd');
+    
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        
+        // Validate file size
+        const maxSize = 5 * 1024 * 1024; // 5MB
+        if (file.size > maxSize) {
+            alert('File size must be less than 5MB');
+            input.value = '';
+            return;
+        }
+        
+        // Validate file type
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        if (!allowedTypes.includes(file.type)) {
+            alert('Only JPG, PNG, GIF, and WebP files are allowed');
+            input.value = '';
+            return;
+        }
+        
+        const reader = new FileReader();
+        
+        reader.onload = function(e) {
+            preview.innerHTML = `<img src="${e.target.result}" style="width: 100%; height: 100%; object-fit: cover;" alt="Preview">`;
+        };
+        
+        reader.readAsDataURL(file);
+    }
+}
+
+function previewImageEdit(input) {
+    const preview = document.getElementById('previewEdit');
+    
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        
+        // Validate file size
+        const maxSize = 5 * 1024 * 1024; // 5MB
+        if (file.size > maxSize) {
+            alert('File size must be less than 5MB');
+            input.value = '';
+            return;
+        }
+        
+        // Validate file type
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        if (!allowedTypes.includes(file.type)) {
+            alert('Only JPG, PNG, GIF, and WebP files are allowed');
+            input.value = '';
+            return;
+        }
+        
+        const reader = new FileReader();
+        
+        reader.onload = function(e) {
+            preview.innerHTML = `<img src="${e.target.result}" style="width: 100%; height: 100%; object-fit: cover;" alt="Preview">`;
+        };
+        
+        reader.readAsDataURL(file);
+    }
+}
+
+function previewBusinessReplyImage(input, reviewId) {
+    const previewDiv = document.getElementById('businessReplyImagePreview' + reviewId);
+    
+    if (!previewDiv) {
+        console.error('Preview div not found for review ID:', reviewId);
+        return;
+    }
+    
+    // Clear previous preview
+    previewDiv.innerHTML = '';
+    
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        
+        // Validate file size (5MB max)
+        const maxSize = 5 * 1024 * 1024;
+        if (file.size > maxSize) {
+            alert('File size must be less than 5MB');
+            input.value = '';
+            return;
+        }
+        
+        // Validate file type
+        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+        if (!allowedTypes.includes(file.type)) {
+            alert('Only JPG, PNG, GIF, and WebP files are allowed');
+            input.value = '';
+            return;
+        }
+        
+        // Create preview
+        const reader = new FileReader();
+        
+        reader.onload = function(e) {
+            previewDiv.innerHTML = `
+                <div style="position: relative; display: inline-block;">
+                    <img src="${e.target.result}" 
+                         style="max-width: 200px; max-height: 200px; border-radius: 8px; border: 2px solid #ddd;" 
+                         alt="Preview">
+                    <button type="button" 
+                            onclick="removeBusinessReplyImage(${reviewId})" 
+                            style="position: absolute; top: -8px; right: -8px; background: #dc3545; color: white; border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; font-size: 16px; line-height: 1;"
+                            title="Remove image">
+                        ×
+                    </button>
+                </div>
+            `;
+        };
+        
+        reader.readAsDataURL(file);
+    }
+}
+// Remove business reply image preview
+function removeBusinessReplyImage(reviewId) {
+    const input = document.getElementById('businessReplyImage' + reviewId);
+    const previewDiv = document.getElementById('businessReplyImagePreview' + reviewId);
+    
+    if (input) input.value = '';
+    if (previewDiv) previewDiv.innerHTML = '';
+}
+
+// Update the editStaff function to properly handle base64 encoding
 function editStaff(member) {
     document.getElementById('edit_employ_id').value = member.employ_id;
     document.getElementById('edit_employ_fname').value = member.employ_fname;
@@ -1117,6 +1412,21 @@ function editStaff(member) {
     document.getElementById('edit_specialization').value = member.specialization || '';
     document.getElementById('edit_employ_bio').value = member.employ_bio || '';
     document.getElementById('edit_employ_status').value = member.employ_status || 'available';
+    
+    // Display current photo - improved handling
+    const preview = document.getElementById('previewEdit');
+    if (member.employ_img && member.employ_img.trim() !== '') {
+        // Check if already base64 encoded or needs encoding
+        const imgData = member.employ_img.startsWith('data:image') 
+            ? member.employ_img 
+            : `data:image/jpeg;base64,${member.employ_img}`;
+        preview.innerHTML = `<img src="${imgData}" style="width: 100%; height: 100%; object-fit: cover;" alt="Staff photo" onerror="this.parentElement.innerHTML='<i class=\"bi bi-person-fill text-secondary\" style=\"font-size: 2.5rem;\"></i>'">`;
+    } else {
+        preview.innerHTML = '<i class="bi bi-person-fill text-secondary" style="font-size: 2.5rem;"></i>';
+    }
+    
+    // Reset file input
+    document.getElementById('edit_employ_img').value = '';
     
     // Handle skills multi-select
     const skillsSelect = document.getElementById('edit_skills');

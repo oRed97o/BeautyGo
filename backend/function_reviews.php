@@ -34,15 +34,17 @@ function getBusinessReviews($businessId) {
 
     $reviews = [];
     while ($row = $result->fetch_assoc()) {
+        // Get images from review_img1 to review_img5 columns
         $images = [];
         for ($i = 1; $i <= 5; $i++) {
-            $key = "review_img$i";
-            if (!empty($row[$key])) {
-                $images[] = 'data:image/jpeg;base64,' . base64_encode($row[$key]);
+            $imgKey = 'review_img' . $i;
+            if (isset($row[$imgKey]) && !empty($row[$imgKey])) {
+                // Properly encode blob to base64
+                $images[] = 'data:image/jpeg;base64,' . base64_encode($row[$imgKey]);
             }
-            unset($row[$key]);
+            unset($row[$imgKey]); // Remove blob data from array
         }
-
+        
         $row['images'] = $images;
         
         // Get replies for this review
@@ -66,6 +68,7 @@ function getReviewReplies($reviewId) {
             rr.sender_type,
             rr.sender_id,
             rr.reply_text,
+            rr.reply_image,
             rr.reply_date,
             CASE 
                 WHEN rr.sender_type = 'customer' THEN CONCAT(c.fname, ' ', c.surname)
@@ -84,6 +87,10 @@ function getReviewReplies($reviewId) {
     
     $replies = [];
     while ($row = $result->fetch_assoc()) {
+        // Convert reply image blob to base64 if exists
+        if (!empty($row['reply_image'])) {
+            $row['reply_image'] = 'data:image/jpeg;base64,' . base64_encode($row['reply_image']);
+        }
         $replies[] = $row;
     }
     
@@ -91,53 +98,84 @@ function getReviewReplies($reviewId) {
     return $replies;
 }
 
-// Add a reply to a review
-function addReviewReply($reviewId, $senderType, $senderId, $replyText) {
+// Add a reply to a review with optional image - FULLY CORRECTED VERSION
+function addReviewReply($reviewId, $senderType, $senderId, $replyText, $replyImage = null) {
     $conn = getDbConnection();
     
+    // Prepare the SQL statement
     $stmt = $conn->prepare("
-        INSERT INTO review_replies (review_id, sender_type, sender_id, reply_text, reply_date)
-        VALUES (?, ?, ?, ?, NOW())
+        INSERT INTO review_replies (review_id, sender_type, sender_id, reply_text, reply_image, reply_date)
+        VALUES (?, ?, ?, ?, ?, NOW())
     ");
     
-    $stmt->bind_param("isis", $reviewId, $senderType, $senderId, $replyText);
-    
-    if ($stmt->execute()) {
-        $replyId = $conn->insert_id;
-        $stmt->close();
-        return $replyId;
+    if (!$stmt) {
+        error_log("Prepare failed: " . $conn->error);
+        return false;
     }
     
-    error_log("Reply creation failed: " . $stmt->error);
+    // CRITICAL: Use NULL placeholder for blob parameter
+    $null = NULL;
+    
+    // CORRECTED: Proper parameter binding - 'isisb' (int, string, int, string, blob)
+    // Parameters in order: reviewId, senderType, senderId, replyText, replyImage
+    if (!$stmt->bind_param("isisb", $reviewId, $senderType, $senderId, $replyText, $null)) {
+        error_log("Bind param failed: " . $stmt->error);
+        $stmt->close();
+        return false;
+    }
+    
+    // CRITICAL: send_long_data MUST be called BEFORE execute()
+    // Parameter index 4 corresponds to the 5th parameter (reply_image/blob) - zero-indexed
+    if ($replyImage !== null && !empty($replyImage)) {
+        if (!$stmt->send_long_data(4, $replyImage)) {
+            error_log("Send long data failed: " . $stmt->error);
+            $stmt->close();
+            return false;
+        }
+    }
+    
+    // Execute the statement AFTER send_long_data
+    if (!$stmt->execute()) {
+        error_log("Execute failed: " . $stmt->error);
+        $stmt->close();
+        return false;
+    }
+    
+    $replyId = $conn->insert_id;
     $stmt->close();
-    return false;
+    
+    error_log("Reply created successfully with ID: " . $replyId . " (Image: " . ($replyImage ? "Yes (" . strlen($replyImage) . " bytes)" : "No") . ")");
+    return $replyId;
 }
 
-// Create review (with up to 5 images)
+// Create review (with images in review_img1 to review_img5 columns)
 function createReview($data) {
     $conn = getDbConnection();
-
-    $images = [];
-    for ($i = 1; $i <= 5; $i++) {
-        $key = "review_img$i";
-        $images[$i] = !empty($data[$key]) ? $data[$key] : null;
-    }
 
     $businessId = $data['business_id'];
     $customerId = $data['customer_id'];
     $rating = $data['rating'] ?? null;
     $reviewText = $data['review_text'] ?? '';
-    $null = null;
+    
+    // Prepare image data (up to 5 images)
+    $images = [];
+    for ($i = 1; $i <= 5; $i++) {
+        $imgKey = 'review_img' . $i;
+        $images[$i] = isset($data[$imgKey]) ? $data[$imgKey] : null;
+    }
 
     $stmt = $conn->prepare("
         INSERT INTO reviews (
-            business_id, customer_id, rating, review_text, review_img1, review_img2, review_img3, review_img4, review_img5, review_date
+            business_id, customer_id, rating, review_text, 
+            review_img1, review_img2, review_img3, review_img4, review_img5,
+            review_date
         )
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
     ");
 
+    $null = NULL;
     $stmt->bind_param(
-        "iiissssss",
+        "iiissbbbbb",
         $businessId,
         $customerId,
         $rating,
@@ -145,9 +183,10 @@ function createReview($data) {
         $null, $null, $null, $null, $null
     );
 
-    foreach (range(1, 5) as $index) {
-        if (!empty($images[$index])) {
-            $stmt->send_long_data($index + 3, $images[$index]); 
+    // Send blob data for each image
+    for ($i = 1; $i <= 5; $i++) {
+        if (!empty($images[$i])) {
+            $stmt->send_long_data($i + 3, $images[$i]); // +3 because first 4 params are not blobs
         }
     }
 
@@ -162,7 +201,7 @@ function createReview($data) {
     return false;
 }
 
-// Calculate average rating from reviews table
+// Calculate average rating from reviews table with half-star support
 function calculateAverageRating($businessId) {
     $conn = getDbConnection();
 

@@ -217,75 +217,57 @@ include 'includes/header.php';
                         
                         <!-- Write Review Form (Only for logged-in customers) -->
                         <?php if (isCustomerLoggedIn()): ?>
-                            <?php 
-                            // Check if customer has already reviewed this business
-                            $currentCustomer = getCurrentCustomer();
-                            $customerId = $currentCustomer['customer_id'];
-                            
-                            $conn = getDbConnection();
-                            $checkStmt = $conn->prepare("SELECT review_id FROM reviews WHERE customer_id = ? AND business_id = ?");
-                            $checkStmt->bind_param("ii", $customerId, $businessId);
-                            $checkStmt->execute();
-                            $existingReview = $checkStmt->get_result()->fetch_assoc();
-                            $checkStmt->close();
-                            
-                            if (!$existingReview): ?>
-                                <div class="write-review-section mb-4">
-                                    <button class="btn btn-primary mb-3" type="button" data-bs-toggle="collapse" data-bs-target="#reviewForm" aria-expanded="false">
-                                        <i class="bi bi-star-fill"></i> Write a Review
-                                    </button>
-                                    
-                                    <div class="collapse" id="reviewForm">
-                                        <div class="card card-body">
-                                            <form action="backend/submit-review.php" method="POST" enctype="multipart/form-data">
-                                                <input type="hidden" name="business_id" value="<?php echo $businessId; ?>">
-                                                
-                                                <!-- Rating -->
-                                                <div class="mb-3">
-                                                    <label class="form-label">Your Rating *</label>
-                                                    <div class="star-rating">
-                                                        <input type="radio" name="rating" value="5" id="star5" required>
-                                                        <label for="star5" title="5 stars"><i class="bi bi-star-fill"></i></label>
-                                                        
-                                                        <input type="radio" name="rating" value="4" id="star4">
-                                                        <label for="star4" title="4 stars"><i class="bi bi-star-fill"></i></label>
-                                                        
-                                                        <input type="radio" name="rating" value="3" id="star3">
-                                                        <label for="star3" title="3 stars"><i class="bi bi-star-fill"></i></label>
-                                                        
-                                                        <input type="radio" name="rating" value="2" id="star2">
-                                                        <label for="star2" title="2 stars"><i class="bi bi-star-fill"></i></label>
-                                                        
-                                                        <input type="radio" name="rating" value="1" id="star1">
-                                                        <label for="star1" title="1 star"><i class="bi bi-star-fill"></i></label>
-                                                    </div>
+                            <div class="write-review-section mb-4">
+                                <button class="btn btn-primary mb-3" type="button" data-bs-toggle="collapse" data-bs-target="#reviewForm" aria-expanded="false">
+                                    <i class="bi bi-star-fill"></i> Write a Review
+                                </button>
+                                
+                                <div class="collapse" id="reviewForm">
+                                    <div class="card card-body">
+                                        <form action="backend/submit-review.php" method="POST" enctype="multipart/form-data">
+                                            <input type="hidden" name="business_id" value="<?php echo $businessId; ?>">
+                                            
+                                            <!-- Rating -->
+                                            <div class="mb-3">
+                                                <label class="form-label">Your Rating *</label>
+                                                <div class="star-rating">
+                                                    <input type="radio" name="rating" value="5" id="star5" required>
+                                                    <label for="star5" title="5 stars"><i class="bi bi-star-fill"></i></label>
+                                                    
+                                                    <input type="radio" name="rating" value="4" id="star4">
+                                                    <label for="star4" title="4 stars"><i class="bi bi-star-fill"></i></label>
+                                                    
+                                                    <input type="radio" name="rating" value="3" id="star3">
+                                                    <label for="star3" title="3 stars"><i class="bi bi-star-fill"></i></label>
+                                                    
+                                                    <input type="radio" name="rating" value="2" id="star2">
+                                                    <label for="star2" title="2 stars"><i class="bi bi-star-fill"></i></label>
+                                                    
+                                                    <input type="radio" name="rating" value="1" id="star1">
+                                                    <label for="star1" title="1 star"><i class="bi bi-star-fill"></i></label>
                                                 </div>
-                                                
-                                                <!-- Review Text -->
-                                                <div class="mb-3">
-                                                    <label class="form-label">Your Review *</label>
-                                                    <textarea class="form-control" name="review_text" rows="4" placeholder="Share your experience..." required></textarea>
-                                                </div>
-                                                
-                                                <!-- Photos (Optional) -->
-                                                <div class="mb-3">
-                                                    <label class="form-label">Add Photos (Optional)</label>
-                                                    <input type="file" class="form-control" name="review_images[]" accept="image/*" multiple max="5">
-                                                    <small class="text-muted">You can upload up to 5 photos</small>
-                                                </div>
-                                                
-                                                <button type="submit" name="submit_review" class="btn btn-primary">
-                                                    <i class="bi bi-send"></i> Submit Review
-                                                </button>
-                                            </form>
-                                        </div>
+                                            </div>
+                                            
+                                            <!-- Review Text -->
+                                            <div class="mb-3">
+                                                <label class="form-label">Your Review *</label>
+                                                <textarea class="form-control" name="review_text" rows="4" placeholder="Share your experience..." required></textarea>
+                                            </div>
+                                            
+                                            <!-- Photos (Optional) -->
+                                            <div class="mb-3">
+                                                <label class="form-label">Add Photos (Optional)</label>
+                                                <input type="file" class="form-control" name="review_images[]" accept="image/*" multiple max="5">
+                                                <small class="text-muted">You can upload up to 5 photos</small>
+                                            </div>
+                                            
+                                            <button type="submit" name="submit_review" class="btn btn-primary">
+                                                <i class="bi bi-send"></i> Submit Review
+                                            </button>
+                                        </form>
                                     </div>
                                 </div>
-                            <?php else: ?>
-                                <div class="alert alert-info">
-                                    <i class="bi bi-info-circle"></i> You have already reviewed this business.
-                                </div>
-                            <?php endif; ?>
+                            </div>
                         <?php elseif (!isBusinessLoggedIn()): ?>
                             <div class="alert alert-warning">
                                 <i class="bi bi-exclamation-triangle"></i> Please <a href="login.php">login</a> to write a review.
@@ -325,10 +307,10 @@ include 'includes/header.php';
                                     <?php if (!empty($review['images'])): ?>
                                         <div class="review-images mb-2">
                                             <?php foreach ($review['images'] as $image): ?>
-                                                <img src="data:image/jpeg;base64,<?php echo base64_encode($image); ?>" 
+                                                <img src="<?php echo htmlspecialchars($image); ?>" 
                                                      alt="Review image" 
                                                      class="review-image" 
-                                                     onclick="openImageModal('data:image/jpeg;base64,<?php echo base64_encode($image); ?>')"
+                                                     onclick="openImageModal('<?php echo htmlspecialchars($image); ?>')"
                                                      style="cursor: pointer; width: 100px; height: 100px; object-fit: cover; margin-right: 5px; border-radius: 5px;">
                                             <?php endforeach; ?>
                                         </div>
@@ -355,7 +337,16 @@ include 'includes/header.php';
                                                                 </strong>
                                                                 <small class="text-muted"><?php echo formatDate($reply['reply_date']); ?></small>
                                                             </div>
-                                                            <p class="mb-0 mt-1"><?php echo htmlspecialchars($reply['reply_text']); ?></p>
+                                                            <p class="mb-1 mt-1"><?php echo htmlspecialchars($reply['reply_text']); ?></p>
+                                                            
+                                                            <!-- Display reply image if exists -->
+                                                            <?php if (!empty($reply['reply_image'])): ?>
+                                                                <img src="<?php echo htmlspecialchars($reply['reply_image']); ?>" 
+                                                                     alt="Reply image" 
+                                                                     class="reply-image" 
+                                                                     onclick="openImageModal('<?php echo htmlspecialchars($reply['reply_image']); ?>')"
+                                                                     style="cursor: pointer; width: 80px; height: 80px; object-fit: cover; margin-top: 8px; border-radius: 5px; border: 1px solid #ddd;">
+                                                            <?php endif; ?>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -374,17 +365,32 @@ include 'includes/header.php';
                                         </button>
                                         
                                         <!-- Customer reply form (hidden by default) -->
-                                        <form method="POST" action="backend/reply-review.php" id="customerReplyForm<?php echo $review['review_id']; ?>" style="display: none;" class="mt-2">
+                                        <form method="POST" action="backend/reply-review.php" id="customerReplyForm<?php echo $review['review_id']; ?>" style="display: none;" class="mt-2" enctype="multipart/form-data">
                                             <input type="hidden" name="review_id" value="<?php echo $review['review_id']; ?>">
                                             <input type="hidden" name="business_id" value="<?php echo $business['business_id']; ?>">
-                                            <div class="input-group">
+                                            <div class="input-group-vertical">
                                                 <textarea class="form-control" name="reply_text" rows="2" placeholder="Write your reply..." required></textarea>
-                                                <button type="submit" name="reply_to_review" class="btn btn-primary">
-                                                    <i class="bi bi-send"></i> Send
-                                                </button>
-                                                <button type="button" class="btn btn-secondary" onclick="hideCustomerReplyForm(<?php echo $review['review_id']; ?>)">
-                                                    Cancel
-                                                </button>
+                                                <div class="mt-2 mb-2">
+                                                    <label for="replyImage<?php echo $review['review_id']; ?>" class="form-label small">
+                                                        <i class="bi bi-image"></i> Add Photo (Optional)
+                                                    </label>
+                                                    <input type="file" 
+                                                           class="form-control form-control-sm" 
+                                                           id="replyImage<?php echo $review['review_id']; ?>" 
+                                                           name="reply_image" 
+                                                           accept="image/*"
+                                                           onchange="previewReplyImage(this, <?php echo $review['review_id']; ?>)">
+                                                    <div id="replyImagePreview<?php echo $review['review_id']; ?>" class="mt-2"></div>
+                                                    <small class="text-muted d-block">Max 5MB (JPG, PNG, GIF, WebP)</small>
+                                                </div>
+                                                <div class="btn-group btn-group-sm">
+                                                    <button type="submit" name="reply_to_review" class="btn btn-primary">
+                                                        <i class="bi bi-send"></i> Send
+                                                    </button>
+                                                    <button type="button" class="btn btn-secondary" onclick="hideCustomerReplyForm(<?php echo $review['review_id']; ?>)">
+                                                        Cancel
+                                                    </button>
+                                                </div>
                                             </div>
                                         </form>
                                     <?php endif; ?>
@@ -441,12 +447,18 @@ include 'includes/header.php';
                                 <?php
                                 $employeeName = trim(($member['employ_fname'] ?? '') . ' ' . ($member['employ_lname'] ?? '')) ?: 'Staff Member';
                                 $employeeImg = $member['employ_img'] ?? null;
+                                $employeeId = $member['employ_id'] ?? null;
                                 ?>
-                                <div class="staff-member">
+                                <div class="staff-member" 
+                                     style="cursor: pointer;" 
+                                     onclick="openStaffModal(<?php echo htmlspecialchars(json_encode($member)); ?>)"
+                                     role="button"
+                                     tabindex="0"
+                                     onkeypress="if(event.key==='Enter') openStaffModal(<?php echo htmlspecialchars(json_encode($member)); ?>)">
                                     <?php if (!empty($employeeImg)): ?>
-                                        <img src="data:image/jpeg;base64,<?php echo base64_encode($employeeImg); ?>" alt="<?php echo htmlspecialchars($employeeName); ?>">
+                                        <img src="data:image/jpeg;base64,<?php echo base64_encode($employeeImg); ?>" alt="<?php echo htmlspecialchars($employeeName); ?>" style="cursor: pointer;">
                                     <?php else: ?>
-                                        <div class="bg-secondary rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 80px; height: 80px; margin-bottom: 0.5rem;">
+                                        <div class="bg-secondary rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 80px; height: 80px; margin-bottom: 0.5rem; cursor: pointer;">
                                             <i class="bi bi-person-fill text-white" style="font-size: 2rem;"></i>
                                         </div>
                                     <?php endif; ?>
@@ -491,6 +503,39 @@ include 'includes/header.php';
     </div>
 </div>
 
+<!-- Staff Information Modal -->
+<div class="modal fade" id="staffModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Staff Information</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center mb-3">
+                    <img id="staffImage" src="" alt="Staff member" style="width: 150px; height: 150px; object-fit: cover; border-radius: 50%; margin-bottom: 1rem;">
+                </div>
+                <h5 id="staffName" class="text-center mb-1"></h5>
+                <p id="staffSpecialization" class="text-center text-muted mb-3"></p>
+                
+                <div class="staff-details">
+                    <h6 class="mb-2"><strong>Specialization</strong></h6>
+                    <p id="staffSpecializationDetail" class="mb-3"></p>
+                    
+                    <h6 class="mb-2"><strong>Bio</strong></h6>
+                    <p id="staffBio" class="mb-3"></p>
+                    
+                    <h6 class="mb-2"><strong>Skills</strong></h6>
+                    <p id="staffSkills" class="mb-3"></p>
+                    
+                    <h6 class="mb-2"><strong>Status</strong></h6>
+                    <p id="staffStatus" class="mb-0"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
@@ -503,6 +548,8 @@ const totalSlides = slides.length;
 
 const SLIDE_DURATION = 5000; // 5 seconds
 let autoSlideInterval;
+
+
 
 function showSlide(index, direction = 1) {
     // Mark previous slide
@@ -616,6 +663,39 @@ function handleSwipe() {
 function openImageModal(imageSrc) {
     const modal = new bootstrap.Modal(document.getElementById('imageModal'));
     document.getElementById('modalImage').src = imageSrc;
+    modal.show();
+}
+
+// Staff Modal Functionality
+function openStaffModal(staffMember) {
+    const staffName = (staffMember.employ_fname || '') + ' ' + (staffMember.employ_lname || '');
+    const specialization = staffMember.specialization || 'No specialization listed';
+    const bio = staffMember.employ_bio || 'No bio available';
+    const skills = staffMember.skills || 'No skills listed';
+    const status = staffMember.employ_status ? staffMember.employ_status.charAt(0).toUpperCase() + staffMember.employ_status.slice(1).replace('_', ' ') : 'Available';
+    
+    // Set image
+    const imageElement = document.getElementById('staffImage');
+    if (staffMember.employ_img) {
+        imageElement.src = 'data:image/jpeg;base64,' + staffMember.employ_img;
+    } else {
+        imageElement.innerHTML = '<i class="bi bi-person-fill text-white" style="font-size: 3rem;"></i>';
+        imageElement.style.background = '#6c757d';
+        imageElement.style.display = 'flex';
+        imageElement.style.alignItems = 'center';
+        imageElement.style.justifyContent = 'center';
+    }
+    
+    // Set text content
+    document.getElementById('staffName').textContent = staffName.trim();
+    document.getElementById('staffSpecialization').textContent = specialization;
+    document.getElementById('staffSpecializationDetail').textContent = specialization;
+    document.getElementById('staffBio').textContent = bio;
+    document.getElementById('staffSkills').textContent = skills;
+    document.getElementById('staffStatus').innerHTML = '<span class="badge ' + (staffMember.employ_status === 'available' ? 'bg-success' : 'bg-warning') + '">' + status + '</span>';
+    
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('staffModal'));
     modal.show();
 }
 
@@ -778,6 +858,39 @@ document.addEventListener('DOMContentLoaded', function() {
     setInterval(updateBusinessStatus, 60000);
 });
 
+// Function to display half-star ratings
+function displayStarRating(rating, containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    
+    container.innerHTML = '';
+    const fullStars = Math.floor(rating);
+    const hasHalfStar = rating % 1 !== 0;
+    
+    for (let i = 1; i <= 5; i++) {
+        if (i <= fullStars) {
+            container.innerHTML += '<i class="bi bi-star-fill"></i>';
+        } else if (i - 1 < fullStars && hasHalfStar) {
+            container.innerHTML += '<i class="bi bi-star-half"></i>';
+        } else {
+            container.innerHTML += '<i class="bi bi-star"></i>';
+        }
+    }
+}
+
+// Update review display with half-star support
+document.addEventListener('DOMContentLoaded', function() {
+    // Display half stars for each review
+    const reviews = document.querySelectorAll('.review-item');
+    reviews.forEach((review, index) => {
+        const ratingDiv = review.querySelector('.rating');
+        if (ratingDiv) {
+            // Get the rating value from data attribute or stars
+            const ratingText = ratingDiv.textContent;
+            // This will be handled by server-side rendering
+        }
+    });
+});
 </script>
 
 <?php include 'includes/footer.php'; ?>
