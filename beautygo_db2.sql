@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Nov 27, 2025 at 01:35 AM
+-- Generation Time: Dec 01, 2025 at 12:49 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -299,7 +299,7 @@ CREATE TABLE `reviews` (
   `customer_id` int(11) DEFAULT NULL,
   `business_id` int(11) DEFAULT NULL,
   `review_date` timestamp NULL DEFAULT current_timestamp() COMMENT 'when it was created',
-  `rating` int(11) DEFAULT NULL,
+  `rating` decimal(2,1) DEFAULT NULL,
   `review_text` text DEFAULT NULL,
   `review_img1` longblob DEFAULT NULL,
   `review_img2` longblob DEFAULT NULL,
@@ -313,12 +313,12 @@ CREATE TABLE `reviews` (
 --
 
 INSERT INTO `reviews` (`review_id`, `customer_id`, `business_id`, `review_date`, `rating`, `review_text`, `review_img1`, `review_img2`, `review_img3`, `review_img4`, `review_img5`) VALUES
-(1, 1, 1, '2025-10-26 07:09:14', 5, 'Amazing service! Elena is a true artist with hair coloring.', NULL, NULL, NULL, NULL, NULL),
-(2, 3, 1, '2025-10-26 07:09:14', 5, 'Beautiful salon and very professional staff. Highly recommend!', NULL, NULL, NULL, NULL, NULL),
-(3, 2, 2, '2025-10-26 07:09:14', 4, 'Very relaxing massage. The ambiance could be improved but overall great experience.', NULL, NULL, NULL, NULL, NULL),
-(4, 1, 2, '2025-10-26 07:09:14', 5, 'Best spa in Nasugbu! Carmen is excellent at deep tissue massage.', NULL, NULL, NULL, NULL, NULL),
-(5, 2, 3, '2025-10-26 07:09:14', 5, 'Miguel gave me the best haircut I\'ve had in years. Will definitely return!', NULL, NULL, NULL, NULL, NULL),
-(6, 3, 3, '2025-10-26 07:09:14', 4, 'Clean shop, friendly staff, good value for money.', NULL, NULL, NULL, NULL, NULL);
+(1, 1, 1, '2025-10-26 07:09:14', 5.0, 'Amazing service! Elena is a true artist with hair coloring.', NULL, NULL, NULL, NULL, NULL),
+(2, 3, 1, '2025-10-26 07:09:14', 5.0, 'Beautiful salon and very professional staff. Highly recommend!', NULL, NULL, NULL, NULL, NULL),
+(3, 2, 2, '2025-10-26 07:09:14', 4.0, 'Very relaxing massage. The ambiance could be improved but overall great experience.', NULL, NULL, NULL, NULL, NULL),
+(4, 1, 2, '2025-10-26 07:09:14', 5.0, 'Best spa in Nasugbu! Carmen is excellent at deep tissue massage.', NULL, NULL, NULL, NULL, NULL),
+(5, 2, 3, '2025-10-26 07:09:14', 5.0, 'Miguel gave me the best haircut I\'ve had in years. Will definitely return!', NULL, NULL, NULL, NULL, NULL),
+(6, 3, 3, '2025-10-26 07:09:14', 4.0, 'Clean shop, friendly staff, good value for money.', NULL, NULL, NULL, NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -332,6 +332,7 @@ CREATE TABLE `review_replies` (
   `sender_type` enum('customer','business') NOT NULL,
   `sender_id` int(11) NOT NULL,
   `reply_text` text NOT NULL,
+  `reply_image` longblob DEFAULT NULL,
   `reply_date` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
