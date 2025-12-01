@@ -585,12 +585,115 @@ include 'includes/header.php';
                         <h4 class="mb-3">
                             <i class="bi bi-calendar-check"></i> Manage Bookings
                         </h4>
-                        <?php if (empty($bookings)): ?>
+                        
+                        <!-- Filter Section - NEW -->
+                        <div class="card bg-light mb-3">
+                            <div class="card-body">
+                                <form method="GET" id="bookingFilterForm" class="row g-3">
+                                    <div class="col-md-3">
+                                        <label for="filterStatus" class="form-label small">Status</label>
+                                        <select class="form-select form-select-sm" id="filterStatus" name="status">
+                                            <option value="">All Statuses</option>
+                                            <option value="pending" <?php echo ($_GET['status'] ?? '') == 'pending' ? 'selected' : ''; ?>>Pending</option>
+                                            <option value="confirmed" <?php echo ($_GET['status'] ?? '') == 'confirmed' ? 'selected' : ''; ?>>Confirmed</option>
+                                            <option value="completed" <?php echo ($_GET['status'] ?? '') == 'completed' ? 'selected' : ''; ?>>Completed</option>
+                                            <option value="cancelled" <?php echo ($_GET['status'] ?? '') == 'cancelled' ? 'selected' : ''; ?>>Cancelled</option>
+                                            <option value="unavailable" <?php echo ($_GET['status'] ?? '') == 'unavailable' ? 'selected' : ''; ?>>Unavailable</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="col-md-3">
+                                        <label for="filterDateFrom" class="form-label small">Date From</label>
+                                        <input type="date" class="form-control form-control-sm" id="filterDateFrom" name="date_from" value="<?php echo $_GET['date_from'] ?? ''; ?>">
+                                    </div>
+                                    
+                                    <div class="col-md-3">
+                                        <label for="filterDateTo" class="form-label small">Date To</label>
+                                        <input type="date" class="form-control form-control-sm" id="filterDateTo" name="date_to" value="<?php echo $_GET['date_to'] ?? ''; ?>">
+                                    </div>
+                                    
+                                    <div class="col-md-3">
+                                        <label for="filterCustomer" class="form-label small">Customer Name</label>
+                                        <input type="text" class="form-control form-control-sm" id="filterCustomer" name="customer" placeholder="Search..." value="<?php echo $_GET['customer'] ?? ''; ?>">
+                                    </div>
+                                    
+                                    <div class="col-12">
+                                        <button type="submit" class="btn btn-sm btn-primary">
+                                            <i class="bi bi-funnel"></i> Apply Filters
+                                        </button>
+                                        <a href="business-dashboard.php#bookings" class="btn btn-sm btn-outline-secondary">
+                                            <i class="bi bi-arrow-clockwise"></i> Clear Filters
+                                        </a>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                        
+                        <!-- Active Filters Display - NEW -->
+                        <?php 
+                        $activeFilters = [];
+                        if (!empty($_GET['status'])) $activeFilters[] = 'Status: ' . ucfirst($_GET['status']);
+                        if (!empty($_GET['date_from'])) $activeFilters[] = 'From: ' . date('M j, Y', strtotime($_GET['date_from']));
+                        if (!empty($_GET['date_to'])) $activeFilters[] = 'To: ' . date('M j, Y', strtotime($_GET['date_to']));
+                        if (!empty($_GET['customer'])) $activeFilters[] = 'Customer: ' . htmlspecialchars($_GET['customer']);
+                        ?>
+                        
+                        <?php if (!empty($activeFilters)): ?>
+                            <div class="alert alert-info alert-dismissible fade show mb-3" role="alert">
+                                <i class="bi bi-info-circle"></i> <strong>Active Filters:</strong> <?php echo implode(' | ', $activeFilters); ?>
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                        <?php endif; ?>
+                        
+                        <?php 
+                        // APPLY FILTERS - NEW
+                        $filteredBookings = $bookings;
+                        
+                        // Filter by status
+                        if (!empty($_GET['status'])) {
+                            $filteredBookings = array_filter($filteredBookings, function($b) {
+                                return $b['appoint_status'] == $_GET['status'];
+                            });
+                        }
+                        
+                        // Filter by date range
+                        if (!empty($_GET['date_from'])) {
+                            $dateFrom = strtotime($_GET['date_from']);
+                            $filteredBookings = array_filter($filteredBookings, function($b) use ($dateFrom) {
+                                return strtotime(date('Y-m-d', strtotime($b['appoint_date']))) >= $dateFrom;
+                            });
+                        }
+                        
+                        if (!empty($_GET['date_to'])) {
+                            $dateTo = strtotime($_GET['date_to'] . ' 23:59:59');
+                            $filteredBookings = array_filter($filteredBookings, function($b) use ($dateTo) {
+                                return strtotime(date('Y-m-d', strtotime($b['appoint_date']))) <= $dateTo;
+                            });
+                        }
+                        
+                        // Filter by customer name
+                        if (!empty($_GET['customer'])) {
+                            $searchTerm = strtolower($_GET['customer']);
+                            $filteredBookings = array_filter($filteredBookings, function($b) use ($searchTerm) {
+                                $fullName = strtolower(($b['customer_fname'] ?? '') . ' ' . ($b['customer_lname'] ?? ''));
+                                return strpos($fullName, $searchTerm) !== false;
+                            });
+                        }
+                        ?>
+                        
+                        <?php if (empty($filteredBookings)): ?>
                             <div class="empty-state text-center py-5">
                                 <i class="bi bi-calendar-x" style="font-size: 4rem; color: #ccc;"></i>
-                                <p class="text-muted mt-3">No bookings yet</p>
+                                <p class="text-muted mt-3">
+                                    <?php echo empty($bookings) ? 'No bookings yet' : 'No bookings match your filters'; ?>
+                                </p>
                             </div>
                         <?php else: ?>
+                            <div class="alert alert-secondary" role="alert">
+                                <i class="bi bi-info-circle"></i> 
+                                Showing <strong><?php echo count($filteredBookings); ?></strong> of <strong><?php echo count($bookings); ?></strong> bookings
+                            </div>
+                            
                             <div class="table-responsive">
                                 <table class="table table-hover">
                                     <thead>
@@ -607,7 +710,7 @@ include 'includes/header.php';
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <?php foreach ($bookings as $booking): ?>
+                                        <?php foreach ($filteredBookings as $booking): ?>
                                             <tr>
                                                 <td>#<?php echo $booking['appointment_id']; ?></td>
                                                 <td>
@@ -1546,6 +1649,7 @@ if (ctx) {
                         }
                     },
                     x: {
+                       
                         grid: {
                             display: false
                         },

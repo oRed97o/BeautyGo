@@ -106,6 +106,43 @@ include 'includes/header.php';
     margin-top: 12px;
 }
 
+/* Filter section styling */
+.filter-section {
+    background: linear-gradient(135deg, var(--color-cream) 0%, #f9f3f0 100%);
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 24px;
+    border-left: 4px solid var(--color-burgundy);
+}
+
+.filter-section h5 {
+    color: var(--color-burgundy);
+    margin-bottom: 16px;
+    font-weight: 600;
+}
+
+.active-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.filter-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background-color: var(--color-burgundy);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+}
+
+.filter-badge .bi {
+    cursor: pointer;
+}
+
 /* Responsive adjustments */
 @media (max-width: 576px) {
     .back-button {
@@ -173,6 +210,21 @@ include 'includes/header.php';
     h3 {
         font-size: 1.35rem !important;
     }
+    
+    .filter-section {
+        padding: 15px;
+    }
+    
+    .filter-section .row {
+        margin-left: -0.5rem;
+        margin-right: -0.5rem;
+    }
+    
+    .filter-section [class*='col-'] {
+        padding-left: 0.5rem;
+        padding-right: 0.5rem;
+        margin-bottom: 10px;
+    }
 }
 
 @media (max-width: 768px) {
@@ -199,7 +251,70 @@ include 'includes/header.php';
                     <span>Back to Home</span>
                 </a>
 
-                        <h2 class="bookings-heading"><i class="bi bi-calendar-check-fill"></i> My Bookings</h2>
+                <h2 class="bookings-heading"><i class="bi bi-calendar-check-fill"></i> My Bookings</h2>
+                
+                <?php if (!empty($appointments)): ?>
+                    <!-- Filter Section - NEW -->
+                    <div class="filter-section">
+                        <h5 class="mb-3"><i class="bi bi-funnel"></i> Filter Bookings</h5>
+                        
+                        <form method="GET" id="bookingFilterForm" class="row g-3">
+                            <div class="col-md-3">
+                                <label for="filterStatus" class="form-label small">Status</label>
+                                <select class="form-select form-select-sm" id="filterStatus" name="status">
+                                    <option value="">All Statuses</option>
+                                    <option value="pending" <?php echo ($_GET['status'] ?? '') == 'pending' ? 'selected' : ''; ?>>Pending</option>
+                                    <option value="confirmed" <?php echo ($_GET['status'] ?? '') == 'confirmed' ? 'selected' : ''; ?>>Confirmed</option>
+                                    <option value="completed" <?php echo ($_GET['status'] ?? '') == 'completed' ? 'selected' : ''; ?>>Completed</option>
+                                    <option value="cancelled" <?php echo ($_GET['status'] ?? '') == 'cancelled' ? 'selected' : ''; ?>>Cancelled</option>
+                                </select>
+                            </div>
+                            
+                            <div class="col-md-3">
+                                <label for="filterDateFrom" class="form-label small">Date From</label>
+                                <input type="date" class="form-control form-control-sm" id="filterDateFrom" name="date_from" value="<?php echo $_GET['date_from'] ?? ''; ?>">
+                            </div>
+                            
+                            <div class="col-md-3">
+                                <label for="filterDateTo" class="form-label small">Date To</label>
+                                <input type="date" class="form-control form-control-sm" id="filterDateTo" name="date_to" value="<?php echo $_GET['date_to'] ?? ''; ?>">
+                            </div>
+                            
+                            <div class="col-md-3">
+                                <label for="filterBusiness" class="form-label small">Business Name</label>
+                                <input type="text" class="form-control form-control-sm" id="filterBusiness" name="business" placeholder="Search..." value="<?php echo $_GET['business'] ?? ''; ?>">
+                            </div>
+                            
+                            <div class="col-12">
+                                <button type="submit" class="btn btn-sm btn-primary">
+                                    <i class="bi bi-funnel"></i> Apply Filters
+                                </button>
+                                <a href="my-bookings.php" class="btn btn-sm btn-outline-secondary">
+                                    <i class="bi bi-arrow-clockwise"></i> Clear Filters
+                                </a>
+                            </div>
+                        </form>
+                        
+                        <!-- Active Filters Display - NEW -->
+                        <?php 
+                        $activeFilters = [];
+                        if (!empty($_GET['status'])) $activeFilters[] = 'Status: ' . ucfirst($_GET['status']);
+                        if (!empty($_GET['date_from'])) $activeFilters[] = 'From: ' . date('M j, Y', strtotime($_GET['date_from']));
+                        if (!empty($_GET['date_to'])) $activeFilters[] = 'To: ' . date('M j, Y', strtotime($_GET['date_to']));
+                        if (!empty($_GET['business'])) $activeFilters[] = 'Business: ' . htmlspecialchars($_GET['business']);
+                        ?>
+                        
+                        <?php if (!empty($activeFilters)): ?>
+                            <div class="active-filters mt-3">
+                                <?php foreach ($activeFilters as $filter): ?>
+                                    <span class="filter-badge">
+                                        <?php echo $filter; ?>
+                                    </span>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                <?php endif; ?>
                 
                 <?php if (empty($appointments)): ?>
                     <div class="card">
@@ -213,149 +328,204 @@ include 'includes/header.php';
                         </div>
                     </div>
                 <?php else: ?>
-                    <?php foreach ($appointments as $appointment): ?>
-                        <div class="card mb-3">
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-8">
-                                <div class="d-flex justify-content-between align-items-start mb-2">
-                                    <h5 class="mb-0"><?php echo htmlspecialchars($appointment['business_name']); ?></h5>
-                                    <span class="badge status-<?php echo $appointment['appoint_status']; ?>">
-                                        <?php echo ucfirst($appointment['appoint_status']); ?>
-                                    </span>
-                                </div>
-                                
-                                <div class="row mb-2">
-                                    <div class="col-md-6">
-                                        <p class="mb-1">
-                                            <i class="bi bi-scissors text-muted"></i>
-                                            <strong>Service:</strong> <?php echo htmlspecialchars($appointment['service_name']); ?>
-                                        </p>
-                                        <p class="mb-1">
-                                            <i class="bi bi-person text-muted"></i>
-                                            <strong>Staff:</strong> <?php echo htmlspecialchars($appointment['staff_fname'] . ' ' . $appointment['staff_lname']); ?>
-                                        </p>
-                                        <p class="mb-1">
-                                            <i class="bi bi-star text-muted"></i>
-                                            <strong>Specialization:</strong> <?php echo htmlspecialchars($appointment['specialization']); ?>
-                                        </p>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <p class="mb-1">
-                                            <i class="bi bi-calendar text-muted"></i>
-                                            <strong>Date & Time:</strong> <?php echo formatDateTime($appointment['appoint_date']); ?>
-                                        </p>
-                                        <p class="mb-1">
-                                            <i class="bi bi-clock text-muted"></i>
-                                            <strong>Duration:</strong> <?php echo $appointment['duration']; ?> minutes
-                                        </p>
-                                        <p class="mb-1">
-                                            <i class="bi bi-geo-alt text-muted"></i>
-                                            <strong>Address:</strong> <?php echo htmlspecialchars($appointment['business_address']); ?>
-                                        </p>
-                                    </div>
-                                </div>
-                                
-                                <?php if (!empty($appointment['appoint_desc'])): ?>
-                                    <p class="mb-1">
-                                        <i class="bi bi-chat-left-text text-muted"></i>
-                                        <strong>Notes:</strong> <?php echo htmlspecialchars($appointment['appoint_desc']); ?>
-                                    </p>
-                                <?php endif; ?>
-                                
-                                <p class="mb-0 mt-2">
-                                    <strong>Appointment ID:</strong> <small class="text-muted"><?php echo $appointment['appointment_id']; ?></small>
-                                </p>
-                            </div>
-                            
-                            <div class="col-md-4 text-end">
-                                <div class="mb-3">
-                                    <h3 style="color: var(--color-burgundy);">₱<?php echo number_format($appointment['cost'], 2); ?></h3>
-                                </div>
-                                
-                                <div class="d-grid gap-2">
-                                    <a href="business-detail.php?id=<?php echo $appointment['business_id']; ?>" class="btn btn-outline-primary btn-sm">
-                                        <i class="bi bi-shop"></i> View Business
+                    <?php 
+                    // APPLY FILTERS - NEW
+                    $filteredAppointments = $appointments;
+                    
+                    // Filter by status
+                    if (!empty($_GET['status'])) {
+                        $filteredAppointments = array_filter($filteredAppointments, function($a) {
+                            return $a['appoint_status'] == $_GET['status'];
+                        });
+                    }
+                    
+                    // Filter by date range
+                    if (!empty($_GET['date_from'])) {
+                        $dateFrom = strtotime($_GET['date_from']);
+                        $filteredAppointments = array_filter($filteredAppointments, function($a) use ($dateFrom) {
+                            return strtotime(date('Y-m-d', strtotime($a['appoint_date']))) >= $dateFrom;
+                        });
+                    }
+                    
+                    if (!empty($_GET['date_to'])) {
+                        $dateTo = strtotime($_GET['date_to'] . ' 23:59:59');
+                        $filteredAppointments = array_filter($filteredAppointments, function($a) use ($dateTo) {
+                            return strtotime(date('Y-m-d', strtotime($a['appoint_date']))) <= $dateTo;
+                        });
+                    }
+                    
+                    // Filter by business name
+                    if (!empty($_GET['business'])) {
+                        $searchTerm = strtolower($_GET['business']);
+                        $filteredAppointments = array_filter($filteredAppointments, function($a) use ($searchTerm) {
+                            return strpos(strtolower($a['business_name']), $searchTerm) !== false;
+                        });
+                    }
+                    ?>
+                    
+                    <?php if (empty($filteredAppointments)): ?>
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="empty-state">
+                                    <i class="bi bi-search"></i>
+                                    <h4>No Bookings Found</h4>
+                                    <p>No bookings match your filters. Try adjusting your search criteria.</p>
+                                    <a href="my-bookings.php" class="btn btn-outline-primary btn-sm">
+                                        <i class="bi bi-arrow-clockwise"></i> Clear Filters
                                     </a>
-
-                                    <a href="booking.php?business_id=<?php echo $appointment['business_id']; ?>" class="btn btn-primary btn-sm">
-                                        <i class="bi bi-calendar-plus"></i> Book Another Appointment
-                                    </a>
-                                    
-                                    <?php if ($appointment['appoint_status'] == 'pending' || $appointment['appoint_status'] == 'confirmed'): ?>
-                                        <button class="btn btn-outline-danger btn-sm" onclick="if(confirm('Cancel this appointment?')) { updateAppointmentStatus('<?php echo $appointment['appointment_id']; ?>', 'cancelled'); }">
-                                            <i class="bi bi-x-circle"></i> Cancel Appointment
-                                        </button>
-                                    <?php endif; ?>
-                                    
-                                    <?php if ($appointment['appoint_status'] == 'completed'): ?>
-                                        <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#reviewModal<?php echo $appointment['appointment_id']; ?>">
-                                            <i class="bi bi-star"></i> Write Review
-                                        </button>
-                                    <?php endif; ?>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                    <div class="card-footer bg-transparent text-muted small">
-                        Booked on <?php echo formatDate($appointment['set_date']); ?>
-                    </div>
-                </div>
-                
-                <!-- Review Modal -->
-                <?php if ($appointment['appoint_status'] == 'completed'): ?>
-                    <div class="modal fade" id="reviewModal<?php echo $appointment['appointment_id']; ?>" tabindex="-1">
-                        <div class="modal-dialog">
-                            <div class="modal-content">
-                                <div class="modal-header">
-                                    <h5 class="modal-title">Write a Review</h5>
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                </div>
-                                <form action="backend/submit-review.php" method="POST">
-                                    <div class="modal-body">
-                                        <input type="hidden" name="appointment_id" value="<?php echo $appointment['appointment_id']; ?>">
-                                        <input type="hidden" name="business_id" value="<?php echo $appointment['business_id']; ?>">
-                                        <input type="hidden" name="customer_id" value="<?php echo $customer['customer_id']; ?>">
+                    <?php else: ?>
+                        <div class="alert alert-info" role="alert">
+                            <i class="bi bi-info-circle"></i> 
+                            Showing <strong><?php echo count($filteredAppointments); ?></strong> of <strong><?php echo count($appointments); ?></strong> bookings
+                        </div>
+                        
+                        <?php foreach ($filteredAppointments as $appointment): ?>
+                            <div class="card mb-3">
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-8">
+                                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                                <h5 class="mb-0"><?php echo htmlspecialchars($appointment['business_name']); ?></h5>
+                                                <span class="badge status-<?php echo $appointment['appoint_status']; ?>">
+                                                    <?php echo ucfirst($appointment['appoint_status']); ?>
+                                                </span>
+                                            </div>
+                                            
+                                            <div class="row mb-2">
+                                                <div class="col-md-6">
+                                                    <p class="mb-1">
+                                                        <i class="bi bi-scissors text-muted"></i>
+                                                        <strong>Service:</strong> <?php echo htmlspecialchars($appointment['service_name']); ?>
+                                                    </p>
+                                                    <p class="mb-1">
+                                                        <i class="bi bi-person text-muted"></i>
+                                                        <strong>Staff:</strong> <?php echo htmlspecialchars($appointment['staff_fname'] . ' ' . $appointment['staff_lname']); ?>
+                                                    </p>
+                                                    <p class="mb-1">
+                                                        <i class="bi bi-star text-muted"></i>
+                                                        <strong>Specialization:</strong> <?php echo htmlspecialchars($appointment['specialization']); ?>
+                                                    </p>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <p class="mb-1">
+                                                        <i class="bi bi-calendar text-muted"></i>
+                                                        <strong>Date & Time:</strong> <?php echo formatDateTime($appointment['appoint_date']); ?>
+                                                    </p>
+                                                    <p class="mb-1">
+                                                        <i class="bi bi-clock text-muted"></i>
+                                                        <strong>Duration:</strong> <?php echo $appointment['duration']; ?> minutes
+                                                    </p>
+                                                    <p class="mb-1">
+                                                        <i class="bi bi-geo-alt text-muted"></i>
+                                                        <strong>Address:</strong> <?php echo htmlspecialchars($appointment['business_address']); ?>
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            
+                                            <?php if (!empty($appointment['appoint_desc'])): ?>
+                                                <p class="mb-1">
+                                                    <i class="bi bi-chat-left-text text-muted"></i>
+                                                    <strong>Notes:</strong> <?php echo htmlspecialchars($appointment['appoint_desc']); ?>
+                                                </p>
+                                            <?php endif; ?>
+                                            
+                                            <p class="mb-0 mt-2">
+                                                <strong>Appointment ID:</strong> <small class="text-muted"><?php echo $appointment['appointment_id']; ?></small>
+                                            </p>
+                                        </div>
                                         
-                                        <div class="mb-3">
-                                            <label class="form-label">Rating</label>
-                                            <div class="btn-group d-flex" role="group">
-                                                <?php for ($i = 1; $i <= 5; $i++): ?>
-                                                    <input type="radio" class="btn-check" name="rating" id="rating<?php echo $appointment['appointment_id']; ?>_<?php echo $i; ?>" value="<?php echo $i; ?>" required>
-                                                    <label class="btn btn-outline-warning" for="rating<?php echo $appointment['appointment_id']; ?>_<?php echo $i; ?>">
-                                                        <?php echo $i; ?> <i class="bi bi-star-fill"></i>
-                                                    </label>
-                                                <?php endfor; ?>
+                                        <div class="col-md-4 text-end">
+                                            <div class="mb-3">
+                                                <h3 style="color: var(--color-burgundy);">₱<?php echo number_format($appointment['cost'], 2); ?></h3>
+                                            </div>
+                                            
+                                            <div class="d-grid gap-2">
+                                                <a href="business-detail.php?id=<?php echo $appointment['business_id']; ?>" class="btn btn-outline-primary btn-sm">
+                                                    <i class="bi bi-shop"></i> View Business
+                                                </a>
+
+                                                <a href="booking.php?business_id=<?php echo $appointment['business_id']; ?>" class="btn btn-primary btn-sm">
+                                                    <i class="bi bi-calendar-plus"></i> Book Another
+                                                </a>
+                                                
+                                                <?php if ($appointment['appoint_status'] == 'pending' || $appointment['appoint_status'] == 'confirmed'): ?>
+                                                    <button class="btn btn-outline-danger btn-sm" onclick="if(confirm('Cancel this appointment?')) { updateAppointmentStatus('<?php echo $appointment['appointment_id']; ?>', 'cancelled'); }">
+                                                        <i class="bi bi-x-circle"></i> Cancel
+                                                    </button>
+                                                <?php endif; ?>
+                                                
+                                                <?php if ($appointment['appoint_status'] == 'completed'): ?>
+                                                    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#reviewModal<?php echo $appointment['appointment_id']; ?>">
+                                                        <i class="bi bi-star"></i> Write Review
+                                                    </button>
+                                                <?php endif; ?>
                                             </div>
                                         </div>
-                                        
-                                        <div class="mb-3">
-                                            <label for="review_text" class="form-label">Your Review</label>
-                                            <textarea class="form-control" name="review_text" rows="4" required placeholder="Share your experience..."></textarea>
-                                        </div>
-
-                                        <div class="mb-3">
-                                            <label class="form-label">Add Photos (Optional - Max 5 images)</label>
-                                            <input type="file" class="form-control mb-2" name="review_img1" accept="image/*">
-                                            <input type="file" class="form-control mb-2" name="review_img2" accept="image/*">
-                                            <input type="file" class="form-control mb-2" name="review_img3" accept="image/*">
-                                            <input type="file" class="form-control mb-2" name="review_img4" accept="image/*">
-                                            <input type="file" class="form-control" name="review_img5" accept="image/*">
-                                            <small class="text-muted">JPG, PNG, GIF, WebP - Max 5MB per image</small>
-                                        </div>
-
                                     </div>
-                                    <div class="modal-footer">
-                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                        <button type="submit" class="btn btn-primary">Submit Review</button>
-                                    </div>
-                                </form>
+                                </div>
+                                <div class="card-footer bg-transparent text-muted small">
+                                    Booked on <?php echo formatDate($appointment['set_date']); ?>
+                                </div>
                             </div>
-                        </div>
-                    </div>
+                            
+                            <!-- Review Modal -->
+                            <?php if ($appointment['appoint_status'] == 'completed'): ?>
+                                <div class="modal fade" id="reviewModal<?php echo $appointment['appointment_id']; ?>" tabindex="-1">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title">Write a Review</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <form action="backend/submit-review.php" method="POST">
+                                                <div class="modal-body">
+                                                    <input type="hidden" name="appointment_id" value="<?php echo $appointment['appointment_id']; ?>">
+                                                    <input type="hidden" name="business_id" value="<?php echo $appointment['business_id']; ?>">
+                                                    <input type="hidden" name="customer_id" value="<?php echo $customer['customer_id']; ?>">
+                                                    
+                                                    <div class="mb-3">
+                                                        <label class="form-label">Rating</label>
+                                                        <div class="btn-group d-flex" role="group">
+                                                            <?php for ($i = 1; $i <= 5; $i++): ?>
+                                                                <input type="radio" class="btn-check" name="rating" id="rating<?php echo $appointment['appointment_id']; ?>_<?php echo $i; ?>" value="<?php echo $i; ?>" required>
+                                                                <label class="btn btn-outline-warning" for="rating<?php echo $appointment['appointment_id']; ?>_<?php echo $i; ?>">
+                                                                    <?php echo $i; ?> <i class="bi bi-star-fill"></i>
+                                                                </label>
+                                                            <?php endfor; ?>
+                                                        </div>
+                                                    </div>
+                                                
+                                                    <div class="mb-3">
+                                                        <label for="review_text" class="form-label">Your Review</label>
+                                                        <textarea class="form-control" name="review_text" rows="4" required placeholder="Share your experience..."></textarea>
+                                                    </div>
+
+                                                    <div class="mb-3">
+                                                        <label class="form-label">Add Photos (Optional - Max 5 images)</label>
+                                                        <input type="file" class="form-control mb-2" name="review_img1" accept="image/*">
+                                                        <input type="file" class="form-control mb-2" name="review_img2" accept="image/*">
+                                                        <input type="file" class="form-control mb-2" name="review_img3" accept="image/*">
+                                                        <input type="file" class="form-control mb-2" name="review_img4" accept="image/*">
+                                                        <input type="file" class="form-control" name="review_img5" accept="image/*">
+                                                        <small class="text-muted">JPG, PNG, GIF, WebP - Max 5MB per image</small>
+                                                    </div>
+
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                    <button type="submit" class="btn btn-primary">Submit Review</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            <?php endif; ?>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
                 <?php endif; ?>
-            <?php endforeach; ?>
-        <?php endif; ?>
             </div>
         </div>
     </div>
