@@ -433,42 +433,66 @@ include 'includes/header.php';
                     </div>
                 </div>
 
-                <!-- Staff -->
-                <div class="card mb-4">
-                    <div class="card-body">
-                        <h4 class="mb-3">Our Team</h4>
-                        <?php if (empty($staff)): ?>
-                            <div class="empty-state py-3">
-                                <i class="bi bi-people"></i>
-                                <p>No staff listed yet</p>
-                            </div>
+                <!-- Staff Section - COMPLETELY FIXED -->
+<div class="card mb-4">
+    <div class="card-body">
+        <h4 class="mb-3">Our Team</h4>
+        <?php if (empty($staff)): ?>
+            <div class="empty-state py-3">
+                <i class="bi bi-people"></i>
+                <p>No staff listed yet</p>
+            </div>
+        <?php else: ?>
+            <div class="staff-grid">
+                <?php foreach ($staff as $member): ?>
+                    <?php
+                    $employeeName = trim(($member['employ_fname'] ?? '') . ' ' . ($member['employ_lname'] ?? '')) ?: 'Staff Member';
+                    $employeeImg = $member['employ_img'] ?? null;
+                    
+                    // FIXED: Properly encode image for display AND for JavaScript
+                    $imageDataUrl = '';
+                    if (!empty($employeeImg)) {
+                        $finfo = new finfo(FILEINFO_MIME_TYPE);
+                        $mimeType = $finfo->buffer($employeeImg);
+                        $imageDataUrl = 'data:' . $mimeType . ';base64,' . base64_encode($employeeImg);
+                    }
+                    
+                    // FIXED: Prepare safe member data for JavaScript
+                    $memberData = [
+                        'employ_id' => $member['employ_id'] ?? '',
+                        'employ_fname' => $member['employ_fname'] ?? '',
+                        'employ_lname' => $member['employ_lname'] ?? '',
+                        'specialization' => $member['specialization'] ?? 'No specialization',
+                        'skills' => $member['skills'] ?? 'No skills listed',
+                        'employ_bio' => $member['employ_bio'] ?? 'No bio available',
+                        'employ_status' => $member['employ_status'] ?? 'available',
+                        'employ_img_url' => $imageDataUrl // Pass the data URL, not raw binary
+                    ];
+                    
+                    // FIXED: Properly escape JSON for HTML attribute
+                    $memberDataJson = htmlspecialchars(json_encode($memberData), ENT_QUOTES, 'UTF-8');
+                    ?>
+                    <div class="staff-member" 
+                         onclick='openStaffModal(<?php echo $memberDataJson; ?>)'
+                         role="button"
+                         tabindex="0"
+                         onkeypress="if(event.key==='Enter') openStaffModal(<?php echo $memberDataJson; ?>)">
+                        <?php if (!empty($imageDataUrl)): ?>
+                            <img src="<?php echo htmlspecialchars($imageDataUrl); ?>" 
+                                 alt="<?php echo htmlspecialchars($employeeName); ?>">
                         <?php else: ?>
-                            <?php foreach ($staff as $member): ?>
-                                <?php
-                                $employeeName = trim(($member['employ_fname'] ?? '') . ' ' . ($member['employ_lname'] ?? '')) ?: 'Staff Member';
-                                $employeeImg = $member['employ_img'] ?? null;
-                                $employeeId = $member['employ_id'] ?? null;
-                                ?>
-                                <div class="staff-member" 
-                                     style="cursor: pointer;" 
-                                     onclick="openStaffModal(<?php echo htmlspecialchars(json_encode($member)); ?>)"
-                                     role="button"
-                                     tabindex="0"
-                                     onkeypress="if(event.key==='Enter') openStaffModal(<?php echo htmlspecialchars(json_encode($member)); ?>)">
-                                    <?php if (!empty($employeeImg)): ?>
-                                        <img src="data:image/jpeg;base64,<?php echo base64_encode($employeeImg); ?>" alt="<?php echo htmlspecialchars($employeeName); ?>" style="cursor: pointer;">
-                                    <?php else: ?>
-                                        <div class="bg-secondary rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 80px; height: 80px; margin-bottom: 0.5rem; cursor: pointer;">
-                                            <i class="bi bi-person-fill text-white" style="font-size: 2rem;"></i>
-                                        </div>
-                                    <?php endif; ?>
-                                    <h6 class="mb-0"><?php echo htmlspecialchars($employeeName); ?></h6>
-                                    <small class="text-muted"><?php echo htmlspecialchars($member['specialization'] ?? ''); ?></small>
-                                </div>
-                            <?php endforeach; ?>
+                            <div class="staff-placeholder">
+                                <i class="bi bi-person-fill"></i>
+                            </div>
                         <?php endif; ?>
+                        <h6 class="mb-0"><?php echo htmlspecialchars($employeeName); ?></h6>
+                        <small class="text-muted"><?php echo htmlspecialchars($member['specialization'] ?? ''); ?></small>
                     </div>
-                </div>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
+    </div>
+</div>
 
                 <!-- Location Map -->
                 <div class="card mb-4">
@@ -503,7 +527,7 @@ include 'includes/header.php';
     </div>
 </div>
 
-<!-- Staff Information Modal -->
+<!-- Staff Information Modal - FIXED -->
 <div class="modal fade" id="staffModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
@@ -513,23 +537,33 @@ include 'includes/header.php';
             </div>
             <div class="modal-body">
                 <div class="text-center mb-3">
-                    <img id="staffImage" src="" alt="Staff member" style="width: 150px; height: 150px; object-fit: cover; border-radius: 50%; margin-bottom: 1rem;">
+                    <div id="staffImageContainer" style="width: 150px; height: 150px; margin: 0 auto 1rem; overflow: hidden; border-radius: 50%; border: 3px solid #e0e0e0; display: flex; align-items: center; justify-content: center; background: #f0f0f0;">
+                        <!-- Image will be inserted here by JavaScript -->
+                    </div>
                 </div>
                 <h5 id="staffName" class="text-center mb-1"></h5>
                 <p id="staffSpecialization" class="text-center text-muted mb-3"></p>
                 
                 <div class="staff-details">
-                    <h6 class="mb-2"><strong>Specialization</strong></h6>
-                    <p id="staffSpecializationDetail" class="mb-3"></p>
+                    <div class="detail-item mb-3">
+                        <h6 class="mb-2"><i class="bi bi-star-fill"></i> Specialization</h6>
+                        <p id="staffSpecializationDetail" class="mb-0"></p>
+                    </div>
                     
-                    <h6 class="mb-2"><strong>Bio</strong></h6>
-                    <p id="staffBio" class="mb-3"></p>
+                    <div class="detail-item mb-3">
+                        <h6 class="mb-2"><i class="bi bi-person-badge"></i> Bio</h6>
+                        <p id="staffBio" class="mb-0"></p>
+                    </div>
                     
-                    <h6 class="mb-2"><strong>Skills</strong></h6>
-                    <p id="staffSkills" class="mb-3"></p>
+                    <div class="detail-item mb-3">
+                        <h6 class="mb-2"><i class="bi bi-award"></i> Skills</h6>
+                        <p id="staffSkills" class="mb-0"></p>
+                    </div>
                     
-                    <h6 class="mb-2"><strong>Status</strong></h6>
-                    <p id="staffStatus" class="mb-0"></p>
+                    <div class="detail-item">
+                        <h6 class="mb-2"><i class="bi bi-circle-fill"></i> Status</h6>
+                        <p id="staffStatus" class="mb-0"></p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -668,31 +702,36 @@ function openImageModal(imageSrc) {
 
 // Staff Modal Functionality
 function openStaffModal(staffMember) {
-    const staffName = (staffMember.employ_fname || '') + ' ' + (staffMember.employ_lname || '');
+    console.log('Opening staff modal:', staffMember);
+    
+    // Prepare display data
+    const staffName = ((staffMember.employ_fname || '') + ' ' + (staffMember.employ_lname || '')).trim() || 'Staff Member';
     const specialization = staffMember.specialization || 'No specialization listed';
     const bio = staffMember.employ_bio || 'No bio available';
     const skills = staffMember.skills || 'No skills listed';
-    const status = staffMember.employ_status ? staffMember.employ_status.charAt(0).toUpperCase() + staffMember.employ_status.slice(1).replace('_', ' ') : 'Available';
+    const status = staffMember.employ_status || 'available';
+    const statusFormatted = status.charAt(0).toUpperCase() + status.slice(1).replace('_', ' ');
     
-    // Set image
-    const imageElement = document.getElementById('staffImage');
-    if (staffMember.employ_img) {
-        imageElement.src = 'data:image/jpeg;base64,' + staffMember.employ_img;
-    } else {
-        imageElement.innerHTML = '<i class="bi bi-person-fill text-white" style="font-size: 3rem;"></i>';
-        imageElement.style.background = '#6c757d';
-        imageElement.style.display = 'flex';
-        imageElement.style.alignItems = 'center';
-        imageElement.style.justifyContent = 'center';
+    // FIXED: Set image using the pre-encoded data URL
+    const imageContainer = document.getElementById('staffImageContainer');
+    if (imageContainer) {
+        if (staffMember.employ_img_url && staffMember.employ_img_url.trim() !== '') {
+            imageContainer.innerHTML = '<img src="' + staffMember.employ_img_url + '" alt="' + staffName + '" style="width: 100%; height: 100%; object-fit: cover;">';
+        } else {
+            imageContainer.innerHTML = '<div class="bg-secondary rounded-circle d-flex align-items-center justify-content-center" style="width: 100%; height: 100%;"><i class="bi bi-person-fill text-white" style="font-size: 3.5rem;"></i></div>';
+        }
     }
     
     // Set text content
-    document.getElementById('staffName').textContent = staffName.trim();
+    document.getElementById('staffName').textContent = staffName;
     document.getElementById('staffSpecialization').textContent = specialization;
     document.getElementById('staffSpecializationDetail').textContent = specialization;
     document.getElementById('staffBio').textContent = bio;
     document.getElementById('staffSkills').textContent = skills;
-    document.getElementById('staffStatus').innerHTML = '<span class="badge ' + (staffMember.employ_status === 'available' ? 'bg-success' : 'bg-warning') + '">' + status + '</span>';
+    
+    // Set status badge
+    const statusBadgeClass = status === 'available' ? 'bg-success' : (status === 'on_leave' ? 'bg-warning' : 'bg-secondary');
+    document.getElementById('staffStatus').innerHTML = '<span class="badge ' + statusBadgeClass + '">' + statusFormatted + '</span>';
     
     // Show modal
     const modal = new bootstrap.Modal(document.getElementById('staffModal'));

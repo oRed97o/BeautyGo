@@ -787,82 +787,104 @@ include 'includes/header.php';
                 </div>
             </div>
             
-            <!-- Staff Tab -->
-            <div class="tab-pane fade" id="staff" role="tabpanel">
-                <div class="card">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <h4 class="mb-0"><i class="bi bi-people"></i> Manage Staff</h4>
-                            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addStaffModal">
-                                <i class="bi bi-person-plus"></i> Add Staff
-                            </button>
-                        </div>
-                        <?php if (empty($staff)): ?>
-                            <div class="empty-state text-center py-5">
-                                <i class="bi bi-people" style="font-size: 4rem; color: #ccc;"></i>
-                                <p class="text-muted mt-3">No staff members added yet</p>
-                            </div>
-                        <?php else: ?>
-                            <div class="row">
-                                <?php foreach ($staff as $member): ?>
-                                   <?php 
-    // Step 1: Get basic staff info
-    $employeeName = trim(($member['employ_fname'] ?? '') . ' ' . ($member['employ_lname'] ?? '')) ?: 'Staff Member';
-    $specialty = $member['specialization'] ?? 'General Services';
-    
-    // Step 2: Prepare data for JavaScript - encode image to base64
-    $memberForJs = array(
-        'employ_id' => $member['employ_id'],
-        'employ_fname' => $member['employ_fname'] ?? '',
-        'employ_lname' => $member['employ_lname'] ?? '',
-        'specialization' => $member['specialization'] ?? '',
-        'skills' => $member['skills'] ?? '',
-        'employ_bio' => $member['employ_bio'] ?? '',
-        'employ_status' => $member['employ_status'] ?? 'available',
-        'employ_img' => ''  // Start with empty string
-    );
-    
-    // Step 3: Encode image if it exists
-    if (isset($member['employ_img']) && !empty($member['employ_img'])) {
-        $memberForJs['employ_img'] = base64_encode($member['employ_img']);
-    }
-?>
-                                    <div class="col-md-6 col-lg-4 mb-3">
-                                        <div class="card h-100">
-                                            <div class="card-body text-center">
-                                                <?php if (isset($member['employ_img']) && !empty($member['employ_img'])): ?>
-                                                    <img src="data:image/jpeg;base64,<?php echo base64_encode($member['employ_img']); ?>" alt="<?php echo htmlspecialchars($employeeName); ?>" class="rounded-circle mb-2" style="width: 80px; height: 80px; object-fit: cover;">
-                                                <?php else: ?>
-                                                    <div class="bg-secondary rounded-circle d-inline-flex align-items-center justify-content-center mb-2" style="width: 80px; height: 80px;">
-                                                        <i class="bi bi-person-fill text-white" style="font-size: 2rem;"></i>
-                                                    </div>
-                                                <?php endif; ?>
-                                                <h6><?php echo htmlspecialchars($employeeName); ?></h6>
-                                                <p class="text-muted small mb-2"><?php echo htmlspecialchars($specialty); ?></p>
-                                                <span class="badge bg-<?php echo $member['employ_status'] === 'available' ? 'success' : 'secondary'; ?> mb-2">
-                                                    <?php echo ucfirst($member['employ_status'] ?? 'available'); ?>
-                                                </span>
-                                                <div class="btn-group btn-group-sm d-block">
-                                                    <button class="btn btn-outline-primary" 
-                                                            onclick="editStaff(<?php echo htmlspecialchars(json_encode($member)); ?>)">
-                                                        <i class="bi bi-pencil"></i> Edit
-                                                    </button>
-                                                    <form method="POST" class="d-inline" onsubmit="return confirm('Remove this staff member?')">
-                                                        <input type="hidden" name="employ_id" value="<?php echo $member['employ_id']; ?>">
-                                                        <button type="submit" name="delete_staff" class="btn btn-outline-danger">
-                                                            <i class="bi bi-trash"></i>
-                                                        </button>
-                                                    </form>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                <?php endforeach; ?>
-                            </div>
-                        <?php endif; ?>
-                    </div>
-                </div>
+            <!-- Staff Tab - FIXED LAYOUT -->
+<div class="tab-pane fade" id="staff" role="tabpanel">
+    <div class="card">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4 class="mb-0"><i class="bi bi-people"></i> Manage Staff</h4>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addStaffModal">
+                    <i class="bi bi-person-plus"></i> Add Staff
+                </button>
             </div>
+            <?php if (empty($staff)): ?>
+                <div class="empty-state text-center py-5">
+                    <i class="bi bi-people" style="font-size: 4rem; color: #ccc;"></i>
+                    <p class="text-muted mt-3">No staff members added yet</p>
+                </div>
+            <?php else: ?>
+                <div class="row">
+                    <?php foreach ($staff as $member): ?>
+                        <?php 
+                        // Prepare employee display data
+                        $employeeName = trim(($member['employ_fname'] ?? '') . ' ' . ($member['employ_lname'] ?? '')) ?: 'Staff Member';
+                        $specialty = $member['specialization'] ?? 'General Services';
+                        
+                        // Handle image display - FIXED
+                        $hasImage = isset($member['employ_img']) && !empty($member['employ_img']);
+                        $imageData = '';
+                        
+                        if ($hasImage) {
+                            // Detect MIME type of the image
+                            $finfo = new finfo(FILEINFO_MIME_TYPE);
+                            $mimeType = $finfo->buffer($member['employ_img']);
+                            $imageData = 'data:' . $mimeType . ';base64,' . base64_encode($member['employ_img']);
+                        }
+                        
+                        // Prepare data for JavaScript edit function - FIXED
+                        $memberForJs = [
+                            'employ_id' => $member['employ_id'],
+                            'employ_fname' => $member['employ_fname'] ?? '',
+                            'employ_lname' => $member['employ_lname'] ?? '',
+                            'specialization' => $member['specialization'] ?? '',
+                            'skills' => $member['skills'] ?? '',
+                            'employ_bio' => $member['employ_bio'] ?? '',
+                            'employ_status' => $member['employ_status'] ?? 'available',
+                            'employ_img_data' => $hasImage ? $imageData : ''
+                        ];
+                        ?>
+                        
+                        <div class="col-md-6 col-lg-4 mb-3">
+                            <div class="card h-100">
+                                <div class="card-body text-center">
+                                    <?php if ($hasImage): ?>
+                                        <div style="width: 80px; height: 80px; margin: 0 auto 15px; overflow: hidden; border-radius: 50%; border: 2px solid #e0e0e0;">
+                                            <img src="<?php echo htmlspecialchars($imageData); ?>" 
+                                                alt="<?php echo htmlspecialchars($employeeName); ?>" 
+                                                style="width: 100%; height: 100%; object-fit: cover;">
+                                        </div>
+                                    <?php else: ?>
+                                        <div class="bg-secondary rounded-circle d-inline-flex align-items-center justify-content-center mb-3" 
+                                            style="width: 80px; height: 80px;">
+                                            <i class="bi bi-person-fill text-white" style="font-size: 2rem;"></i>
+                                        </div>
+                                    <?php endif; ?>
+                                    
+                                    <h6><?php echo htmlspecialchars($employeeName); ?></h6>
+                                    <p class="text-muted small mb-2"><?php echo htmlspecialchars($specialty); ?></p>
+                                    
+                                    <?php if (!empty($member['employ_bio'])): ?>
+                                        <p class="text-muted small mb-2" style="font-size: 0.85rem;">
+                                            <?php echo htmlspecialchars(substr($member['employ_bio'], 0, 60)); ?>
+                                            <?php echo strlen($member['employ_bio']) > 60 ? '...' : ''; ?>
+                                        </p>
+                                    <?php endif; ?>
+                                    
+                                    <span class="badge bg-<?php echo $member['employ_status'] === 'available' ? 'success' : 'secondary'; ?> mb-2">
+                                        <?php echo ucfirst($member['employ_status'] ?? 'available'); ?>
+                                    </span>
+                                    
+                                    <div class="btn-group btn-group-sm d-block mt-2">
+                                        <button class="btn btn-outline-primary" 
+                                                onclick='editStaff(<?php echo htmlspecialchars(json_encode($memberForJs), ENT_QUOTES, 'UTF-8'); ?>)'>
+                                            <i class="bi bi-pencil"></i> Edit
+                                        </button>
+                                        <form method="POST" class="d-inline" onsubmit="return confirm('Remove this staff member?')">
+                                            <input type="hidden" name="employ_id" value="<?php echo $member['employ_id']; ?>">
+                                            <button type="submit" name="delete_staff" class="btn btn-outline-danger">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+        </div>
+    </div>
+</div>
             
             <!-- Reviews Tab - UPDATED WITH IMAGE DISPLAY -->
 <div class="tab-pane fade" id="reviews" role="tabpanel">
@@ -1151,12 +1173,27 @@ include 'includes/header.php';
                         <textarea class="form-control" id="employ_bio" name="employ_bio" rows="2" placeholder="Brief description about the staff member"></textarea>
                     </div>
                     <div class="mb-3">
-                        <label for="employ_img" class="form-label">Profile Image</label>
-                        <input type="file" class="form-control" id="employ_img" name="employ_img" accept="image/*">
-                        <div class="form-text text-muted">
-                            Upload a clear image for the staff member. Max size: 5MB.
-                        </div>
-                    </div>
+    <label for="employ_img" class="form-label">Profile Image</label>
+    
+    <!-- Preview area for Add form -->
+    <div class="mb-2 text-center">
+        <div class="bg-light rounded-circle d-inline-flex align-items-center justify-content-center" 
+             id="previewAdd" 
+             style="width: 100px; height: 100px; overflow: hidden;">
+            <i class="bi bi-person-fill text-secondary" style="font-size: 2.5rem;"></i>
+        </div>
+    </div>
+    
+    <input type="file" 
+           class="form-control" 
+           id="employ_img" 
+           name="employ_img" 
+           accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+           onchange="previewImageAdd(this)">
+    <div class="form-text text-muted">
+        Upload a clear image for the staff member. Accepted formats: JPG, PNG, GIF, WebP. Max size: 5MB.
+    </div>
+</div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -1181,15 +1218,26 @@ include 'includes/header.php';
                 <input type="hidden" id="edit_employ_id" name="employ_id">
                 <div class="modal-body">
                     <div class="mb-3 text-center">
-                        <div class="bg-light rounded-circle d-inline-flex align-items-center justify-content-center" id="previewEdit" style="width: 100px; height: 100px; overflow: hidden; object-fit: cover;">
+                        <div class="bg-light rounded-circle d-inline-flex align-items-center justify-content-center" 
+                            id="previewEdit" 
+                            style="width: 100px; height: 100px; overflow: hidden;">
                             <i class="bi bi-person-fill text-secondary" style="font-size: 2.5rem;"></i>
                         </div>
-                        <label for="edit_employ_img" class="btn btn-sm btn-outline-primary mt-2">
-                            <i class="bi bi-cloud-upload"></i> Change Photo
-                        </label>
-                        <input type="file" id="edit_employ_img" name="employ_img" class="d-none" accept="image/*" onchange="previewImageEdit(this)">
+                        <div class="mt-2">
+                            <label for="edit_employ_img" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-cloud-upload"></i> Change Photo
+                            </label>
+                            <!-- FIXED: Changed from d-none to display:none and made it properly accept file input -->
+                            <input type="file" 
+                                id="edit_employ_img" 
+                                name="employ_img" 
+                                style="display: none;" 
+                                accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                                onchange="previewImageEdit(this)">
+                        </div>
                         <small class="d-block text-muted mt-2">JPG, PNG, GIF, or WebP (Max 5MB)</small>
                     </div>
+
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="edit_employ_fname" class="form-label">First Name *</label>
@@ -1257,6 +1305,7 @@ function openReviewImageModal(imageSrc) {
     document.getElementById('reviewModalImage').src = imageSrc;
     modal.show();
 }
+
 setTimeout(function() {
     const alerts = document.querySelectorAll('.alert');
     alerts.forEach(function(alert) {
@@ -1285,8 +1334,8 @@ function previewImageAdd(input) {
     if (input.files && input.files[0]) {
         const file = input.files[0];
         
-        // Validate file size
-        const maxSize = 5 * 1024 * 1024; // 5MB
+        // Validate file size (5MB max)
+        const maxSize = 5 * 1024 * 1024;
         if (file.size > maxSize) {
             alert('File size must be less than 5MB');
             input.value = '';
@@ -1294,7 +1343,7 @@ function previewImageAdd(input) {
         }
         
         // Validate file type
-        const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
         if (!allowedTypes.includes(file.type)) {
             alert('Only JPG, PNG, GIF, and WebP files are allowed');
             input.value = '';
@@ -1304,7 +1353,9 @@ function previewImageAdd(input) {
         const reader = new FileReader();
         
         reader.onload = function(e) {
-            preview.innerHTML = `<img src="${e.target.result}" style="width: 100%; height: 100%; object-fit: cover;" alt="Preview">`;
+            preview.innerHTML = `<img src="${e.target.result}" 
+                                      style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" 
+                                      alt="Preview">`;
         };
         
         reader.readAsDataURL(file);
@@ -1313,46 +1364,6 @@ function previewImageAdd(input) {
 
 function previewImageEdit(input) {
     const preview = document.getElementById('previewEdit');
-    
-    if (input.files && input.files[0]) {
-        const file = input.files[0];
-        
-        // Validate file size
-        const maxSize = 5 * 1024 * 1024; // 5MB
-        if (file.size > maxSize) {
-            alert('File size must be less than 5MB');
-            input.value = '';
-            return;
-        }
-        
-        // Validate file type
-        const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-        if (!allowedTypes.includes(file.type)) {
-            alert('Only JPG, PNG, GIF, and WebP files are allowed');
-            input.value = '';
-            return;
-        }
-        
-        const reader = new FileReader();
-        
-        reader.onload = function(e) {
-            preview.innerHTML = `<img src="${e.target.result}" style="width: 100%; height: 100%; object-fit: cover;" alt="Preview">`;
-        };
-        
-        reader.readAsDataURL(file);
-    }
-}
-
-function previewBusinessReplyImage(input, reviewId) {
-    const previewDiv = document.getElementById('businessReplyImagePreview' + reviewId);
-    
-    if (!previewDiv) {
-        console.error('Preview div not found for review ID:', reviewId);
-        return;
-    }
-    
-    // Clear previous preview
-    previewDiv.innerHTML = '';
     
     if (input.files && input.files[0]) {
         const file = input.files[0];
@@ -1373,69 +1384,68 @@ function previewBusinessReplyImage(input, reviewId) {
             return;
         }
         
-        // Create preview
         const reader = new FileReader();
         
         reader.onload = function(e) {
-            previewDiv.innerHTML = `
-                <div style="position: relative; display: inline-block;">
-                    <img src="${e.target.result}" 
-                         style="max-width: 200px; max-height: 200px; border-radius: 8px; border: 2px solid #ddd;" 
-                         alt="Preview">
-                    <button type="button" 
-                            onclick="removeBusinessReplyImage(${reviewId})" 
-                            style="position: absolute; top: -8px; right: -8px; background: #dc3545; color: white; border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; font-size: 16px; line-height: 1;"
-                            title="Remove image">
-                        ×
-                    </button>
-                </div>
-            `;
+            preview.innerHTML = `<img src="${e.target.result}" 
+                                      style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" 
+                                      alt="Preview">`;
         };
         
         reader.readAsDataURL(file);
     }
 }
-// Remove business reply image preview
-function removeBusinessReplyImage(reviewId) {
-    const input = document.getElementById('businessReplyImage' + reviewId);
-    const previewDiv = document.getElementById('businessReplyImagePreview' + reviewId);
-    
-    if (input) input.value = '';
-    if (previewDiv) previewDiv.innerHTML = '';
-}
 
-// Update the editStaff function to properly handle base64 encoding
+// FIXED: Updated editStaff function to use employ_img_data
 function editStaff(member) {
+    console.log('Editing staff:', member);
+    
+    // Set form values
     document.getElementById('edit_employ_id').value = member.employ_id;
-    document.getElementById('edit_employ_fname').value = member.employ_fname;
-    document.getElementById('edit_employ_lname').value = member.employ_lname;
+    document.getElementById('edit_employ_fname').value = member.employ_fname || '';
+    document.getElementById('edit_employ_lname').value = member.employ_lname || '';
     document.getElementById('edit_specialization').value = member.specialization || '';
     document.getElementById('edit_employ_bio').value = member.employ_bio || '';
     document.getElementById('edit_employ_status').value = member.employ_status || 'available';
     
-    // Display current photo - improved handling
+    // Display current photo - FIXED to use employ_img_data
     const preview = document.getElementById('previewEdit');
-    if (member.employ_img && member.employ_img.trim() !== '') {
-        // Check if already base64 encoded or needs encoding
-        const imgData = member.employ_img.startsWith('data:image') 
-            ? member.employ_img 
-            : `data:image/jpeg;base64,${member.employ_img}`;
-        preview.innerHTML = `<img src="${imgData}" style="width: 100%; height: 100%; object-fit: cover;" alt="Staff photo" onerror="this.parentElement.innerHTML='<i class=\"bi bi-person-fill text-secondary\" style=\"font-size: 2.5rem;\"></i>'">`;
+    if (member.employ_img_data && member.employ_img_data.trim() !== '') {
+        // employ_img_data is the full data URL (e.g., data:image/jpeg;base64,...)
+        preview.innerHTML = `<img src="${member.employ_img_data}" 
+                                  style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" 
+                                  alt="Staff photo" 
+                                  onerror="this.parentElement.innerHTML='<i class=&quot;bi bi-person-fill text-secondary&quot; style=&quot;font-size: 2.5rem;&quot;></i>'">`;
     } else {
         preview.innerHTML = '<i class="bi bi-person-fill text-secondary" style="font-size: 2.5rem;"></i>';
     }
     
-    // Reset file input
-    document.getElementById('edit_employ_img').value = '';
+    // IMPORTANT: Reset file input BEFORE showing modal
+    const fileInput = document.getElementById('edit_employ_img');
+    if (fileInput) {
+        fileInput.value = '';  // Clear the file input
+    }
     
     // Handle skills multi-select
     const skillsSelect = document.getElementById('edit_skills');
-    const skills = (member.skills || '').split(',').map(s => s.trim());
-    for (let option of skillsSelect.options) {
-        option.selected = skills.includes(option.value);
+    if (skillsSelect) {
+        const skills = (member.skills || '').split(',').map(s => s.trim()).filter(s => s);
+        
+        // Deselect all options first
+        for (let option of skillsSelect.options) {
+            option.selected = false;
+        }
+        
+        // Select matching skills
+        for (let option of skillsSelect.options) {
+            if (skills.includes(option.value)) {
+                option.selected = true;
+            }
+        }
     }
     
-    var editModal = new bootstrap.Modal(document.getElementById('editStaffModal'));
+    // Show modal
+    const editModal = new bootstrap.Modal(document.getElementById('editStaffModal'));
     editModal.show();
 }
 
@@ -1448,7 +1458,25 @@ function hideReplyForm(reviewId) {
     document.getElementById('replyForm' + reviewId).style.display = 'none';
 }
 
-// Initialize Chart
+// Preview business reply image
+function previewBusinessReplyImage(input, reviewId) {
+    const previewDiv = document.getElementById('businessReplyImagePreview' + reviewId);
+    
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        
+        reader.onload = function(e) {
+            previewDiv.innerHTML = `<img src="${e.target.result}" 
+                                         style="width: 80px; height: 80px; object-fit: cover; border-radius: 5px; border: 1px solid #ddd; cursor: pointer;" 
+                                         alt="Reply preview"
+                                         onclick="removeBusinessReplyImage(${reviewId})">
+                                    <small class="d-block text-muted mt-1">Click to remove</small>`;
+        };
+        
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
 // Initialize Chart with better loading handling
 const ctx = document.getElementById('bookingsChart');
 let bookingsChart = null;
@@ -1537,7 +1565,7 @@ document.getElementById('monthSelect').addEventListener('change', function() {
     window.location.href = 'business-dashboard.php?month=' + selectedMonth + '#analytics';
 });
 
-// Handle multi-select for skills (convert to comma-separated string)
+// Handle multi-select for skills
 document.addEventListener('DOMContentLoaded', function() {
     // Handle skills multi-select for Add Staff form
     const addSkillsSelect = document.getElementById('skills');
@@ -1546,14 +1574,11 @@ document.addEventListener('DOMContentLoaded', function() {
     if (addStaffForm) {
         addStaffForm.addEventListener('submit', function(e) {
             if (addSkillsSelect) {
-                // Get all selected options
                 const selectedOptions = Array.from(addSkillsSelect.selectedOptions);
                 const selectedValues = selectedOptions.map(option => option.value);
                 
-                // Remove the multi-select from form submission
                 addSkillsSelect.name = '';
                 
-                // Add hidden inputs for each selected skill
                 selectedValues.forEach(value => {
                     const hiddenInput = document.createElement('input');
                     hiddenInput.type = 'hidden';
@@ -1572,14 +1597,11 @@ document.addEventListener('DOMContentLoaded', function() {
     if (editStaffForm) {
         editStaffForm.addEventListener('submit', function(e) {
             if (editSkillsSelect) {
-                // Get all selected options
                 const selectedOptions = Array.from(editSkillsSelect.selectedOptions);
                 const selectedValues = selectedOptions.map(option => option.value);
                 
-                // Remove the multi-select from form submission
                 editSkillsSelect.name = '';
                 
-                // Add hidden inputs for each selected skill
                 selectedValues.forEach(value => {
                     const hiddenInput = document.createElement('input');
                     hiddenInput.type = 'hidden';

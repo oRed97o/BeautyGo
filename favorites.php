@@ -64,6 +64,89 @@ include 'includes/header.php';
         font-size: 2rem;
     }
     
+    /* Business card styling */
+    .favorite-business-card {
+        transition: all 0.3s ease;
+        border: 1px solid #e0e0e0;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    
+    .favorite-business-card:hover {
+        box-shadow: 0 8px 16px rgba(196, 30, 58, 0.15);
+        transform: translateY(-4px);
+    }
+    
+    .business-image {
+        height: 200px;
+        object-fit: cover;
+        background: linear-gradient(135deg, #f5f5f5 0%, #e0e0e0 100%);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    /* Business hours styling */
+    .business-hours-info {
+        background-color: #f8f9fa;
+        padding: 12px;
+        border-radius: 6px;
+        margin: 12px 0;
+        border-left: 3px solid var(--color-burgundy);
+    }
+    
+    .hours-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 6px 0;
+        font-size: 0.85rem;
+    }
+    
+    .hours-time {
+        color: var(--color-burgundy);
+        font-weight: 600;
+    }
+    
+    .business-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 0.8rem;
+        padding: 4px 8px;
+        border-radius: 4px;
+        margin-top: 8px;
+    }
+    
+    .business-status.open {
+        background-color: #d4edda;
+        color: #155724;
+    }
+    
+    .business-status.closed {
+        background-color: #f8d7da;
+        color: #721c24;
+    }
+    
+    .status-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        display: inline-block;
+    }
+    
+    .status-dot.open {
+        background-color: #28a745;
+        animation: pulse 2s infinite;
+    }
+    
+    .status-dot.closed {
+        background-color: #dc3545;
+    }
+    
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.6; }
+    }
+    
     /* Responsive adjustments */
     @media (max-width: 576px) {
         .back-button {
@@ -97,6 +180,14 @@ include 'includes/header.php';
             padding-left: 0.25rem;
             padding-right: 0.25rem;
         }
+        
+        .business-image {
+            height: 150px;
+        }
+        
+        .hours-row {
+            font-size: 0.75rem;
+        }
     }
     
     @media (max-width: 768px) {
@@ -125,7 +216,7 @@ include 'includes/header.php';
 
             <?php if (empty($favorites)): ?>
                 <div class="text-center py-5">
-                    <i class="bi bi-heart" style="font-size: 4rem; color: var(--brand-burgundy);"></i>
+                    <i class="bi bi-heart" style="font-size: 4rem; color: var(--color-burgundy);"></i>
                     <h4 class="mt-3">No favorites yet</h4>
                     <p class="text-muted">Start adding your favorite beauty businesses!</p>
                     <a href="index.php" class="btn btn-primary mt-3">
@@ -135,60 +226,119 @@ include 'includes/header.php';
             <?php else: ?>
                 <div class="row">
                     <?php foreach ($favorites as $business): ?>
-                <?php 
-                $album = getBusinessAlbum($business['business_id']);
-                $businessImage = null;
-                
-                if ($album && !empty($album['logo'])) {
-                    $businessImage = 'data:image/jpeg;base64,' . base64_encode($album['logo']);
-                } else {
-                    $businessImage = 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=600';
-                }
-                
-                $avgRating = calculateAverageRating($business['business_id']);
-                $reviews = getBusinessReviews($business['business_id']);
-                $reviewCount = count($reviews);
-                ?>
-                
-                <div class="col-md-4 mb-4">
-                    <div class="card h-100">
-                        <img src="<?php echo $businessImage; ?>" 
-                             class="card-img-top" 
-                             alt="<?php echo htmlspecialchars($business['business_name']); ?>"
-                             style="height: 200px; object-fit: cover;">
+                        <?php 
+                        $album = getBusinessAlbum($business['business_id']);
+                        $businessImage = null;
                         
-                        <div class="card-body">
-                            <h5 class="card-title"><?php echo htmlspecialchars($business['business_name']); ?></h5>
-                            <p class="card-text">
-                                <small class="text-muted">
-                                    <?php echo ucfirst($business['business_type']); ?> • <?php echo htmlspecialchars($business['city']); ?>
-                                </small>
-                            </p>
+                        // Use logo if available
+                        if ($album && !empty($album['logo'])) {
+                            $businessImage = 'data:image/jpeg;base64,' . base64_encode($album['logo']);
+                        }
+                        
+                        // If no logo, use default image based on business type
+                        if (!$businessImage) {
+                            $defaultImages = [
+                                'hair salon' => 'resources/salon.png',
+                                'spa & wellness' => 'resources/spa.png',
+                                'barbershop' => 'resources/barbers.png',
+                                'beauty clinic' => 'resources/clinic.png',
+                                'nail salon' => 'resources/nails.png'
+                            ];
+                            $businessType = strtolower($business['business_type'] ?? 'salon');
+                            $businessImage = $defaultImages[$businessType] ?? 'resources/default.png';
+                        }
+                        
+                        $avgRating = calculateAverageRating($business['business_id']);
+                        $reviews = getBusinessReviews($business['business_id']);
+                        $reviewCount = count($reviews);
+                        
+                        // Get business opening and closing hours from businesses table
+                        $conn = getDbConnection();
+                        $stmtBusiness = $conn->prepare("
+                            SELECT opening_hour, closing_hour 
+                            FROM businesses 
+                            WHERE business_id = ?
+                        ");
+                        $stmtBusiness->bind_param("i", $business['business_id']);
+                        $stmtBusiness->execute();
+                        $resultBusiness = $stmtBusiness->get_result();
+                        $businessHours = $resultBusiness->fetch_assoc();
+                        $stmtBusiness->close();
+                        
+                        // Check if business is open now
+                        $isOpen = false;
+                        if ($businessHours) {
+                            // Get current Philippines time
+                            date_default_timezone_set('Asia/Manila');
                             
-                            <div class="mb-2">
-                                <i class="bi bi-star-fill text-warning"></i>
-                                <strong><?php echo number_format($avgRating, 1); ?></strong>
-                                <small class="text-muted">(<?php echo $reviewCount; ?> reviews)</small>
-                            </div>
+                            // Format times as HH:MM for comparison
+                            $openingTime = substr($businessHours['opening_hour'], 0, 5);
+                            $closingTime = substr($businessHours['closing_hour'], 0, 5);
+                            $currentTime = date('H:i');
                             
-                            <small class="text-muted">
-                                <i class="bi bi-clock"></i> 
-                                Favorited <?php echo formatDateTime($business['favorited_at']); ?>
-                            </small>
-                            
-                            <div class="mt-3">
-                                <a href="business-detail.php?id=<?php echo $business['business_id']; ?>" 
-                                   class="btn btn-primary btn-sm">
-                                    <i class="bi bi-eye"></i> View Details
-                                </a>
-                                <button class="btn btn-outline-danger btn-sm" 
-                                        onclick="removeFavorite(<?php echo $business['business_id']; ?>)">
-                                    <i class="bi bi-heart-fill"></i> Remove
-                                </button>
+                            // String comparison for HH:MM format
+                            $isOpen = ($currentTime >= $openingTime && $currentTime < $closingTime);
+                        }
+                        ?>
+                        
+                        <div class="col-md-4 mb-4">
+                            <div class="card h-100 favorite-business-card">
+                                <img src="<?php echo htmlspecialchars($businessImage); ?>" 
+                                     class="card-img-top business-image" 
+                                     alt="<?php echo htmlspecialchars($business['business_name']); ?>"
+                                     onerror="this.src='resources/default.png'">
+                                
+                                <div class="card-body">
+                                    <h5 class="card-title"><?php echo htmlspecialchars($business['business_name']); ?></h5>
+                                    <p class="card-text">
+                                        <small class="text-muted">
+                                            <?php echo ucfirst($business['business_type']); ?> • <?php echo htmlspecialchars($business['city']); ?>
+                                        </small>
+                                    </p>
+                                    
+                                    <!-- Rating -->
+                                    <div class="mb-2">
+                                        <i class="bi bi-star-fill" style="color: var(--color-burgundy);"></i>
+                                        <strong><?php echo number_format($avgRating, 1); ?></strong>
+                                        <small class="text-muted">(<?php echo $reviewCount; ?> reviews)</small>
+                                    </div>
+                                    
+                                    <!-- Business Hours -->
+                                    <?php if ($businessHours): ?>
+                                        <div class="business-hours-info">
+                                            <small><strong>Business Hours</strong></small>
+                                            <div class="hours-row">
+                                                <span class="hours-time">
+                                                    <?php echo date('g:i A', strtotime($businessHours['opening_hour'])); ?> - <?php echo date('g:i A', strtotime($businessHours['closing_hour'])); ?>
+                                                </span>
+                                                <span class="business-status <?php echo $isOpen ? 'open' : 'closed'; ?>">
+                                                    <span class="status-dot <?php echo $isOpen ? 'open' : 'closed'; ?>"></span>
+                                                    <?php echo $isOpen ? 'Open Now' : 'Closed'; ?>
+                                                </span>
+                                            </div>
+                                        </div>
+                                    <?php endif; ?>
+                                    
+                                    <!-- Favorited Date -->
+                                    <small class="text-muted">
+                                        <i class="bi bi-calendar-heart"></i> 
+                                        Favorited <?php echo formatDateTime($business['favorited_at']); ?>
+                                    </small>
+                                    
+                                    <!-- Action Buttons -->
+                                    <div class="mt-3">
+                                        <a href="business-detail.php?id=<?php echo $business['business_id']; ?>" 
+                                           class="btn btn-primary btn-sm w-100 mb-2">
+                                            <i class="bi bi-eye"></i> View Details
+                                        </a>
+                                        <button class="btn btn-outline-danger btn-sm w-100" 
+                                                onclick="removeFavorite(<?php echo $business['business_id']; ?>)">
+                                            <i class="bi bi-heart-fill"></i> Remove from Favorites
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                </div>
                     <?php endforeach; ?>
                 </div>
             <?php endif; ?>

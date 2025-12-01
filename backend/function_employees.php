@@ -1,6 +1,6 @@
 <?php
 // ============================================================
-// EMPLOYEE FUNCTIONS
+// EMPLOYEE FUNCTIONS - FIXED VERSION
 // ============================================================
 
 // Get employees for a business
@@ -34,12 +34,11 @@ function createEmployee($data) {
     $photo = null;
     $hasPhoto = false;
     
+    // Check if image data is provided directly in $data array
     if (isset($data['employ_img']) && !empty($data['employ_img'])) {
         $photo = $data['employ_img'];
         $hasPhoto = true;
-    } elseif (isset($_FILES['employ_img']) && $_FILES['employ_img']['error'] === UPLOAD_ERR_OK) {
-        $photo = file_get_contents($_FILES['employ_img']['tmp_name']);
-        $hasPhoto = true;
+        error_log("Image data provided in array. Size: " . strlen($photo) . " bytes");
     }
 
     $serviceId = $data['service_id'] ?? null;
@@ -50,33 +49,54 @@ function createEmployee($data) {
     $specialization = $data['specialization'] ?? '';
     $skills = $data['skills'] ?? '';
     $status = $data['employ_status'] ?? 'available';
-    $null = null;
-
-    $stmt = $conn->prepare("
-        INSERT INTO employees 
-        (service_id, business_id, employ_fname, employ_lname, employ_bio, specialization, skills, employ_status, employ_img)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ");
-
-    // Fixed: should be 'iisssssss' (9 parameters: int, int, string, string, string, string, string, string, string/blob)
-    $stmt->bind_param("iisssssss",
-        $serviceId,
-        $businessId,
-        $employFname,
-        $employLname,
-        $employBio,
-        $specialization,
-        $skills,
-        $status,
-        $null
-    );
 
     if ($hasPhoto) {
+        // Insert with image - FIXED: Proper blob handling
+        $stmt = $conn->prepare("
+            INSERT INTO employees 
+            (service_id, business_id, employ_fname, employ_lname, employ_bio, specialization, skills, employ_status, employ_img)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ");
+
+        // Bind parameters with 'b' for blob at the end
+        $stmt->bind_param("iissssssb",
+            $serviceId,
+            $businessId,
+            $employFname,
+            $employLname,
+            $employBio,
+            $specialization,
+            $skills,
+            $status,
+            $photo  // This will be a placeholder
+        );
+
+        // CRITICAL FIX: send_long_data parameter index is 8 (0-indexed, 9th parameter)
         $stmt->send_long_data(8, $photo);
+        
+    } else {
+        // Insert without image
+        $stmt = $conn->prepare("
+            INSERT INTO employees 
+            (service_id, business_id, employ_fname, employ_lname, employ_bio, specialization, skills, employ_status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ");
+
+        $stmt->bind_param("iissssss",
+            $serviceId,
+            $businessId,
+            $employFname,
+            $employLname,
+            $employBio,
+            $specialization,
+            $skills,
+            $status
+        );
     }
 
     if ($stmt->execute()) {
         $employeeId = $conn->insert_id;
+        error_log("Employee created successfully with ID: " . $employeeId);
         $stmt->close();
         return $employeeId;
     }
@@ -93,12 +113,11 @@ function updateEmployee($id, $data) {
     $photo = null;
     $hasNewPhoto = false;
     
+    // Check if image data is provided directly in $data array
     if (isset($data['employ_img']) && !empty($data['employ_img'])) {
         $photo = $data['employ_img'];
         $hasNewPhoto = true;
-    } elseif (isset($_FILES['employ_img']) && $_FILES['employ_img']['error'] === UPLOAD_ERR_OK) {
-        $photo = file_get_contents($_FILES['employ_img']['tmp_name']);
-        $hasNewPhoto = true;
+        error_log("Updating employee $id with new image. Size: " . strlen($photo) . " bytes");
     }
 
     $employFname = $data['employ_fname'] ?? '';
@@ -107,9 +126,9 @@ function updateEmployee($id, $data) {
     $specialization = $data['specialization'] ?? '';
     $skills = $data['skills'] ?? '';
     $status = $data['employ_status'] ?? 'available';
-    $null = null;
 
     if ($hasNewPhoto) {
+        // Update with new image - FIXED: Proper blob handling
         $stmt = $conn->prepare("
             UPDATE employees 
             SET employ_fname = ?, employ_lname = ?, employ_bio = ?, 
@@ -117,20 +136,23 @@ function updateEmployee($id, $data) {
             WHERE employ_id = ?
         ");
         
-        // Fixed: should be 'sssssssi' (8 parameters)
-        $stmt->bind_param("sssssssi",
+        // Bind parameters with 'b' for blob
+        $stmt->bind_param("ssssssbi",
             $employFname,
             $employLname,
             $employBio,
             $specialization,
             $skills,
             $status,
-            $null,
+            $photo,  // This will be a placeholder
             $id
         );
         
+        // CRITICAL FIX: send_long_data parameter index is 6 (0-indexed, 7th parameter)
         $stmt->send_long_data(6, $photo);
+        
     } else {
+        // Update without changing image
         $stmt = $conn->prepare("
             UPDATE employees 
             SET employ_fname = ?, employ_lname = ?, employ_bio = ?, 
@@ -150,6 +172,13 @@ function updateEmployee($id, $data) {
     }
 
     $success = $stmt->execute();
+    
+    if ($success) {
+        error_log("Employee $id updated successfully");
+    } else {
+        error_log("Employee update failed: " . $stmt->error);
+    }
+    
     $stmt->close();
     return $success;
 }
@@ -177,6 +206,11 @@ function deleteEmployee($id) {
         
         // Commit transaction
         $conn->commit();
+        
+        if ($success) {
+            error_log("Employee $id deleted successfully");
+        }
+        
         return $success;
         
     } catch (Exception $e) {
