@@ -956,10 +956,7 @@
             if (notificationDropdownElement) {
                 notificationDropdownElement.addEventListener('show.bs.dropdown', function() {
                     console.log('Notification dropdown opened');
-                    // Mark all notifications as read via AJAX
-                    fetch('ajax/mark_notifications_read.php')
-                        .then(response => response.json())
-                        .catch(error => console.error('Error marking notifications as read:', error));
+                    // Don't auto-mark as read - only mark when clicking individual notifications
                 });
             }
             
@@ -968,73 +965,8 @@
             if (businessNotificationDropdownElement) {
                 businessNotificationDropdownElement.addEventListener('show.bs.dropdown', function() {
                     console.log('Business notification dropdown opened');
-                    // Mark notifications as read via AJAX
-                    fetch('ajax/mark_notifications_read.php')
-                        .then(response => response.json())
-                        .catch(error => console.error('Error marking notifications as read:', error));
+                    // Don't auto-mark as read - only mark when clicking individual notifications
                 });
             }
-            
-            // Periodically refresh notification counts every 5 seconds
-            setInterval(function() {
-                // Update customer notification count if customer is logged in
-                const notificationBell = document.querySelector('#notificationDropdown');
-                if (notificationBell) {
-                    // Extract customer ID from the page (you may need to adjust this based on your page structure)
-                    const customerId = document.body.dataset.customerId;
-                    if (customerId) {
-                        fetch('ajax/get_notification_count.php?customer_id=' + customerId)
-                            .then(response => response.json())
-                            .then(data => {
-                                if (data.success && data.unreadCount > 0) {
-                                    let badge = notificationBell.querySelector('.notification-badge');
-                                    if (!badge) {
-                                        // Create badge if it doesn't exist
-                                        badge = document.createElement('span');
-                                        badge.className = 'notification-badge';
-                                        notificationBell.appendChild(badge);
-                                    }
-                                    badge.textContent = data.unreadCount;
-                                } else if (data.success && data.unreadCount === 0) {
-                                    // Remove badge if no unread notifications
-                                    const badge = notificationBell.querySelector('.notification-badge');
-                                    if (badge) {
-                                        badge.parentElement.removeChild(badge);
-                                    }
-                                }
-                            })
-                            .catch(error => console.error('Error fetching notification count:', error));
-                    }
-                }
-                
-                // Update business notification count if business is logged in
-                const businessNotificationBell = document.querySelector('#businessNotificationDropdown');
-                if (businessNotificationBell) {
-                    const businessId = document.body.dataset.businessId;
-                    if (businessId) {
-                        fetch('ajax/get_business_notification_count.php?business_id=' + businessId)
-                            .then(response => response.json())
-                            .then(data => {
-                                if (data.success && data.unreadCount > 0) {
-                                    let badge = businessNotificationBell.querySelector('.notification-badge');
-                                    if (!badge) {
-                                        // Create badge if it doesn't exist
-                                        badge = document.createElement('span');
-                                        badge.className = 'notification-badge';
-                                        businessNotificationBell.appendChild(badge);
-                                    }
-                                    badge.textContent = data.unreadCount;
-                                } else if (data.success && data.unreadCount === 0) {
-                                    // Remove badge if no unread notifications
-                                    const badge = businessNotificationBell.querySelector('.notification-badge');
-                                    if (badge) {
-                                        badge.parentElement.removeChild(badge);
-                                    }
-                                }
-                            })
-                            .catch(error => console.error('Error fetching business notification count:', error));
-                    }
-                }
-            }, 5000); // Refresh every 5 seconds
         });
     </script>

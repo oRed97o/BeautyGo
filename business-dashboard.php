@@ -18,10 +18,8 @@ if (!isBusinessLoggedIn()) {
 $business = getCurrentBusiness();
 $businessId = $business['business_id'] ?? $business['id'];
 
-// Mark business notifications as read when viewing dashboard
+// Create reminders for appointments due today
 if (isset($business['business_id'])) {
-    markBusinessNotificationsAsRead($business['business_id']);
-    // Create reminders for appointments due today
     createAppointmentDueTodayReminder($business['business_id']);
 }
 
