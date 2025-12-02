@@ -1,333 +1,396 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Style Analyzer - Advanced Facial Analysis</title>
-    
+
     <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+
     <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <!-- Bootstrap Icons CSS -->
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css"
+    />
+
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="style.css">
-</head>
-<body>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
     <!-- Header -->
     <header class="header-gradient py-4">
-        <div class="container position-relative">
-            <a href="../index.php" id="backButton" class="btn-back">
-                <i class="fas fa-arrow-left me-2"></i>Back
-            </a>
-            <h1 class="text-center mb-0">
-                <i class="fas fa-star star-color me-2"></i>
-                Style Analyzer
-                <i class="fas fa-star star-color ms-2"></i>
-            </h1>
-        </div>
+      <div class="container position-relative">
+        <a href="../index.php" id="backButton" class="btn-back">
+          <i class="fas fa-arrow-left me-2"></i>Back
+        </a>
+        <h1 class="text-center mb-0">
+          <i class="bi bi-stars star-color ms-2"></i>
+          Style Analyzer
+          
+        </h1>
+      </div>
     </header>
 
     <!-- Main Content -->
     <main class="container my-5">
-        <!-- Analysis Input Section -->
-        <div id="inputSection" class="row g-4 mb-5">
-            <!-- Camera Capture Card -->
-            <div class="col-lg-6">
-                <div class="card shadow-sm h-100">
-                    <div class="card-header bg-gradient-primary text-white">
-                        <h5 class="mb-0">
-                            <i class="fas fa-camera me-2"></i>Camera Capture
-                        </h5>
-                    </div>
-                    <div class="card-body text-center">
-                        <button id="toggleCameraBtn" class="btn btn-outline-primary btn-lg mb-3">
-                            <i class="fas fa-video me-2"></i>Start Camera
-                        </button>
-                        
-                        <div class="video-container mx-auto">
-                            <video id="video" class="d-none" autoplay playsinline></video>
-                            <canvas id="guideCanvas" class="guide-canvas d-none"></canvas>
-                            <div id="cameraPlaceholder" class="camera-placeholder">
-                                <i class="fas fa-video fa-4x mb-3"></i>
-                                <p class="mb-0">Click "Start Camera" to begin</p>
-                            </div>
-                        </div>
-                        
-                        <canvas id="canvas" class="d-none"></canvas>
-                        
-                        <div id="cameraControls" class="mt-3 d-none">
-                            <div class="form-check form-switch d-inline-block me-3">
-                                <input class="form-check-input" type="checkbox" id="toggleGuides">
-                                <label class="form-check-label" for="toggleGuides">
-                                    Show Guidelines
-                                </label>
-                            </div>
-                            <button id="captureBtn" class="btn btn-primary">
-                                <span class="btn-text">
-                                    <i class="fas fa-camera me-2"></i>Analyze Face
-                                </span>
-                                <span class="btn-loading d-none">
-                                    <span class="spinner-border spinner-border-sm me-2"></span>
-                                    Analyzing...
-                                </span>
-                            </button>
-                        </div>
-                    </div>
-                </div>
+      <!-- Analysis Input Section -->
+      <div id="inputSection" class="row g-4 mb-5">
+        <!-- Camera Capture Card -->
+        <div class="col-lg-6">
+          <div class="card shadow-sm h-100">
+            <div class="card-header bg-gradient-primary text-white">
+              <h5 class="mb-0">
+                <i class="fas fa-camera me-2"></i>Camera Capture
+              </h5>
             </div>
+            <div class="card-body text-center">
+              <button
+                id="toggleCameraBtn"
+                class="btn btn-outline-primary btn-lg mb-3"
+              >
+                <i class="fas fa-video me-2"></i>Start Camera
+              </button>
 
-            <!-- Upload Image Card -->
-            <div class="col-lg-6">
-                <div class="card shadow-sm h-100">
-                    <div class="card-header bg-gradient-success text-white">
-                        <h5 class="mb-0">
-                            <i class="fas fa-upload me-2"></i>Upload Image
-                        </h5>
-                    </div>
-                    <div class="card-body text-center">
-                        <button id="uploadBrowseBtn" class="btn btn-outline-success btn-lg mb-3">
-                            <i class="fas fa-folder-open me-2"></i>Browse Files
-                        </button>
-                        
-                        <div id="uploadArea" class="upload-area mx-auto">
-                            <input type="file" id="uploadInput" accept="image/*" class="d-none">
-                            <div id="uploadPlaceholder" class="upload-placeholder">
-                                <i class="fas fa-cloud-upload-alt fa-4x mb-3 text-muted"></i>
-                                <p class="mb-2"><strong>Drag & Drop</strong></p>
-                                <p class="text-muted mb-0">or click to browse</p>
-                            </div>
-                            <img id="uploadedImage" class="uploaded-preview d-none" alt="Uploaded">
-                        </div>
-                        
-                        <button id="uploadBtn" class="btn btn-success mt-3 d-none">
-                            <span class="btn-text">
-                                <i class="fas fa-search me-2"></i>Analyze Face
-                            </span>
-                            <span class="btn-loading d-none">
-                                <span class="spinner-border spinner-border-sm me-2"></span>
-                                Analyzing...
-                            </span>
-                        </button>
-                    </div>
+              <div class="video-container mx-auto">
+                <video id="video" class="d-none" autoplay playsinline></video>
+                <canvas id="guideCanvas" class="guide-canvas d-none"></canvas>
+                <div id="cameraPlaceholder" class="camera-placeholder">
+                  <i class="fas fa-video fa-4x mb-3"></i>
+                  <p class="mb-0">Click "Start Camera" to begin</p>
                 </div>
+              </div>
+
+              <canvas id="canvas" class="d-none"></canvas>
+
+              <div id="cameraControls" class="mt-3 d-none">
+                <div class="form-check form-switch d-inline-block me-3">
+                  <input
+                    class="form-check-input"
+                    type="checkbox"
+                    id="toggleGuides"
+                  />
+                  <label class="form-check-label" for="toggleGuides">
+                    Show Guidelines
+                  </label>
+                </div>
+                <button id="captureBtn" class="btn btn-primary">
+                  <span class="btn-text">
+                    <i class="fas fa-camera me-2"></i>Analyze Face
+                  </span>
+                  <span class="btn-loading d-none">
+                    <span class="spinner-border spinner-border-sm me-2"></span>
+                    Analyzing...
+                  </span>
+                </button>
+              </div>
             </div>
+          </div>
         </div>
 
-        <!-- Gender Selection (appears during analysis) -->
-        <div id="genderSelection" class="text-center my-5 d-none">
-            <div class="card shadow-sm mx-auto" style="max-width: 500px;">
-                <div class="card-body p-4">
-                    <h4 class="mb-3">
-                        <i class="fas fa-user me-2 text-primary"></i>
-                        Select Your Gender
-                    </h4>
-                    <p class="text-muted mb-4">Choose your gender for personalized recommendations:</p>
-                    <div class="d-grid gap-3">
-                        <button type="button" class="btn btn-lg btn-outline-primary" id="selectMale">
-                            <i class="fas fa-mars me-2"></i>Male
-                        </button>
-                        <button type="button" class="btn btn-lg btn-outline-primary" id="selectFemale">
-                            <i class="fas fa-venus me-2"></i>Female
-                        </button>
-                    </div>
-                </div>
+        <!-- Upload Image Card -->
+        <div class="col-lg-6">
+          <div class="card shadow-sm h-100">
+            <div class="card-header bg-gradient-success text-white">
+              <h5 class="mb-0">
+                <i class="fas fa-upload me-2"></i>Upload Image
+              </h5>
             </div>
+            <div class="card-body text-center">
+              <button
+                id="uploadBrowseBtn"
+                class="btn btn-outline-success btn-lg mb-3"
+              >
+                <i class="fas fa-folder-open me-2"></i>Browse Files
+              </button>
+
+              <div id="uploadArea" class="upload-area mx-auto">
+                <input
+                  type="file"
+                  id="uploadInput"
+                  accept="image/*"
+                  class="d-none"
+                />
+                <div id="uploadPlaceholder" class="upload-placeholder">
+                  <i class="fas fa-cloud-upload-alt fa-4x mb-3 text-muted"></i>
+                  <p class="mb-2"><strong>Drag & Drop</strong></p>
+                  <p class="text-muted mb-0">or click to browse</p>
+                </div>
+                <img
+                  id="uploadedImage"
+                  class="uploaded-preview d-none"
+                  alt="Uploaded"
+                />
+              </div>
+
+              <button id="uploadBtn" class="btn btn-success mt-3 d-none">
+                <span class="btn-text">
+                  <i class="fas fa-search me-2"></i>Analyze Face
+                </span>
+                <span class="btn-loading d-none">
+                  <span class="spinner-border spinner-border-sm me-2"></span>
+                  Analyzing...
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Gender Selection (appears during analysis) -->
+      <div id="genderSelection" class="text-center my-5 d-none">
+        <div class="card shadow-sm mx-auto" style="max-width: 500px">
+          <div class="card-body p-4">
+            <h4 class="mb-3">
+              <i class="fas fa-user me-2 text-primary"></i>
+              Select Your Gender
+            </h4>
+            <p class="text-muted mb-4">
+              Choose your gender for personalized recommendations:
+            </p>
+            <div class="d-grid gap-3">
+              <button
+                type="button"
+                class="btn btn-lg btn-outline-primary"
+                id="selectMale"
+              >
+                <i class="fas fa-mars me-2"></i>Male
+              </button>
+              <button
+                type="button"
+                class="btn btn-lg btn-outline-primary"
+                id="selectFemale"
+              >
+                <i class="fas fa-venus me-2"></i>Female
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Loading Spinner -->
+      <div id="loadingSpinner" class="text-center my-5 d-none">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="mt-3 text-muted">Analyzing your facial features...</p>
+      </div>
+
+      <!-- Analysis Results Section -->
+      <div id="resultsSection" class="d-none">
+        <div class="text-center mb-4">
+          <h2 class="mb-2">Your Facial Analysis Report</h2>
+          <div class="title-underline mx-auto"></div>
+          <div class="mt-3">
+            <button id="reUploadBtn" class="btn btn-primary me-2">
+              <i class="fas fa-redo me-2"></i>Re-upload
+            </button>
+            <button id="takePhotoBtn" class="btn btn-outline-primary">
+              <i class="fas fa-camera me-2"></i>Take Photo
+            </button>
+          </div>
         </div>
 
-        <!-- Loading Spinner -->
-        <div id="loadingSpinner" class="text-center my-5 d-none">
-            <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Loading...</span>
+        <!-- Results Grid -->
+        <div class="row g-4">
+          <!-- Face Shape Card -->
+          <div class="col-lg-6">
+            <div class="card analysis-card h-100 border-primary">
+              <div class="card-header bg-primary-subtle">
+                <h5 class="mb-0">
+                  <i class="fas fa-user-circle me-2 text-primary"></i>Face Shape
+                </h5>
+              </div>
+              <div class="card-body">
+                <div class="result-badge mb-3">
+                  <span id="faceShapeResult" class="prediction-text">Oval</span>
+                </div>
+                <p id="faceShapeDescription" class="text-muted">
+                  The face appears to have balanced proportions with a slightly
+                  rounded jawline and forehead.
+                </p>
+              </div>
             </div>
-            <p class="mt-3 text-muted">Analyzing your facial features...</p>
-        </div>
+          </div>
 
-        <!-- Analysis Results Section -->
-        <div id="resultsSection" class="d-none">
-            <div class="text-center mb-4">
-                <h2 class="mb-2">Your Facial Analysis Report</h2>
-                <div class="title-underline mx-auto"></div>
-                <div class="mt-3">
-                    <button id="reUploadBtn" class="btn btn-primary me-2">
-                        <i class="fas fa-redo me-2"></i>Re-upload
-                    </button>
-                    <button id="takePhotoBtn" class="btn btn-outline-primary">
-                        <i class="fas fa-camera me-2"></i>Take Photo
-                    </button>
+          <!-- Hairstyle Suggestions Card -->
+          <div class="col-lg-6">
+            <div class="card analysis-card h-100 border-danger">
+              <div class="card-header bg-danger-subtle">
+                <h5 class="mb-0">
+                  <i class="fas fa-cut me-2 text-danger"></i>Hairstyle
+                  Suggestions
+                </h5>
+              </div>
+              <div class="card-body">
+                <div class="mb-3">
+                  <h6 class="text-success mb-2">
+                    <i class="fas fa-check-circle me-1"></i>Recommended
+                  </h6>
+                  <ul id="hairstyleRecommended" class="list-unstyled ms-3">
+                    <li>
+                      <i class="fas fa-star text-warning me-2"></i>Textured crop
+                    </li>
+                    <li>
+                      <i class="fas fa-star text-warning me-2"></i>Side part
+                    </li>
+                  </ul>
                 </div>
+                <div>
+                  <h6 class="text-danger mb-2">
+                    <i class="fas fa-times-circle me-1"></i>Avoid
+                  </h6>
+                  <ul id="hairstyleAvoid" class="list-unstyled ms-3">
+                    <li>
+                      <i class="fas fa-times text-danger me-2"></i>Heavy fringe
+                    </li>
+                  </ul>
+                </div>
+              </div>
             </div>
+          </div>
 
-            <!-- Results Grid -->
-            <div class="row g-4">
-                <!-- Face Shape Card -->
-                <div class="col-lg-6">
-                    <div class="card analysis-card h-100 border-primary">
-                        <div class="card-header bg-primary-subtle">
-                            <h5 class="mb-0">
-                                <i class="fas fa-user-circle me-2 text-primary"></i>Face Shape
-                            </h5>
-                        </div>
-                        <div class="card-body">
-                            <div class="result-badge mb-3">
-                                <span id="faceShapeResult" class="prediction-text">Oval</span>
-                            </div>
-                            <p id="faceShapeDescription" class="text-muted">
-                                The face appears to have balanced proportions with a slightly rounded jawline and forehead.
-                            </p>
-                        </div>
-                    </div>
+          <!-- Eyebrows Card -->
+          <div class="col-lg-6">
+            <div class="card analysis-card h-100 border-info">
+              <div class="card-header bg-info-subtle">
+                <h5 class="mb-0">
+                  <i class="fas fa-eye me-2 text-info"></i>Eyebrows
+                </h5>
+              </div>
+              <div class="card-body">
+                <div class="mb-3">
+                  <h6 class="fw-bold">Current</h6>
+                  <p id="eyebrowsCurrent" class="text-muted mb-0">
+                    Natural, straight with moderate thickness
+                  </p>
                 </div>
-
-                <!-- Hairstyle Suggestions Card -->
-                <div class="col-lg-6">
-                    <div class="card analysis-card h-100 border-danger">
-                        <div class="card-header bg-danger-subtle">
-                            <h5 class="mb-0">
-                                <i class="fas fa-cut me-2 text-danger"></i>Hairstyle Suggestions
-                            </h5>
-                        </div>
-                        <div class="card-body">
-                            <div class="mb-3">
-                                <h6 class="text-success mb-2">
-                                    <i class="fas fa-check-circle me-1"></i>Recommended
-                                </h6>
-                                <ul id="hairstyleRecommended" class="list-unstyled ms-3">
-                                    <li><i class="fas fa-star text-warning me-2"></i>Textured crop</li>
-                                    <li><i class="fas fa-star text-warning me-2"></i>Side part</li>
-                                </ul>
-                            </div>
-                            <div>
-                                <h6 class="text-danger mb-2">
-                                    <i class="fas fa-times-circle me-1"></i>Avoid
-                                </h6>
-                                <ul id="hairstyleAvoid" class="list-unstyled ms-3">
-                                    <li><i class="fas fa-times text-danger me-2"></i>Heavy fringe</li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
+                <div>
+                  <h6 class="fw-bold text-primary">Suggestion</h6>
+                  <p id="eyebrowsSuggestion" class="text-muted mb-0">
+                    Maintain the natural shape but consider slight grooming for
+                    a cleaner look.
+                  </p>
                 </div>
-
-                <!-- Eyebrows Card -->
-                <div class="col-lg-6">
-                    <div class="card analysis-card h-100 border-info">
-                        <div class="card-header bg-info-subtle">
-                            <h5 class="mb-0">
-                                <i class="fas fa-eye me-2 text-info"></i>Eyebrows
-                            </h5>
-                        </div>
-                        <div class="card-body">
-                            <div class="mb-3">
-                                <h6 class="fw-bold">Current</h6>
-                                <p id="eyebrowsCurrent" class="text-muted mb-0">
-                                    Natural, straight with moderate thickness
-                                </p>
-                            </div>
-                            <div>
-                                <h6 class="fw-bold text-primary">Suggestion</h6>
-                                <p id="eyebrowsSuggestion" class="text-muted mb-0">
-                                    Maintain the natural shape but consider slight grooming for a cleaner look.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Makeup Card -->
-                <div class="col-lg-6">
-                    <div class="card analysis-card h-100 border-success">
-                        <div class="card-header bg-success-subtle">
-                            <h5 class="mb-0">
-                                <i class="fas fa-palette me-2 text-success"></i>Makeup
-                            </h5>
-                        </div>
-                        <div class="card-body">
-                            <div class="mb-3">
-                                <h6 class="fw-bold text-success">Base</h6>
-                                <p id="makeupBase" class="text-muted mb-0">
-                                    Lightweight matte foundation or BB cream to even out skin tone.
-                                </p>
-                            </div>
-                            <div class="mb-3">
-                                <h6 class="fw-bold text-success">Eyes</h6>
-                                <p id="makeupEyes" class="text-muted mb-0">
-                                    Neutral eyeshadow or light brown shade for subtle definition.
-                                </p>
-                            </div>
-                            <div>
-                                <h6 class="fw-bold text-success">Blush</h6>
-                                <p id="makeupBlush" class="text-muted mb-0">
-                                    Soft peach or rose blush applied lightly to the apples of cheeks.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Facial Proportions Card -->
-                <div class="col-lg-12">
-                    <div class="card analysis-card border-secondary">
-                        <div class="card-header bg-secondary-subtle">
-                            <h5 class="mb-0">
-                                <i class="fas fa-ruler-combined me-2 text-secondary"></i>Facial Proportions
-                            </h5>
-                        </div>
-                        <div class="card-body">
-                            <div class="row">
-                                <div class="col-md-3">
-                                    <h6 class="fw-bold text-secondary">Forehead</h6>
-                                    <p id="proportionsForehead" class="text-muted">Proportionate width, gently rounded hairline.</p>
-                                </div>
-                                <div class="col-md-3">
-                                    <h6 class="fw-bold text-secondary">Eyes</h6>
-                                    <p id="proportionsEyes" class="text-muted">Evenly spaced, balanced with the rest of the face.</p>
-                                </div>
-                                <div class="col-md-3">
-                                    <h6 class="fw-bold text-secondary">Nose</h6>
-                                    <p id="proportionsNose" class="text-muted">Medium width, straight and well-aligned.</p>
-                                </div>
-                                <div class="col-md-3">
-                                    <h6 class="fw-bold text-secondary">Chin</h6>
-                                    <p id="proportionsChin" class="text-muted">Rounded and proportionate to jawline.</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+              </div>
             </div>
-        </div>
+          </div>
 
-        <!-- No Results Message -->
-        <div id="noResult" class="text-center my-5">
-            <i class="fas fa-info-circle fa-3x text-muted mb-3"></i>
-            <p class="text-muted">Capture or upload an image to get your facial analysis</p>
+          <!-- Makeup Card -->
+          <div class="col-lg-6">
+            <div class="card analysis-card h-100 border-success">
+              <div class="card-header bg-success-subtle">
+                <h5 class="mb-0">
+                  <i class="fas fa-palette me-2 text-success"></i>Makeup
+                </h5>
+              </div>
+              <div class="card-body">
+                <div class="mb-3">
+                  <h6 class="fw-bold text-success">Base</h6>
+                  <p id="makeupBase" class="text-muted mb-0">
+                    Lightweight matte foundation or BB cream to even out skin
+                    tone.
+                  </p>
+                </div>
+                <div class="mb-3">
+                  <h6 class="fw-bold text-success">Eyes</h6>
+                  <p id="makeupEyes" class="text-muted mb-0">
+                    Neutral eyeshadow or light brown shade for subtle
+                    definition.
+                  </p>
+                </div>
+                <div>
+                  <h6 class="fw-bold text-success">Blush</h6>
+                  <p id="makeupBlush" class="text-muted mb-0">
+                    Soft peach or rose blush applied lightly to the apples of
+                    cheeks.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Facial Proportions Card -->
+          <div class="col-lg-12">
+            <div class="card analysis-card border-secondary">
+              <div class="card-header bg-secondary-subtle">
+                <h5 class="mb-0">
+                  <i class="fas fa-ruler-combined me-2 text-secondary"></i
+                  >Facial Proportions
+                </h5>
+              </div>
+              <div class="card-body">
+                <div class="row">
+                  <div class="col-md-3">
+                    <h6 class="fw-bold text-secondary">Forehead</h6>
+                    <p id="proportionsForehead" class="text-muted">
+                      Proportionate width, gently rounded hairline.
+                    </p>
+                  </div>
+                  <div class="col-md-3">
+                    <h6 class="fw-bold text-secondary">Eyes</h6>
+                    <p id="proportionsEyes" class="text-muted">
+                      Evenly spaced, balanced with the rest of the face.
+                    </p>
+                  </div>
+                  <div class="col-md-3">
+                    <h6 class="fw-bold text-secondary">Nose</h6>
+                    <p id="proportionsNose" class="text-muted">
+                      Medium width, straight and well-aligned.
+                    </p>
+                  </div>
+                  <div class="col-md-3">
+                    <h6 class="fw-bold text-secondary">Chin</h6>
+                    <p id="proportionsChin" class="text-muted">
+                      Rounded and proportionate to jawline.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
+      </div>
+
+      <!-- No Results Message -->
+      <div id="noResult" class="text-center my-5">
+        <i class="fas fa-info-circle fa-3x text-muted mb-3"></i>
+        <p class="text-muted">
+          Capture or upload an image to get your facial analysis
+        </p>
+      </div>
     </main>
 
     <!-- Footer -->
     <footer class="footer-custom py-3 mt-5">
-        <div class="container text-center">
-            <p class="mb-0">&copy; 2024 FaceShapeAI. All rights reserved.</p>
-        </div>
+      <div class="container text-center">
+        <p class="mb-0">&copy; 2025 StyleAnalyzerAI. All rights reserved.</p>
+      </div>
     </footer>
 
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    
+
     <!-- Face-API.js - MUST LOAD BEFORE script.js -->
     <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
-    
+
     <!-- MediaPipe Face Mesh -->
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
-    
+
     <!-- Recommendations Data -->
     <script src="recommendations.js"></script>
-    
+
     <!-- Main Script -->
     <script src="script.js"></script>
-</body>
+  </body>
 </html>

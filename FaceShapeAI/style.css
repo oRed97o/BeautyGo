@@ -599,3 +599,30 @@ footer {
 .form-check-input {
   transition: all 0.3s ease;
 }
+
+/* =====================================================
+   MAIN CONTENT
+   ===================================================== */
+main {
+  flex: 1 0 auto;
+}
+
+footer {
+  margin-top: auto;
+  flex-shrink: 0;
+}
+
+/* =====================================================
+   GENDER SELECTION & LOADING
+   ===================================================== */
+#genderSelection,
+#loadingSpinner {
+  min-height: 400px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#genderSelection .card {
+  margin: auto;
+}
