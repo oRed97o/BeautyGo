@@ -1,3 +1,6 @@
+// =====================================================
+// DOM ELEMENTS
+// =====================================================
 const video = document.getElementById('video');
 const canvas = document.getElementById('canvas');
 const guideCanvas = document.getElementById('guideCanvas');
@@ -17,18 +20,103 @@ const uploadedImage = document.getElementById('uploadedImage');
 const uploadArea = document.getElementById('uploadArea');
 const uploadPlaceholder = document.getElementById('uploadPlaceholder');
 
-const predictionResult = document.getElementById('predictionResult');
-const predictionContainer = document.getElementById('predictionContainer');
+const inputSection = document.getElementById('inputSection');
+const resultsSection = document.getElementById('resultsSection');
 const noResult = document.getElementById('noResult');
 const loadingSpinner = document.getElementById('loadingSpinner');
+const reUploadBtn = document.getElementById('reUploadBtn');
+const takePhotoBtn = document.getElementById('takePhotoBtn');
 
+// =====================================================
+// DEBUG CONSOLE
+// =====================================================
+const DEBUG_MODE = true; // Set to false to disable debug messages
+
+function debugLog(message, data = null, type = 'info') {
+    if (!DEBUG_MODE) return;
+    
+    const timestamp = new Date().toLocaleTimeString();
+    const colors = {
+        info: '#2196F3',
+        success: '#4CAF50',
+        warning: '#FF9800',
+        error: '#F44336'
+    };
+    
+    console.log(
+        `%c[${timestamp}] ${message}`,
+        `color: ${colors[type]}; font-weight: bold;`,
+        data || ''
+    );
+    
+    // Also show in UI
+    updateLoadingMessage(message);
+}
+
+function updateLoadingMessage(message) {
+    const loadingText = document.querySelector('#loadingSpinner p');
+    if (loadingText) {
+        loadingText.textContent = message;
+    }
+}
+
+// =====================================================
+// STATE VARIABLES
+// =====================================================
 let stream = null;
 let isCameraActive = false;
 let faceMesh = null;
 let isGuidelinesEnabled = false;
 let camera = null;
+let faceApiModelsLoaded = true; // Not using Face-API anymore
 
-// Simplified landmark indices - only what we need!
+// Analysis results storage
+let analysisResults = {
+    gender: null,
+    faceShape: null,
+};
+
+// =====================================================
+// SIMPLE GENDER SELECTION (NO FACE-API NEEDED)
+// =====================================================
+function showGenderSelection() {
+    return new Promise((resolve) => {
+        debugLog('👤 Showing gender selection...', null, 'info');
+        
+        const genderDiv = document.getElementById('genderSelection');
+        const maleBtn = document.getElementById('selectMale');
+        const femaleBtn = document.getElementById('selectFemale');
+        
+        // Hide loading, show gender selection
+        loadingSpinner.classList.add('d-none');
+        inputSection.classList.add('d-none');
+        genderDiv.classList.remove('d-none');
+        
+        maleBtn.onclick = () => {
+            genderDiv.classList.add('d-none');
+            loadingSpinner.classList.remove('d-none');
+            debugLog('✅ User selected: MALE', null, 'success');
+            resolve('male');
+        };
+        
+        femaleBtn.onclick = () => {
+            genderDiv.classList.add('d-none');
+            loadingSpinner.classList.remove('d-none');
+            debugLog('✅ User selected: FEMALE', null, 'success');
+            resolve('female');
+        };
+    });
+}
+
+async function detectGender(imageElement) {
+    debugLog('👤 Asking user for gender selection...', null, 'info');
+    updateLoadingMessage('Please select your gender...');
+    return await showGenderSelection();
+}
+
+// =====================================================
+// MEDIAPIPE FACE MESH FOR GUIDELINES
+// =====================================================
 const LANDMARK_INDICES = {
     JAW_LEFT: 172,
     JAW_RIGHT: 397,
@@ -40,13 +128,14 @@ const LANDMARK_INDICES = {
     FOREHEAD_RIGHT: 284
 };
 
-// Initialize MediaPipe Face Mesh
 function initFaceMesh() {
     if (typeof FaceMesh === 'undefined') {
-        console.error('MediaPipe Face Mesh not loaded');
+        debugLog('❌ MediaPipe Face Mesh not loaded', null, 'error');
         return;
     }
 
+    debugLog('🎭 Initializing MediaPipe Face Mesh...', null, 'info');
+    
     faceMesh = new FaceMesh({
         locateFile: (file) => {
             return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`;
@@ -61,102 +150,28 @@ function initFaceMesh() {
     });
 
     faceMesh.onResults(onFaceMeshResults);
+    debugLog('✅ MediaPipe Face Mesh initialized', null, 'success');
 }
 
-// Handle Face Mesh results - MUCH SIMPLER!
 function onFaceMeshResults(results) {
     if (!isGuidelinesEnabled || !isCameraActive) {
         return;
     }
 
-    // Clear previous frame
     guideCtx.clearRect(0, 0, guideCanvas.width, guideCanvas.height);
 
     if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
         const landmarks = results.multiFaceLandmarks[0];
         
-        // Draw subtle face mesh using MediaPipe's built-in connections
         if (typeof FACEMESH_TESSELATION !== 'undefined') {
             drawConnectors(guideCtx, landmarks, FACEMESH_TESSELATION, {
                 color: '#f5deb350', 
                 lineWidth: 0.5
             });
         }
-        
-        // Draw professional measurement lines (NO MIRRORING - CSS handles it)
-     //   drawMeasurementLines(guideCtx, landmarks);
     }
 }
 
-// Simplified measurement line drawing
-function drawMeasurementLines(ctx, landmarks) {
-    const points = {
-        jawLeft: landmarks[LANDMARK_INDICES.JAW_LEFT],
-        jawRight: landmarks[LANDMARK_INDICES.JAW_RIGHT],
-        chin: landmarks[LANDMARK_INDICES.CHIN],
-        foreheadCenter: landmarks[LANDMARK_INDICES.FOREHEAD_CENTER],
-        cheekLeft: landmarks[LANDMARK_INDICES.CHEEK_LEFT],
-        cheekRight: landmarks[LANDMARK_INDICES.CHEEK_RIGHT],
-        foreheadLeft: landmarks[LANDMARK_INDICES.FOREHEAD_LEFT],
-        foreheadRight: landmarks[LANDMARK_INDICES.FOREHEAD_RIGHT]
-    };
-    
-    const w = guideCanvas.width;
-    const h = guideCanvas.height;
-    
-    // Draw measurement lines with your color scheme
-    ctx.setLineDash([5, 5]);
-    
-    // 1. Face height line (forehead to chin) - Pinkish red
-    drawLine(ctx, points.foreheadCenter, points.chin, '#ff6b8a', 2.5, w, h);
-    
-    // 2. Jaw width line - Rose pink
-    drawLine(ctx, points.jawLeft, points.jawRight, '#ff849e', 2.5, w, h);
-    
-    // 3. Cheek width line - Light grey
-    drawLine(ctx, points.cheekLeft, points.cheekRight, '#e8e8e8', 2, w, h);
-    
-    // 4. Forehead width line - White
-    drawLine(ctx, points.foreheadLeft, points.foreheadRight, '#ffffff', 2, w, h);
-    
-    ctx.setLineDash([]);
-    
-    // Draw key measurement points
-    const keyPoints = [
-        { point: points.foreheadCenter, color: '#ff6b8a' },
-        { point: points.chin, color: '#ff6b8a' },
-        { point: points.jawLeft, color: '#ff849e' },
-        { point: points.jawRight, color: '#ff849e' },
-        { point: points.cheekLeft, color: '#e8e8e8' },
-        { point: points.cheekRight, color: '#e8e8e8' },
-        { point: points.foreheadLeft, color: '#ffffff' },
-        { point: points.foreheadRight, color: '#ffffff' }
-    ];
-    
-    keyPoints.forEach(({ point, color }) => {
-        ctx.fillStyle = color;
-        ctx.beginPath();
-        ctx.arc(point.x * w, point.y * h, 4, 0, 2 * Math.PI);
-        ctx.fill();
-        
-        // Add border for visibility
-        ctx.strokeStyle = '#2a2a2a';
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
-    });
-}
-
-// Helper function to draw a line
-function drawLine(ctx, p1, p2, color, width, w, h) {
-    ctx.strokeStyle = color;
-    ctx.lineWidth = width;
-    ctx.beginPath();
-    ctx.moveTo(p1.x * w, p1.y * h);
-    ctx.lineTo(p2.x * w, p2.y * h);
-    ctx.stroke();
-}
-
-// Simplified connector drawing using MediaPipe's format
 function drawConnectors(ctx, landmarks, connections, style) {
     ctx.strokeStyle = style.color;
     ctx.lineWidth = style.lineWidth;
@@ -174,7 +189,9 @@ function drawConnectors(ctx, landmarks, connections, style) {
     }
 }
 
-// Toggle Camera On/Off
+// =====================================================
+// CAMERA CONTROLS
+// =====================================================
 toggleCameraBtn.addEventListener('click', async () => {
     if (!isCameraActive) {
         await startCamera();
@@ -183,10 +200,10 @@ toggleCameraBtn.addEventListener('click', async () => {
     }
 });
 
-// Start Camera
 async function startCamera() {
     try {
-        // Initialize Face Mesh if not already done
+        debugLog('📷 Starting camera...', null, 'info');
+        
         if (!faceMesh) {
             initFaceMesh();
         }
@@ -202,7 +219,6 @@ async function startCamera() {
         video.srcObject = stream;
         isCameraActive = true;
         
-        // Update UI
         video.classList.remove('d-none');
         cameraPlaceholder.classList.add('d-none');
         cameraControls.classList.remove('d-none');
@@ -212,7 +228,6 @@ async function startCamera() {
         
         await video.play();
         
-        // Set canvas sizes after video loads
         video.addEventListener('loadedmetadata', () => {
             const width = video.videoWidth;
             const height = video.videoHeight;
@@ -224,7 +239,6 @@ async function startCamera() {
             guideCanvas.height = container.offsetHeight;
         });
         
-        // Start MediaPipe camera processing
         if (typeof Camera !== 'undefined') {
             camera = new Camera(video, {
                 onFrame: async () => {
@@ -238,14 +252,18 @@ async function startCamera() {
             camera.start();
         }
         
+        debugLog('✅ Camera started successfully', null, 'success');
+        
     } catch (err) {
-        console.error("Error accessing webcam:", err);
+        debugLog('❌ Error accessing camera', err, 'error');
+        console.error("Camera error:", err);
         alert("Cannot access camera. Please check permissions.");
     }
 }
 
-// Stop Camera
 function stopCamera() {
+    debugLog('🛑 Stopping camera...', null, 'info');
+    
     if (stream) {
         stream.getTracks().forEach(track => track.stop());
         stream = null;
@@ -259,7 +277,6 @@ function stopCamera() {
     isCameraActive = false;
     video.srcObject = null;
     
-    // Update UI
     video.classList.add('d-none');
     guideCanvas.classList.add('d-none');
     cameraPlaceholder.classList.remove('d-none');
@@ -270,46 +287,53 @@ function stopCamera() {
     toggleGuides.checked = false;
     isGuidelinesEnabled = false;
     
-    // Clear canvas
     guideCtx.clearRect(0, 0, guideCanvas.width, guideCanvas.height);
+    debugLog('✅ Camera stopped', null, 'success');
 }
 
-// Toggle face guidelines
 toggleGuides.addEventListener('change', () => {
     isGuidelinesEnabled = toggleGuides.checked;
     
     if (isGuidelinesEnabled && isCameraActive) {
         guideCanvas.classList.remove('d-none');
+        debugLog('👁️ Face guidelines enabled', null, 'info');
     } else {
         guideCanvas.classList.add('d-none');
         guideCtx.clearRect(0, 0, guideCanvas.width, guideCanvas.height);
+        debugLog('👁️ Face guidelines disabled', null, 'info');
     }
 });
 
-// Capture snapshot from camera
-captureBtn.addEventListener('click', () => {
+// =====================================================
+// IMAGE CAPTURE FROM CAMERA
+// =====================================================
+captureBtn.addEventListener('click', async () => {
     if (!isCameraActive) {
         alert("Please start the camera first.");
         return;
     }
     
     if (video.readyState === video.HAVE_ENOUGH_DATA) {
+        debugLog('📸 Capturing image from camera...', null, 'info');
         setButtonLoading(captureBtn, true);
         
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
         const dataURL = canvas.toDataURL('image/png');
-        sendImageToServer(dataURL, captureBtn);
+        
+        debugLog('✅ Image captured, starting analysis...', null, 'success');
+        await performDualAnalysis(dataURL, captureBtn);
     } else {
         alert("Camera not ready. Please wait a moment.");
     }
 });
 
-// Browse button click
+// =====================================================
+// IMAGE UPLOAD HANDLING
+// =====================================================
 uploadBrowseBtn.addEventListener('click', () => {
     uploadInput.click();
 });
 
-// Upload area click
 uploadArea.addEventListener('click', (e) => {
     if (e.target !== uploadArea && e.target !== uploadPlaceholder && 
         !uploadPlaceholder.contains(e.target)) {
@@ -318,7 +342,6 @@ uploadArea.addEventListener('click', (e) => {
     uploadInput.click();
 });
 
-// Drag and drop functionality
 uploadArea.addEventListener('dragover', (e) => {
     e.preventDefault();
     uploadArea.classList.add('dragover');
@@ -338,7 +361,6 @@ uploadArea.addEventListener('drop', (e) => {
     }
 });
 
-// File input change
 uploadInput.addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -346,27 +368,212 @@ uploadInput.addEventListener('change', (e) => {
     }
 });
 
-// Handle file upload
 function handleFileUpload(file) {
+    debugLog('📁 File uploaded', { name: file.name, size: `${(file.size/1024).toFixed(2)} KB` }, 'info');
+    
     const reader = new FileReader();
     reader.onload = function(e) {
         uploadedImage.src = e.target.result;
         uploadedImage.classList.remove('d-none');
         uploadPlaceholder.classList.add('d-none');
         uploadBtn.classList.remove('d-none');
+        debugLog('✅ Image loaded and ready for analysis', null, 'success');
     };
     reader.readAsDataURL(file);
 }
 
-// Analyze uploaded image
-uploadBtn.addEventListener('click', () => {
+uploadBtn.addEventListener('click', async () => {
     if (uploadedImage.src) {
+        debugLog('🖼️ Starting analysis of uploaded image...', null, 'info');
         setButtonLoading(uploadBtn, true);
-        sendImageToServer(uploadedImage.src, uploadBtn);
+        await performDualAnalysis(uploadedImage.src, uploadBtn);
     }
 });
 
-// Set button loading state
+// =====================================================
+// DUAL ANALYSIS: GENDER + FACE SHAPE
+// =====================================================
+async function performDualAnalysis(imageDataURL, button) {
+    showLoading();
+    debugLog('🔬 === STARTING DUAL ANALYSIS ===', null, 'info');
+    
+    // Reset results
+    analysisResults = {
+        gender: null,
+        faceShape: null,
+    };
+    
+    try {
+        // ============= STEP 1: GENDER DETECTION =============
+        debugLog('📍 STEP 1/2: Gender Detection', null, 'info');
+        updateLoadingMessage('🔍 Detecting gender...');
+        
+        const tempImg = new Image();
+        tempImg.src = imageDataURL;
+        
+        debugLog('⏳ Waiting for image to load...', null, 'info');
+        await new Promise((resolve, reject) => {
+            tempImg.onload = () => {
+                debugLog('✅ Image loaded successfully', null, 'success');
+                resolve();
+            };
+            tempImg.onerror = () => {
+                debugLog('❌ Image failed to load', null, 'error');
+                reject();
+            };
+        });
+        
+        const detectedGender = await detectGender(tempImg);
+        
+        if (!detectedGender) {
+            throw new Error('No face detected in the image. Please use a clear photo with your face visible.');
+        }
+        
+        analysisResults.gender = detectedGender;
+        debugLog(`✅ STEP 1 COMPLETE: Gender = ${detectedGender.toUpperCase()}`, null, 'success');
+        
+        // ============= STEP 2: FACE SHAPE DETECTION =============
+        debugLog('📍 STEP 2/2: Face Shape Detection', null, 'info');
+        updateLoadingMessage('🎭 Detecting face shape...');
+        
+        debugLog('📤 Sending image to server...', null, 'info');
+        const startTime = Date.now();
+        
+        const response = await fetch('capture.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image: imageDataURL })
+        });
+        
+        const responseTime = Date.now() - startTime;
+        debugLog(`📥 Server responded in ${responseTime}ms`, null, 'info');
+        
+        if (!response.ok) {
+            debugLog(`❌ Server error: ${response.status} ${response.statusText}`, null, 'error');
+            throw new Error(`Server error: ${response.status}`);
+        }
+        
+        debugLog('📋 Parsing response...', null, 'info');
+        const data = await response.json();
+        
+        debugLog('📊 Server response:', data, 'info');
+        
+        if (!data.success) {
+            debugLog('❌ Analysis failed', data, 'error');
+            throw new Error(data.error || 'Face shape could not be determined');
+        }
+        
+        if (!data.prediction || data.prediction === "No face detected") {
+            debugLog('❌ No face detected by Python model', null, 'error');
+            throw new Error('Face shape could not be determined. Please try a different photo.');
+        }
+        
+        analysisResults.faceShape = data.prediction.trim().toLowerCase();
+        
+        debugLog(`✅ STEP 2 COMPLETE: Face Shape = ${analysisResults.faceShape.toUpperCase()}`, null, 'success');
+        
+        // ============= STEP 3: DISPLAY RESULTS =============
+        debugLog('📍 STEP 3/3: Displaying Results', null, 'info');
+        updateLoadingMessage('✨ Preparing your analysis...');
+        
+        debugLog('🎨 Fetching recommendations...', null, 'info');
+        displayAnalysisResults();
+        
+        debugLog('🎉 === ANALYSIS COMPLETE ===', {
+            gender: analysisResults.gender,
+            faceShape: analysisResults.faceShape,
+        }, 'success');
+        
+    } catch (error) {
+        debugLog('❌ === ANALYSIS FAILED ===', error, 'error');
+        console.error('Full error:', error);
+        displayError(error.message || "Error analyzing image. Please try again with a clear face photo.");
+    } finally {
+        hideLoading();
+        setButtonLoading(button, false);
+    }
+}
+
+// =====================================================
+// DISPLAY ANALYSIS RESULTS
+// =====================================================
+function displayAnalysisResults() {
+    const { gender, faceShape } = analysisResults;
+    
+    debugLog('🎨 Displaying results...', { gender, faceShape }, 'info');
+    
+    if (!gender || !faceShape) {
+        debugLog('❌ Incomplete analysis data', { gender, faceShape }, 'error');
+        displayError("Analysis incomplete. Please try again.");
+        return;
+    }
+    
+    // Check if recommendations.js is loaded
+    if (typeof getRecommendations !== 'function') {
+        debugLog('❌ recommendations.js not loaded!', null, 'error');
+        alert('Error: Recommendations database not loaded. Please refresh the page.');
+        return;
+    }
+    
+    // Get recommendations based on gender and face shape
+    debugLog('📚 Getting recommendations...', null, 'info');
+    const recommendations = getRecommendations(gender, faceShape);
+    debugLog('✅ Recommendations loaded', recommendations, 'success');
+    
+    // Update Face Shape Card
+    document.getElementById('faceShapeResult').textContent = 
+        faceShape.charAt(0).toUpperCase() + faceShape.slice(1);
+    document.getElementById('faceShapeDescription').textContent = recommendations.description;
+    
+    // Update Hairstyle Card
+    const recommendedList = document.getElementById('hairstyleRecommended');
+    const avoidList = document.getElementById('hairstyleAvoid');
+    
+    recommendedList.innerHTML = recommendations.hairstyle.recommended
+        .map(style => `<li><i class="fas fa-star text-warning me-2"></i>${style}</li>`)
+        .join('');
+    
+    avoidList.innerHTML = recommendations.hairstyle.avoid
+        .map(style => `<li><i class="fas fa-times text-danger me-2"></i>${style}</li>`)
+        .join('');
+    
+    // Update Eyebrows Card
+    document.getElementById('eyebrowsCurrent').textContent = recommendations.eyebrows.current;
+    document.getElementById('eyebrowsSuggestion').textContent = recommendations.eyebrows.suggestion;
+    
+    // Update Makeup Card
+    if (gender === 'male') {
+        document.getElementById('makeupBase').textContent = recommendations.makeup.base;
+        document.getElementById('makeupEyes').textContent = recommendations.makeup.eyes;
+        document.getElementById('makeupBlush').textContent = recommendations.makeup.blush;
+    } else {
+        document.getElementById('makeupBase').textContent = recommendations.makeup.base;
+        document.getElementById('makeupEyes').textContent = recommendations.makeup.eyes;
+        document.getElementById('makeupBlush').textContent = recommendations.makeup.blush;
+    }
+    
+    // Update Facial Proportions Card
+    document.getElementById('proportionsForehead').textContent = recommendations.proportions.forehead;
+    document.getElementById('proportionsEyes').textContent = recommendations.proportions.eyes;
+    document.getElementById('proportionsNose').textContent = recommendations.proportions.nose;
+    document.getElementById('proportionsChin').textContent = recommendations.proportions.chin;
+    
+    // Show results section
+    inputSection.classList.add('d-none');
+    noResult.classList.add('d-none');
+    resultsSection.classList.remove('d-none');
+    
+    debugLog('✅ Results displayed successfully!', null, 'success');
+    
+    // Scroll to results
+    setTimeout(() => {
+        resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
+}
+
+// =====================================================
+// UI HELPER FUNCTIONS
+// =====================================================
 function setButtonLoading(button, isLoading) {
     const btnText = button.querySelector('.btn-text');
     const btnLoading = button.querySelector('.btn-loading');
@@ -382,81 +589,66 @@ function setButtonLoading(button, isLoading) {
     }
 }
 
-// Send image to server for prediction
-function sendImageToServer(dataURL, button) {
-    showLoading();
-    
-    fetch('capture.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: dataURL })
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error('Network response was not ok');
-        }
-        return response.json();
-    })
-    .then(data => {
-        hideLoading();
-        setButtonLoading(button, false);
-        
-        if (data.prediction && data.prediction !== "No face detected" && data.prediction.trim() !== "") {
-            displayResult(data.prediction);
-        } else {
-            displayError("No face detected in the image. Please try again with a clear face photo.");
-        }
-    })
-    .catch(err => {
-        console.error('Error:', err);
-        hideLoading();
-        setButtonLoading(button, false);
-        displayError("Error analyzing image. Please try again.");
-    });
-}
-
-// Show loading spinner
 function showLoading() {
     noResult.classList.add('d-none');
-    predictionContainer.classList.add('d-none');
+    resultsSection.classList.add('d-none');
     loadingSpinner.classList.remove('d-none');
 }
 
-// Hide loading spinner
 function hideLoading() {
     loadingSpinner.classList.add('d-none');
 }
 
-// Display result
-function displayResult(prediction) {
-    predictionResult.textContent = prediction;
-    predictionContainer.classList.remove('d-none');
-    noResult.classList.add('d-none');
-    
-    setTimeout(() => {
-        predictionContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }, 100);
+function displayError(message) {
+    hideLoading();
+    alert(message);
+    noResult.classList.remove('d-none');
 }
 
-// Display error
-function displayError(message) {
-    predictionResult.textContent = message;
-    predictionResult.style.color = '#dc3545';
-    predictionContainer.classList.remove('d-none');
-    noResult.classList.add('d-none');
+// =====================================================
+// RESULT SECTION CONTROLS
+// =====================================================
+reUploadBtn.addEventListener('click', () => {
+    debugLog('🔄 Re-upload requested', null, 'info');
+    resultsSection.classList.add('d-none');
+    inputSection.classList.remove('d-none');
+    noResult.classList.remove('d-none');
     
-    setTimeout(() => {
-        predictionResult.style.color = '';
-    }, 3000);
-}
-    // Back Button Functionality
-    document.addEventListener('DOMContentLoaded', function() {
-        const backButton = document.getElementById('backButton');
-        
-        if (backButton) {
-            backButton.addEventListener('click', function() {
-                // Always go to the main index.php from the FaceShapeAI tool
-                window.location.href = '../index.php';
-            });
-        }
-    });
+    uploadedImage.src = '';
+    uploadedImage.classList.add('d-none');
+    uploadPlaceholder.classList.remove('d-none');
+    uploadBtn.classList.add('d-none');
+    uploadInput.value = '';
+    
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+});
+
+takePhotoBtn.addEventListener('click', async () => {
+    debugLog('📷 Take photo requested', null, 'info');
+    resultsSection.classList.add('d-none');
+    inputSection.classList.remove('d-none');
+    noResult.classList.remove('d-none');
+    
+    if (!isCameraActive) {
+        await startCamera();
+    }
+    
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+});
+
+// =====================================================
+// BACK BUTTON
+// =====================================================
+document.addEventListener('DOMContentLoaded', function() {
+    const backButton = document.getElementById('backButton');
+    
+    if (backButton) {
+        backButton.addEventListener('click', function(e) {
+            e.preventDefault();
+            debugLog('⬅️ Back button clicked', null, 'info');
+            window.location.href = '../index.php';
+        });
+    }
+    
+    debugLog('✅ Page fully loaded and ready!', null, 'success');
+});
