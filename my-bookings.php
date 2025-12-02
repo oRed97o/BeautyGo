@@ -394,6 +394,13 @@ include 'includes/header.php';
                                                 </span>
                                             </div>
                                             
+                                            <!-- Reminder message for confirmed appointments -->
+                                            <?php if ($appointment['appoint_status'] === 'confirmed'): ?>
+                                                <div class="alert alert-warning alert-sm mb-2" style="padding: 8px 12px; font-size: 0.9rem;">
+                                                    <i class="bi bi-clock-history"></i> 
+                                                    <strong>Reminders:</strong> You'll receive reminder notifications 3 days before, 1 day before, and on the day of your appointment.
+                                                </div>
+                                            <?php endif; ?>
                                             <div class="row mb-2">
                                                 <div class="col-md-6">
                                                     <p class="mb-1">

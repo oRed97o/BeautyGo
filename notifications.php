@@ -12,7 +12,10 @@ if (!isCustomerLoggedIn()) {
 $user = getCurrentCustomer();
 $customerId = $user['customer_id'];
 
-$notifications = getCustomerNotifications($customerId);
+// Use enhanced function to get notifications with booking details
+$notifications = function_exists('getCustomerNotificationsWithBooking') 
+    ? getCustomerNotificationsWithBooking($customerId) 
+    : getCustomerNotifications($customerId);
 
 // Mark all notifications as read when viewing notifications page
 markCustomerNotificationsAsRead($customerId);
@@ -145,8 +148,10 @@ include 'includes/header.php';
                 </div>
             <?php else: ?>
                 <?php foreach ($notifications as $notif): ?>
-                    <!-- REMOVED: unread class since we don't track read status -->
-                    <div class="card notification-card mb-3">
+                    <!-- Notification card with booking details and redirect link -->
+                    <div class="card notification-card mb-3" 
+                         style="cursor: pointer; transition: all 0.3s ease;"
+                         onclick="<?php if (!empty($notif['appointment_id'])) echo "window.location.href='my-bookings.php?appointment_id={$notif['appointment_id']}';"; ?>">
                         <div class="card-body">
                             <div class="d-flex align-items-start">
                                 <div class="notification-icon <?php echo strpos($notif['notif_title'], 'Confirmed') !== false ? 'confirmed' : (strpos($notif['notif_title'], 'Cancelled') !== false ? 'cancelled' : 'completed'); ?> flex-shrink-0 me-3">
@@ -163,14 +168,38 @@ include 'includes/header.php';
                                 <div class="flex-grow-1">
                                     <h5 class="mb-1">
                                         <?php echo htmlspecialchars($notif['notif_title']); ?>
-                                        <!-- REMOVED: New badge since we don't track read status -->
                                     </h5>
                                     <p class="mb-2"><?php echo htmlspecialchars($notif['notif_text']); ?></p>
-                                    <small class="text-muted">
+                                    
+                                    <!-- Booking Details (if available) -->
+                                    <?php if (!empty($notif['appointment_id']) && !empty($notif['business_name'])): ?>
+                                        <div class="alert alert-light mt-2 mb-2" style="border-left: 3px solid var(--color-rose);">
+                                            <small>
+                                                <strong>📍 <?php echo htmlspecialchars($notif['business_name']); ?></strong><br>
+                                                <?php if (!empty($notif['service_name'])): ?>
+                                                    <i class="bi bi-scissors"></i> <?php echo htmlspecialchars($notif['service_name']); ?>
+                                                    (<?php echo intval($notif['duration']); ?> min) — ₱<?php echo number_format($notif['cost'] ?? 0, 2); ?><br>
+                                                <?php endif; ?>
+                                                <?php if (!empty($notif['appoint_date'])): ?>
+                                                    <i class="bi bi-calendar"></i> <?php echo date('M j, Y g:i A', strtotime($notif['appoint_date'])); ?><br>
+                                                <?php endif; ?>
+                                                <?php if (!empty($notif['appoint_desc'])): ?>
+                                                    <i class="bi bi-chat-dots"></i> <em><?php echo htmlspecialchars($notif['appoint_desc']); ?></em><br>
+                                                <?php endif; ?>
+                                                <span class="badge bg-<?php echo $notif['appoint_status'] === 'confirmed' ? 'success' : ($notif['appoint_status'] === 'cancelled' ? 'danger' : 'info'); ?> mt-1">
+                                                    <?php echo ucfirst($notif['appoint_status'] ?? 'pending'); ?>
+                                                </span>
+                                            </small>
+                                        </div>
+                                        <a href="my-bookings.php?appointment_id=<?php echo $notif['appointment_id']; ?>" class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-arrow-right"></i> View Booking
+                                        </a>
+                                    <?php endif; ?>
+                                    
+                                    <small class="text-muted d-block mt-2">
                                         <i class="bi bi-clock"></i> <?php echo timeAgo($notif['notif_creation']); ?>
                                     </small>
                                 </div>
-                                <!-- REMOVED: Mark as read button -->
                             </div>
                         </div>
                     </div>

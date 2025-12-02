@@ -21,6 +21,8 @@ $businessId = $business['business_id'] ?? $business['id'];
 // Mark business notifications as read when viewing dashboard
 if (isset($business['business_id'])) {
     markBusinessNotificationsAsRead($business['business_id']);
+    // Create reminders for appointments due today
+    createAppointmentDueTodayReminder($business['business_id']);
 }
 
 // Handle appointment status update with notification
@@ -38,6 +40,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
             $appointmentId,
             $newStatus
         );
+        
+        // Create a business notification for completed appointments
+        if ($newStatus === 'completed' && function_exists('createBusinessNotificationWithCustomer')) {
+            createBusinessNotificationWithCustomer(
+                $businessId,
+                $appointment['customer_id'],
+                'Appointment Completed',
+                'Appointment #' . $appointmentId . ' has been marked as completed.',
+                $appointmentId
+            );
+        }
         
         $statusText = ucfirst($newStatus);
         
@@ -290,6 +303,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reply_review'])) {
 }
 
 $bookings = getBusinessAppointments($businessId);
+
+// Sort bookings by date - most recent first
+usort($bookings, function($a, $b) {
+    $timeA = strtotime($a['appoint_date']);
+    $timeB = strtotime($b['appoint_date']);
+    return $timeB <=> $timeA; // Descending order (most recent first)
+});
+
 $services = getBusinessServices($businessId);
 $staff = getBusinessEmployees($businessId);
 $reviews = getBusinessReviews($businessId);
@@ -679,6 +700,13 @@ include 'includes/header.php';
                                 return strpos($fullName, $searchTerm) !== false;
                             });
                         }
+                        
+                        // Sort by date - most recent first
+                        usort($filteredBookings, function($a, $b) {
+                            $timeA = strtotime($a['appoint_date']);
+                            $timeB = strtotime($b['appoint_date']);
+                            return $timeB <=> $timeA; // Descending order (most recent first)
+                        });
                         ?>
                         
                         <?php if (empty($filteredBookings)): ?>

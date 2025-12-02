@@ -278,9 +278,23 @@ function createAppointment($data) {
         $staffInfo = $employeeId ? "Staff ID: $employeeId" : "Staff: TBD";
         error_log("✓ Appointment created successfully: ID=$appointmentId, Customer=$customerId, Service=$serviceId, $staffInfo, DateTime=$appointDate");
         
-        // Send notification after successful commit
+        // Send notifications after successful commit
         if ($businessId) {
+            // Notify business about new booking
             createBusinessBookingNotification($businessId, $customerId, $appointmentId);
+            
+            // Also notify customer that booking was submitted
+            $conn2 = getDbConnection();
+            $stmt = $conn2->prepare("
+                INSERT INTO notifications 
+                (business_id, customer_id, appointment_id, notif_title, notif_text)
+                VALUES (?, ?, ?, 'Booking Submitted', 'Your appointment request has been submitted. Please wait for confirmation from the business.')
+            ");
+            if ($stmt) {
+                $stmt->bind_param("iii", $businessId, $customerId, $appointmentId);
+                $stmt->execute();
+                $stmt->close();
+            }
         }
         
         return $appointmentId;

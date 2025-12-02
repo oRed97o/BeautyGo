@@ -23,6 +23,20 @@ function getDbConnection() {
         }
         
         $conn->set_charset("utf8mb4");
+        
+        // Run migrations on first connection if needed
+        static $migrations_run = false;
+        if (!$migrations_run) {
+            @require_once __DIR__ . '/../migrations/001_add_appointment_id_to_notifications.php';
+            if (function_exists('addAppointmentIdToNotifications')) {
+                @addAppointmentIdToNotifications();
+            }
+            @require_once __DIR__ . '/../migrations/002_link_old_notifications_to_appointments.php';
+            if (function_exists('linkOldNotificationsToAppointments')) {
+                @linkOldNotificationsToAppointments();
+            }
+            $migrations_run = true;
+        }
     }
     
     return $conn;

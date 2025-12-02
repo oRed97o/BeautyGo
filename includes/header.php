@@ -220,6 +220,7 @@
         
         .notification-item.unread {
             background-color: #fff5f5;
+            border-left: 3px solid var(--color-rose);
         }
         
         .notification-icon {
@@ -434,8 +435,8 @@
             }
         }
 
-        /* Hover to show dropdown */
-        .nav-item.dropdown:hover > .dropdown-menu {
+        /* Hover to show dropdown - DISABLED for notification dropdowns */
+        .nav-item.dropdown:not(:has(#notificationDropdown)):not(:has(#businessNotificationDropdown)):hover > .dropdown-menu {
             display: block;
             margin-top: 0;
         }
@@ -476,7 +477,7 @@
         }
     </style>
 </head>
-<body>
+<body <?php if (isCustomerLoggedIn()) { $cust = getCurrentCustomer(); echo 'data-customer-id="' . htmlspecialchars($cust['customer_id']) . '"'; } elseif (isBusinessLoggedIn()) { $bus = getCurrentBusiness(); echo 'data-business-id="' . htmlspecialchars($bus['business_id'] ?? $bus['id']) . '"'; } ?>>
     <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom sticky-top">
         <div class="container">
@@ -548,17 +549,36 @@
                         <?php if (isCustomerLoggedIn()): ?>
                             <!-- CUSTOMER NOTIFICATIONS -->
                             <?php 
-                            $notifications = function_exists('getCustomerNotifications') ? getCustomerNotifications($currentUser['customer_id']) : [];
+                            // Process reminders for upcoming appointments
+                            if (function_exists('processAppointmentReminders')) {
+                                @processAppointmentReminders();
+                            }
+                            
+                            // Use enhanced notifications function if available
+                            $notifications = function_exists('getCustomerNotificationsWithBooking') 
+                                ? getCustomerNotificationsWithBooking($currentUser['customer_id'], 5)
+                                : (function_exists('getCustomerNotifications') ? getCustomerNotifications($currentUser['customer_id'], 5) : []);
                             $unreadCount = function_exists('countUnreadNotifications') ? countUnreadNotifications($currentUser['customer_id']) : 0;
+                            
+                            // Check if user came from notification click in THIS request
+                            $fromNotif = isset($_GET['from_notif']) && $_GET['from_notif'] == '1';
+                            
+                            // Only hide badge if from_notif parameter is present in THIS request
+                            $showBadge = !$fromNotif && $unreadCount > 0;
+                            
+                            // If from_notif is set, mark it in session so it stays hidden during redirect
+                            if ($fromNotif) {
+                                $_SESSION['notif_viewed_' . $currentUser['customer_id']] = true;
+                            }
                             ?>
                             <li class="nav-item dropdown me-3">
                                 <a class="nav-link position-relative" href="#" id="notificationDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                     <i class="bi bi-bell-fill notification-bell"></i>
-                                    <?php if ($unreadCount > 0): ?>
+                                    <?php if ($showBadge): ?>
                                         <span class="notification-badge"><?php echo $unreadCount; ?></span>
                                     <?php endif; ?>
                                 </a>
-                                <ul class="dropdown-menu dropdown-menu-end notification-dropdown" aria-labelledby="notificationDropdown">
+                                <ul class="dropdown-menu dropdown-menu-end notification-dropdown" aria-labelledby="notificationDropdown" style="max-width: 400px; width: 400px;">
                                     <li class="px-3 py-2 border-bottom">
                                         <strong>Notifications</strong>
                                         <?php if ($unreadCount > 0): ?>
@@ -572,9 +592,9 @@
                                             <p class="mb-0 mt-2">No notifications yet</p>
                                         </li>
                                     <?php else: ?>
-                                        <?php foreach (array_slice($notifications, 0, 5) as $notif): ?>
+                                        <?php foreach ($notifications as $notif): ?>
                                             <li>
-                                                <a href="notifications.php" class="notification-item d-flex text-decoration-none text-dark <?php echo $notif['read_status'] == 0 ? 'unread' : ''; ?>">
+                                                <a href="<?php echo (!empty($notif['appointment_id']) ? "my-bookings.php?appointment_id={$notif['appointment_id']}" : "notifications.php?from_notif=1"); ?>" class="notification-item d-flex text-decoration-none text-dark <?php echo $notif['read_status'] == 0 ? 'unread' : ''; ?>" data-notif-id="<?php echo $notif['notif_id']; ?>" data-unread="<?php echo $notif['read_status'] == 0 ? '1' : '0'; ?>" style="padding: 12px 16px; border-bottom: 1px solid #f0f0f0; transition: background 0.2s;">
                                                     <div class="notification-icon <?php 
                                                         if (strpos(strtolower($notif['notif_title']), 'confirmed') !== false) {
                                                             echo 'confirmed';
@@ -599,9 +619,21 @@
                                                         ?>"></i>
                                                     </div>
                                                     <div class="ms-3 flex-grow-1">
-                                                        <div class="fw-semibold"><?php echo htmlspecialchars($notif['notif_title']); ?></div>
-                                                        <div class="small text-muted"><?php echo htmlspecialchars($notif['notif_text']); ?></div>
-                                                        <div class="notification-time mt-1">
+                                                        <div class="fw-semibold" style="font-size: 0.95rem;"><?php echo htmlspecialchars($notif['notif_title']); ?></div>
+                                                        <div class="small text-muted" style="margin: 4px 0;"><?php echo htmlspecialchars($notif['notif_text']); ?></div>
+                                                        
+                                                        <!-- Show booking preview if available -->
+                                                        <?php if (!empty($notif['business_name']) && !empty($notif['appoint_date'])): ?>
+                                                            <div class="small mt-1" style="background: #f9f9f9; padding: 6px 8px; border-radius: 4px; border-left: 2px solid var(--color-rose);">
+                                                                <strong style="color: var(--color-burgundy);">📍 <?php echo htmlspecialchars($notif['business_name']); ?></strong><br>
+                                                                <i class="bi bi-calendar"></i> <?php echo date('M j, g:i A', strtotime($notif['appoint_date'])); ?>
+                                                                <?php if (!empty($notif['service_name'])): ?>
+                                                                    <br><i class="bi bi-scissors"></i> <?php echo htmlspecialchars($notif['service_name']); ?>
+                                                                <?php endif; ?>
+                                                            </div>
+                                                        <?php endif; ?>
+                                                        
+                                                        <div class="notification-time mt-1" style="font-size: 0.8rem;">
                                                             <i class="bi bi-clock"></i> <?php echo function_exists('timeAgo') ? timeAgo($notif['notif_creation']) : date('M j, Y', strtotime($notif['notif_creation'])); ?>
                                                         </div>
                                                     </div>
@@ -610,7 +642,7 @@
                                         <?php endforeach; ?>
                                         
                                         <li class="px-3 py-2 border-top text-center">
-                                            <a href="notifications.php" class="text-decoration-none">
+                                            <a href="notifications.php?from_notif=1" class="text-decoration-none" style="font-size: 0.9rem;">
                                                 View all notifications <i class="bi bi-arrow-right"></i>
                                             </a>
                                         </li>
@@ -622,11 +654,22 @@
                             <?php 
                             $businessNotifications = function_exists('getBusinessNotifications') ? getBusinessNotifications($currentUser['business_id'], 10) : [];
                             $businessUnreadCount = function_exists('countRecentBusinessNotifications') ? countRecentBusinessNotifications($currentUser['business_id']) : 0;
+                            
+                            // Check if user came from notification click in THIS request
+                            $businessFromNotif = isset($_GET['from_notif']) && $_GET['from_notif'] == '1';
+                            
+                            // Only hide badge if from_notif parameter is present in THIS request
+                            $showBusinessBadge = !$businessFromNotif && $businessUnreadCount > 0;
+                            
+                            // If from_notif is set, mark it in session so it stays hidden during redirect
+                            if ($businessFromNotif) {
+                                $_SESSION['business_notif_viewed_' . $currentUser['business_id']] = true;
+                            }
                             ?>
                             <li class="nav-item dropdown me-3">
                                 <a class="nav-link position-relative" href="#" id="businessNotificationDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                     <i class="bi bi-bell-fill notification-bell"></i>
-                                    <?php if ($businessUnreadCount > 0): ?>
+                                    <?php if ($showBusinessBadge): ?>
                                         <span class="notification-badge"><?php echo $businessUnreadCount; ?></span>
                                     <?php endif; ?>
                                 </a>
@@ -646,14 +689,14 @@
                                     <?php else: ?>
                                         <?php foreach ($businessNotifications as $notif): ?>
                                             <li>
-                                                <a href="business-dashboard.php" class="notification-item d-flex text-decoration-none text-dark">
-                                                    <div class="notification-icon <?php echo strpos($notif['notif_title'], 'New Booking') !== false ? 'new-booking' : 'cancelled'; ?> flex-shrink-0">
-                                                        <i class="bi <?php echo strpos($notif['notif_title'], 'New Booking') !== false ? 'bi-calendar-plus-fill' : 'bi-x-circle-fill'; ?>"></i>
+                                                <a href="business-dashboard.php" class="notification-item d-flex text-decoration-none text-dark <?php echo $notif['read_status'] == 0 ? 'unread' : ''; ?>" data-notif-id="<?php echo $notif['notif_id']; ?>" data-unread="<?php echo $notif['read_status'] == 0 ? '1' : '0'; ?>" style="padding: 12px 16px; border-bottom: 1px solid #f0f0f0; transition: background 0.2s;">
+                                                    <div class="notification-icon <?php echo strpos($notif['notif_title'], 'New Booking') !== false ? 'new-booking' : (strpos($notif['notif_title'], 'Completed') !== false ? 'completed' : 'cancelled'); ?> flex-shrink-0">
+                                                        <i class="bi <?php echo strpos($notif['notif_title'], 'New Booking') !== false ? 'bi-calendar-plus-fill' : (strpos($notif['notif_title'], 'Completed') !== false ? 'bi-star-fill' : (strpos($notif['notif_title'], 'Due Today') !== false ? 'bi-exclamation-circle-fill' : 'bi-x-circle-fill')); ?>"></i>
                                                     </div>
                                                     <div class="ms-3 flex-grow-1">
-                                                        <div class="fw-semibold"><?php echo htmlspecialchars($notif['notif_title']); ?></div>
-                                                        <div class="small text-muted"><?php echo htmlspecialchars($notif['notif_text']); ?></div>
-                                                        <div class="notification-time mt-1">
+                                                        <div class="fw-semibold" style="font-size: 0.95rem;"><?php echo htmlspecialchars($notif['notif_title']); ?></div>
+                                                        <div class="small text-muted" style="margin: 4px 0;"><?php echo htmlspecialchars($notif['notif_text']); ?></div>
+                                                        <div class="notification-time mt-1" style="font-size: 0.8rem;">
                                                             <i class="bi bi-clock"></i> <?php echo function_exists('timeAgo') ? timeAgo($notif['notif_creation']) : date('M j, Y', strtotime($notif['notif_creation'])); ?>
                                                         </div>
                                                     </div>
@@ -781,3 +824,217 @@
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     <?php endif; ?>
+    
+    <script>
+        // Clean up the from_notif query parameter from URL
+        document.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.has('from_notif')) {
+                // Remove the parameter and clean URL
+                urlParams.delete('from_notif');
+                const newUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
+                window.history.replaceState({}, document.title, newUrl);
+            }
+            
+            // Handle individual notification clicks to mark as read and update badge
+            const notificationItems = document.querySelectorAll('.notification-item');
+            console.log('Found ' + notificationItems.length + ' notification items');
+            
+            notificationItems.forEach((item, index) => {
+                item.addEventListener('click', function(e) {
+                    const notifId = this.dataset.notifId;
+                    const isUnread = this.dataset.unread === '1';
+                    const href = this.href;
+                    
+                    console.log('Notification clicked - ID:', notifId, 'Unread:', isUnread, 'Href:', href);
+                    
+                    // Only process if notification is unread
+                    if (isUnread && notifId) {
+                        // Prevent default navigation
+                        e.preventDefault();
+                        
+                        // Find the closest dropdown menu to determine which badge to update
+                        const dropdownMenu = this.closest('.dropdown-menu');
+                        const isBusinessNotif = dropdownMenu && dropdownMenu.getAttribute('aria-labelledby') === 'businessNotificationDropdown';
+                        
+                        // Mark notification as read via AJAX
+                        fetch('ajax/mark_notification_read.php', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/x-www-form-urlencoded',
+                            },
+                            body: 'notification_id=' + notifId
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            console.log('AJAX Response:', data);
+                            if (data.success) {
+                                // Find the correct notification bell/badge based on which dropdown we're in
+                                let badgeSelector = '.notification-badge';
+                                let badgeNewTextSelector = '.dropdown-menu.notification-dropdown .badge.bg-danger';
+                                
+                                if (isBusinessNotif) {
+                                    // For business notifications, get the badge from the business notification bell
+                                    const businessBell = document.querySelector('#businessNotificationDropdown');
+                                    if (businessBell) {
+                                        const badge = businessBell.querySelector('.notification-badge');
+                                        const newCount = data.unreadCount;
+                                        if (badge) {
+                                            if (newCount > 0) {
+                                                badge.textContent = newCount;
+                                            } else {
+                                                badge.parentElement.removeChild(badge);
+                                            }
+                                        }
+                                    }
+                                    
+                                    // Update the "X new" text in this dropdown header
+                                    const badgeNewText = dropdownMenu ? dropdownMenu.querySelector('.badge.bg-danger') : null;
+                                    if (badgeNewText) {
+                                        const newCount = data.unreadCount;
+                                        if (newCount > 0) {
+                                            badgeNewText.textContent = newCount + ' new';
+                                        } else {
+                                            badgeNewText.parentElement.removeChild(badgeNewText);
+                                        }
+                                    }
+                                } else {
+                                    // For customer notifications
+                                    const customerBell = document.querySelector('#notificationDropdown');
+                                    if (customerBell) {
+                                        const badge = customerBell.querySelector('.notification-badge');
+                                        const newCount = data.unreadCount;
+                                        if (badge) {
+                                            if (newCount > 0) {
+                                                badge.textContent = newCount;
+                                            } else {
+                                                badge.parentElement.removeChild(badge);
+                                            }
+                                        }
+                                    }
+                                    
+                                    // Update the "X new" text in this dropdown header
+                                    const badgeNewText = dropdownMenu ? dropdownMenu.querySelector('.badge.bg-danger') : null;
+                                    if (badgeNewText) {
+                                        const newCount = data.unreadCount;
+                                        if (newCount > 0) {
+                                            badgeNewText.textContent = newCount + ' new';
+                                        } else {
+                                            badgeNewText.parentElement.removeChild(badgeNewText);
+                                        }
+                                    }
+                                }
+                                
+                                // Mark the item as read by removing unread class
+                                this.classList.remove('unread');
+                                this.dataset.unread = '0';
+                                this.style.backgroundColor = 'transparent';
+                                
+                                console.log('Notification marked as read');
+                            }
+                            
+                            // Navigate to the target after a short delay
+                            if (href) {
+                                setTimeout(() => {
+                                    window.location.href = href;
+                                }, 100);
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error marking notification as read:', error);
+                            // Still navigate even if AJAX fails
+                            if (href) {
+                                window.location.href = href;
+                            }
+                        });
+                    }
+                });
+            });
+            
+            // Handle customer notifications dropdown
+            const notificationDropdownElement = document.querySelector('[aria-labelledby="notificationDropdown"]');
+            if (notificationDropdownElement) {
+                notificationDropdownElement.addEventListener('show.bs.dropdown', function() {
+                    console.log('Notification dropdown opened');
+                    // Mark all notifications as read via AJAX
+                    fetch('ajax/mark_notifications_read.php')
+                        .then(response => response.json())
+                        .catch(error => console.error('Error marking notifications as read:', error));
+                });
+            }
+            
+            // Handle business notifications dropdown
+            const businessNotificationDropdownElement = document.querySelector('[aria-labelledby="businessNotificationDropdown"]');
+            if (businessNotificationDropdownElement) {
+                businessNotificationDropdownElement.addEventListener('show.bs.dropdown', function() {
+                    console.log('Business notification dropdown opened');
+                    // Mark notifications as read via AJAX
+                    fetch('ajax/mark_notifications_read.php')
+                        .then(response => response.json())
+                        .catch(error => console.error('Error marking notifications as read:', error));
+                });
+            }
+            
+            // Periodically refresh notification counts every 5 seconds
+            setInterval(function() {
+                // Update customer notification count if customer is logged in
+                const notificationBell = document.querySelector('#notificationDropdown');
+                if (notificationBell) {
+                    // Extract customer ID from the page (you may need to adjust this based on your page structure)
+                    const customerId = document.body.dataset.customerId;
+                    if (customerId) {
+                        fetch('ajax/get_notification_count.php?customer_id=' + customerId)
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.success && data.unreadCount > 0) {
+                                    let badge = notificationBell.querySelector('.notification-badge');
+                                    if (!badge) {
+                                        // Create badge if it doesn't exist
+                                        badge = document.createElement('span');
+                                        badge.className = 'notification-badge';
+                                        notificationBell.appendChild(badge);
+                                    }
+                                    badge.textContent = data.unreadCount;
+                                } else if (data.success && data.unreadCount === 0) {
+                                    // Remove badge if no unread notifications
+                                    const badge = notificationBell.querySelector('.notification-badge');
+                                    if (badge) {
+                                        badge.parentElement.removeChild(badge);
+                                    }
+                                }
+                            })
+                            .catch(error => console.error('Error fetching notification count:', error));
+                    }
+                }
+                
+                // Update business notification count if business is logged in
+                const businessNotificationBell = document.querySelector('#businessNotificationDropdown');
+                if (businessNotificationBell) {
+                    const businessId = document.body.dataset.businessId;
+                    if (businessId) {
+                        fetch('ajax/get_business_notification_count.php?business_id=' + businessId)
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.success && data.unreadCount > 0) {
+                                    let badge = businessNotificationBell.querySelector('.notification-badge');
+                                    if (!badge) {
+                                        // Create badge if it doesn't exist
+                                        badge = document.createElement('span');
+                                        badge.className = 'notification-badge';
+                                        businessNotificationBell.appendChild(badge);
+                                    }
+                                    badge.textContent = data.unreadCount;
+                                } else if (data.success && data.unreadCount === 0) {
+                                    // Remove badge if no unread notifications
+                                    const badge = businessNotificationBell.querySelector('.notification-badge');
+                                    if (badge) {
+                                        badge.parentElement.removeChild(badge);
+                                    }
+                                }
+                            })
+                            .catch(error => console.error('Error fetching business notification count:', error));
+                    }
+                }
+            }, 5000); // Refresh every 5 seconds
+        });
+    </script>
