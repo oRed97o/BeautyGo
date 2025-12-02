@@ -28,10 +28,41 @@ function isCustomerLoggedIn(): bool {
 
 // Get the current logged-in customer (if any)
 function getCurrentCustomer() {
-    if (!empty($_SESSION['customer_id'])) {
-        return getCustomerById($_SESSION['customer_id']);
+    if (!isCustomerLoggedIn()) {
+        return null;
     }
-    return null;
+    
+    $customerId = $_SESSION['customer_id'];
+    $conn = getDbConnection();
+    
+    $query = "SELECT *, 
+              ST_X(customer_location) AS longitude, 
+              ST_Y(customer_location) AS latitude 
+              FROM customers 
+              WHERE customer_id = ?";
+    
+    $stmt = $conn->prepare($query);
+    
+    if (!$stmt) {
+        error_log("Prepare failed in getCurrentCustomer: " . $conn->error);
+        return null;
+    }
+    
+    $stmt->bind_param("i", $customerId);
+    
+    if (!$stmt->execute()) {
+        error_log("Execute failed in getCurrentCustomer: " . $stmt->error);
+        $stmt->close();
+        return null;
+    }
+    
+    $result = $stmt->get_result();
+    $customer = $result->fetch_assoc();
+    $stmt->close();
+    
+    error_log("getCurrentCustomer result: " . print_r($customer, true));
+    
+    return $customer;
 }
 
 // Get the current logged-in business (if any)

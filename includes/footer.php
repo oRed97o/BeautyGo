@@ -1,4 +1,3 @@
-<!-- Footer -->
     <footer class="footer mt-5">
         <div class="container py-4">
             <div class="row">

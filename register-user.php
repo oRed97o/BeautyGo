@@ -13,17 +13,20 @@ include 'includes/header.php';
 ?>
 
 <link rel="stylesheet" href="css/styles.css">
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
 <style>
 .profile-upload-container {
     text-align: center;
-    margin-bottom: 20px;
+    margin-bottom: 2rem;
 }
 
 .profile-preview-wrapper {
     position: relative;
-    display: inline-block;
-    margin-bottom: 15px;
+    width: 120px;
+    height: 120px;
+    margin: 0 auto 1rem;
 }
 
 .profile-preview {
@@ -411,6 +414,378 @@ include 'includes/header.php';
     transform: translateY(-2px);
 }
 
+.map-info-box {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 15px;
+    background: #e7f3ff;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    border-left: 4px solid #2196F3;
+}
+
+.map-info-box i {
+    color: #2196F3;
+    font-size: 1.1rem;
+}
+
+.map-info-box small {
+    margin: 0;
+    color: #555;
+}
+
+.coordinates-display {
+    font-size: 0.9rem;
+    line-height: 1.6;
+}
+
+#locationMap {
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    margin-bottom: 15px;
+}
+
+.custom-marker {
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+}
+/* Crop Modal Styles */
+.crop-modal-overlay {
+    display: none;
+    position: fixed;
+    z-index: 9999;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.85);
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.3s ease;
+}
+
+.crop-modal-overlay.show {
+    display: flex;
+}
+
+.crop-modal-content {
+    background-color: white;
+    padding: 30px;
+    border-radius: 20px;
+    max-width: 600px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+    animation: slideUp 0.3s ease;
+}
+
+.crop-modal-header {
+    text-align: center;
+    margin-bottom: 25px;
+}
+
+.crop-modal-header h3 {
+    color: var(--color-burgundy);
+    margin-bottom: 10px;
+    font-size: 1.5rem;
+}
+
+.crop-modal-header p {
+    color: #666;
+    font-size: 0.9rem;
+    margin: 0;
+}
+
+.crop-preview-area {
+    position: relative;
+    width: 300px;
+    height: 300px;
+    margin: 0 auto 25px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: #f0f0f0;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    cursor: grab;
+}
+
+.crop-preview-area.dragging {
+    cursor: grabbing;
+}
+
+.crop-preview-image {
+    position: absolute;
+    max-width: none;
+    user-select: none;
+    -webkit-user-drag: none;
+}
+
+.crop-instructions {
+    text-align: center;
+    margin-bottom: 20px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 10px;
+    border-left: 4px solid var(--color-burgundy);
+}
+
+.crop-instructions i {
+    color: var(--color-burgundy);
+    font-size: 1.2rem;
+    margin-right: 8px;
+}
+
+.crop-instructions p {
+    margin: 0;
+    color: #555;
+    font-size: 0.9rem;
+}
+
+.crop-modal-buttons {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    margin-top: 25px;
+}
+
+.crop-modal-buttons button {
+    padding: 12px 30px;
+    border-radius: 25px;
+    font-size: 1rem;
+    font-weight: 500;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-cancel-crop {
+    background-color: #6c757d;
+    color: white;
+}
+
+.btn-cancel-crop:hover {
+    background-color: #5a6268;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+.btn-confirm-crop {
+    background-color: var(--color-burgundy);
+    color: white;
+}
+
+.btn-confirm-crop:hover {
+    background-color: var(--color-rose);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+.error-modal-overlay {
+    display: none;
+    position: fixed;
+    z-index: 10000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.2s ease;
+}
+
+.error-modal-overlay.show {
+    display: flex;
+}
+
+.error-modal-content {
+    background-color: white;
+    padding: 30px;
+    border-radius: 16px;
+    max-width: 450px;
+    width: 90%;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    animation: slideDown 0.3s ease;
+    text-align: center;
+}
+
+.error-modal-icon {
+    width: 70px;
+    height: 70px;
+    margin: 0 auto 20px;
+    background: linear-gradient(135deg, #dc3545, #c82333);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.5rem;
+    color: white;
+    animation: shake 0.5s ease;
+}
+
+.error-modal-title {
+    color: #dc3545;
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 15px;
+}
+
+.error-modal-message {
+    color: #555;
+    font-size: 1rem;
+    line-height: 1.6;
+    margin-bottom: 25px;
+}
+
+.error-modal-button {
+    background: var(--color-burgundy);
+    color: white;
+    border: none;
+    padding: 12px 40px;
+    border-radius: 25px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.error-modal-button:hover {
+    background: var(--color-rose);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(133, 14, 53, 0.3);
+}
+
+/* Zoom Controls */
+.zoom-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.zoom-button {
+    background: var(--color-burgundy);
+    color: white;
+    border: none;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 1.2rem;
+}
+
+.zoom-button:hover {
+    background: var(--color-rose);
+    transform: scale(1.1);
+}
+
+.zoom-slider {
+    width: 200px;
+    height: 6px;
+    border-radius: 3px;
+    background: #e0e0e0;
+    outline: none;
+    -webkit-appearance: none;
+}
+
+.zoom-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--color-burgundy);
+    cursor: pointer;
+}
+
+.zoom-slider::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--color-burgundy);
+    cursor: pointer;
+    border: none;
+}
+
+.zoom-level {
+    font-size: 0.9rem;
+    color: #666;
+    min-width: 50px;
+    text-align: center;
+}
+
+/* Edit Photo Button */
+.edit-photo-btn {
+    background: var(--color-burgundy);
+    color: white;
+    border: none;
+    padding: 8px 20px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-top: 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.edit-photo-btn:hover {
+    background: var(--color-rose);
+    transform: translateY(-2px);
+}
+
+.map-info-box {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 15px;
+    background: #e7f3ff;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    border-left: 4px solid #2196F3;
+}
+
+.map-info-box i {
+    color: #2196F3;
+    font-size: 1.1rem;
+}
+
+.map-info-box small {
+    margin: 0;
+    color: #555;
+}
+
+.coordinates-display {
+    font-size: 0.9rem;
+    line-height: 1.6;
+}
+
+#locationMap {
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    margin-bottom: 15px;
+}
+
+.custom-marker {
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+}
 @keyframes fadeIn {
     from { opacity: 0; }
     to { opacity: 1; }
@@ -444,8 +819,173 @@ include 'includes/header.php';
     }
 }
 
-
 </style>
+
+<!-- EARLY SCRIPT FOR FORM HANDLERS - MUST RUN BEFORE FORM LOADS -->
+<script>
+// ========================================
+// GLOBAL FORM SUBMISSION HANDLER
+// ========================================
+function handleFormSubmit(event) {
+    console.log('Form submit handler called');
+    event.preventDefault(); // Stop default form submission
+    
+    const password = document.getElementById('password').value;
+    const confirmPassword = document.getElementById('confirm_password').value;
+    
+    console.log('Password validation:', { password: password.length, match: password === confirmPassword });
+    
+    // Check if passwords match
+    if (password !== confirmPassword) {
+        const pwMismatch = document.getElementById('pwMismatch');
+        if (pwMismatch) {
+            pwMismatch.classList.remove('d-none');
+            pwMismatch.textContent = 'Passwords do not match!';
+        }
+        console.log('Passwords do not match');
+        return false;
+    }
+
+    // Validate password length
+    if (password.length < 8) {
+        showErrorModal('Password must be at least 8 characters long!');
+        console.log('Password too short');
+        return false;
+    }
+    
+    // Check for at least one number
+    if (!/\d/.test(password)) {
+        showErrorModal('Password must contain at least one number (0-9)!');
+        console.log('No number in password');
+        return false;
+    }
+    
+    // Check for at least one special character
+    if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+        showErrorModal('Password must contain at least one special character (!@#$%^&* etc.)');
+        console.log('No special character in password');
+        return false;
+    }
+    
+    // Validate coordinates
+    const lat = parseFloat(document.getElementById('customer_latitude').value);
+    const lng = parseFloat(document.getElementById('customer_longitude').value);
+    
+    console.log('Coordinates:', { lat, lng });
+    
+    if (!lat || !lng || (lat === 0 && lng === 0)) {
+        showErrorModal('Please pin your location on the map by clicking or dragging the marker.');
+        console.log('Invalid coordinates');
+        return false;
+    }
+    
+    console.log('All validations passed, submitting form...');
+    
+    // Show loading state
+    const submitBtn = event.target.querySelector('button[type="submit"]');
+    const originalBtnText = submitBtn.innerHTML;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Registering...';
+    
+    // Submit form via AJAX
+    const formData = new FormData(event.target);
+    
+    console.log('Sending AJAX request to backend/auth.php');
+    
+    fetch('backend/auth.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => {
+        console.log('Response received:', response.status);
+        return response.json();
+    })
+    .then(data => {
+        console.log('Server response:', data);
+        
+        if (data.status === 'success') {
+            // Show success message
+            showSuccessModal(data.message || 'Registration successful!');
+            
+            // Redirect after short delay
+            setTimeout(() => {
+                console.log('Redirecting to:', data.redirect || 'index.php');
+                window.location.replace(data.redirect || 'index.php');
+            }, 1500);
+        } else {
+            // Show error message
+            showErrorModal(data.message || 'Registration failed. Please try again.');
+            
+            // Reset button
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalBtnText;
+        }
+    })
+    .catch(error => {
+        console.error('Fetch error:', error);
+        showErrorModal('An error occurred. Please try again.');
+        
+        // Reset button
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalBtnText;
+    });
+    
+    return false;
+}
+
+// Custom error modal functions
+function showErrorModal(message) {
+    document.getElementById('errorModalMessage').textContent = message;
+    document.getElementById('errorModal').classList.add('show');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeErrorModal() {
+    document.getElementById('errorModal').classList.remove('show');
+    document.body.style.overflow = '';
+}
+
+function showSuccessModal(message) {
+    let successModal = document.getElementById('successModal');
+    
+    if (!successModal) {
+        successModal = document.createElement('div');
+        successModal.id = 'successModal';
+        successModal.className = 'error-modal-overlay';
+        successModal.innerHTML = `
+            <div class="error-modal-content">
+                <div class="error-modal-icon" style="background: linear-gradient(135deg, #28a745, #20c997);">
+                    <i class="bi bi-check-circle-fill"></i>
+                </div>
+                <h3 class="error-modal-title" style="color: #28a745;">Success!</h3>
+                <p class="error-modal-message" id="successModalMessage">${message}</p>
+            </div>
+        `;
+        document.body.appendChild(successModal);
+    } else {
+        document.getElementById('successModalMessage').textContent = message;
+    }
+    
+    successModal.classList.add('show');
+    document.body.style.overflow = 'hidden';
+}
+
+// Toggle password visibility
+function togglePassword(inputId, eyeId) {
+    const passwordInput = document.getElementById(inputId);
+    const eyeIcon = document.getElementById(eyeId);
+    
+    if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        eyeIcon.classList.remove('bi-eye');
+        eyeIcon.classList.add('bi-eye-slash');
+    } else {
+        passwordInput.type = 'password';
+        eyeIcon.classList.remove('bi-eye-slash');
+        eyeIcon.classList.add('bi-eye');
+    }
+}
+</script>
 
 <main>
     <div class="container my-5">
@@ -463,7 +1003,7 @@ include 'includes/header.php';
                             <p class="registration-subtitle">Create your personalized beauty profile</p>
                         </div>
                     
-                        <form action="backend/auth.php" method="POST" enctype="multipart/form-data" id="userRegisterForm">
+                        <form method="POST" enctype="multipart/form-data" id="userRegisterForm" onsubmit="return handleFormSubmit(event)">
                             <input type="hidden" name="action" value="register_user">
                             
                             <!-- Account Information -->
@@ -559,7 +1099,7 @@ include 'includes/header.php';
                                     <label for="cstmr_address" class="form-label">
                                         <i class="bi bi-geo-alt-fill text-danger"></i> Barangay *
                                     </label>
-                                    <select class="form-select" id="cstmr_address" name="cstmr_address" required>
+                                    <select class="form-select" id="cstmr_address" name="cstmr_address" required onchange="updateMapFromAddressUser()">
                                         <option value="">Select your barangay</option>
                                         <option value="Aga">Aga</option>
                                         <option value="Balaytigui">Balaytigui</option>
@@ -597,6 +1137,28 @@ include 'includes/header.php';
                                         <option value="Wawa">Wawa</option>
                                     </select>
                                     <small class="text-muted">Select your barangay in Nasugbu, Batangas</small>
+                                </div>
+                            </div>
+
+                            <hr class="my-4">
+
+                            <!-- Location Section -->
+                            <div class="row">
+                                <div class="col-md-12 mb-3">
+                                    <label class="form-label">
+                                        <i class="bi bi-geo-alt-fill text-danger"></i> Pin Your Location on Map *
+                                    </label>
+                                    <div class="map-info-box">
+                                        <i class="bi bi-info-circle"></i>
+                                        <small>Click anywhere on the map to set your location. This helps us show you nearby beauty services.</small>
+                                    </div>
+                                    <div id="locationMap" style="height: 400px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"></div>
+                                    <div class="coordinates-display" style="margin-top: 15px; padding: 12px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid var(--color-burgundy);">
+                                        <strong>Selected Coordinates:</strong><br>
+                                        Latitude: <span id="displayLat">14.0697</span> | Longitude: <span id="displayLng">120.6328</span>
+                                    </div>
+                                    <input type="hidden" id="customer_latitude" name="customer_latitude" value="14.0697">
+                                    <input type="hidden" id="customer_longitude" name="customer_longitude" value="120.6328">
                                 </div>
                             </div>
 
@@ -666,98 +1228,6 @@ include 'includes/header.php';
         <button type="button" class="error-modal-button" onclick="closeErrorModal()">Got it</button>
     </div>
 </div>
-
-<!-- Password Validation Script -->
-<script>
-// Custom error modal functions
-function showErrorModal(message) {
-    document.getElementById('errorModalMessage').textContent = message;
-    document.getElementById('errorModal').classList.add('show');
-    document.body.style.overflow = 'hidden';
-}
-
-function closeErrorModal() {
-    document.getElementById('errorModal').classList.remove('show');
-    document.body.style.overflow = '';
-}
-
-// Close modal when clicking outside
-document.getElementById('errorModal').addEventListener('click', function(e) {
-    if (e.target === this) {
-        closeErrorModal();
-    }
-});
-
-// Close modal with Escape key
-document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') {
-        closeErrorModal();
-    }
-});
-
-// Toggle password visibility
-function togglePassword(inputId, eyeId) {
-    const passwordInput = document.getElementById(inputId);
-    const eyeIcon = document.getElementById(eyeId);
-    
-    if (passwordInput.type === 'password') {
-        // Show password
-        passwordInput.type = 'text';
-        eyeIcon.classList.remove('bi-eye');
-        eyeIcon.classList.add('bi-eye-slash');
-    } else {
-        // Hide password
-        passwordInput.type = 'password';
-        eyeIcon.classList.remove('bi-eye-slash');
-        eyeIcon.classList.add('bi-eye');
-    }
-}
-
-// Form validation with custom modal
-        document.getElementById('userRegisterForm').addEventListener('submit', function(e) {
-            const password = document.getElementById('password').value;
-            const confirmPassword = document.getElementById('confirm_password').value;
-            
-            // Check if passwords match
-            if (password !== confirmPassword) {
-                e.preventDefault();
-                const pwMismatch = document.getElementById('pwMismatch');
-                if (pwMismatch) {
-                    pwMismatch.classList.remove('d-none');
-                    pwMismatch.textContent = 'Passwords do not match! Please make sure both password fields are correct.';
-                }
-                document.getElementById('confirm_password').focus();
-                return false;
-            }
-    
-    // Validate password length
-    if (password.length < 8) {
-        e.preventDefault();
-        showErrorModal('Password must be at least 8 characters long!');
-        document.getElementById('password').focus();
-        return false;
-    }
-    
-    // Check for at least one number
-    if (!/\d/.test(password)) {
-        e.preventDefault();
-        showErrorModal('Password must contain at least one number (0-9)!');
-        document.getElementById('password').focus();
-        return false;
-    }
-    
-    // Check for at least one special character
-    if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
-        e.preventDefault();
-        showErrorModal('Password must contain at least one special character (!@#$%^&* etc.)');
-        document.getElementById('password').focus();
-        return false;
-    }
-    
-    // All validation passed
-    return true;
-});
-</script>
 
 <!-- Photo Upload and Crop Script -->
 <script>
@@ -1046,10 +1516,174 @@ cropModal.addEventListener('click', function(e) {
     }
 });
 </script>
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+// ========================================
+// MAP FUNCTIONALITY FOR CUSTOMER
+// ========================================
+// ========================================
+// MAP FUNCTIONALITY FOR CUSTOMER REGISTRATION - FIXED
+// ========================================
+let map;
+let marker;
+const defaultLat = 14.0697;
+const defaultLng = 120.6328;
+
+// Initialize map
+function initCustomerMap() {
+    map = L.map('locationMap').setView([defaultLat, defaultLng], 14);
+    
+    // Add OpenStreetMap tiles
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 19
+    }).addTo(map);
+    
+    // Custom marker icon
+    const customIcon = L.divIcon({
+        html: '<i class="bi bi-geo-alt-fill" style="font-size: 2.5rem; color: #850E35;"></i>',
+        className: 'custom-marker',
+        iconSize: [40, 40],
+        iconAnchor: [20, 40]
+    });
+    
+    // Add default marker
+    marker = L.marker([defaultLat, defaultLng], { 
+        icon: customIcon,
+        draggable: true 
+    }).addTo(map);
+    
+    // Set initial coordinates
+    updateCustomerLocation(defaultLat, defaultLng);
+    
+    // Click to set location
+    map.on('click', function(e) {
+        const lat = e.latlng.lat;
+        const lng = e.latlng.lng;
+        updateCustomerLocation(lat, lng);
+    });
+    
+    // Drag marker to set location
+    marker.on('dragend', function(e) {
+        const lat = e.target.getLatLng().lat;
+        const lng = e.target.getLatLng().lng;
+        updateCustomerLocation(lat, lng);
+    });
+    
+    console.log('Map initialized with default coordinates:', defaultLat, defaultLng);
+}
+
+function updateCustomerLocation(lat, lng) {
+    marker.setLatLng([lat, lng]);
+    document.getElementById('customer_latitude').value = lat.toFixed(8);
+    document.getElementById('customer_longitude').value = lng.toFixed(8);
+    document.getElementById('displayLat').textContent = lat.toFixed(6);
+    document.getElementById('displayLng').textContent = lng.toFixed(6);
+    
+    console.log('Location updated:', lat.toFixed(6), lng.toFixed(6));
+}
+
+// Initialize map when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    // Only initialize if map element exists
+    if (document.getElementById('locationMap')) {
+        setTimeout(initCustomerMap, 500); // Small delay to ensure map container is ready
+    }
+});
+
+// Handle address dropdown change - auto-update map with barangay coordinates
+function updateMapFromAddressUser() {
+    const addressDropdown = document.getElementById('cstmr_address');
+    const selectedBarangay = addressDropdown.value;
+    
+    if (!selectedBarangay) {
+        return; // No selection
+    }
+    
+    // Fetch coordinates for the selected barangay
+    fetch('backend/barangay_coordinates.php?barangay=' + encodeURIComponent(selectedBarangay))
+        .then(response => response.json())
+        .then(data => {
+            const lat = data.lat;
+            const lng = data.lng;
+            
+            // Update the map and coordinates
+            if (map && marker) {
+                // Pan map to new location
+                map.setView([lat, lng], 14);
+                
+                // Update marker position
+                marker.setLatLng([lat, lng]);
+                
+                // Update coordinate displays and hidden fields
+                updateCustomerLocation(lat, lng);
+                
+                console.log('Map updated for barangay:', selectedBarangay, 'Lat:', lat, 'Lng:', lng);
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching barangay coordinates:', error);
+        });
+}
+
+// Function to find nearest barangay based on coordinates
+async function findNearestBarangayUser(lat, lng) {
+    try {
+        const response = await fetch('backend/barangay_coordinates.php');
+        const barangays = await response.json();
+        
+        let nearestBarangay = null;
+        let minDistance = Infinity;
+        
+        for (const [name, coords] of Object.entries(barangays)) {
+            // Calculate distance using simple Pythagorean theorem (good enough for nearby points)
+            const distance = Math.sqrt(
+                Math.pow(coords.lat - lat, 2) + Math.pow(coords.lng - lng, 2)
+            );
+            
+            if (distance < minDistance) {
+                minDistance = distance;
+                nearestBarangay = name;
+            }
+        }
+        
+        return nearestBarangay;
+    } catch (error) {
+        console.error('Error finding nearest barangay:', error);
+        return null;
+    }
+}
+
+// Auto-select barangay based on current coordinates
+async function autoSelectBarangayFromCoordinatesUser() {
+    const latValue = document.getElementById('customer_latitude').value;
+    const lngValue = document.getElementById('customer_longitude').value;
+    
+    if (latValue && lngValue && latValue !== '14.0697' && lngValue !== '120.6328') {
+        const barangay = await findNearestBarangayUser(parseFloat(latValue), parseFloat(lngValue));
+        if (barangay) {
+            const dropdown = document.getElementById('cstmr_address');
+            dropdown.value = barangay;
+            console.log('Auto-selected barangay:', barangay);
+        }
+    }
+}
+
+function updateCustomerLocation(lat, lng) {
+    marker.setLatLng([lat, lng]);
+    document.getElementById('customer_latitude').value = lat.toFixed(6);
+    document.getElementById('customer_longitude').value = lng.toFixed(6);
+    document.getElementById('displayLat').textContent = lat.toFixed(6);
+    document.getElementById('displayLng').textContent = lng.toFixed(6);
+}
+</script>
+
 </main>
 
 <script>
-// Live validation for register-user.php
+// Live validation for register-user.php - UPDATED
 (function() {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const passwordRules = {
@@ -1064,7 +1698,7 @@ cropModal.addEventListener('click', function(e) {
 
     function validateEmail(val) {
         const v = val.trim().toLowerCase();
-        return emailRegex.test(v); // Only requires @ and valid email format, NOT .com
+        return emailRegex.test(v);
     }
 
     function validatePhone(val) {
@@ -1084,6 +1718,12 @@ cropModal.addEventListener('click', function(e) {
         return el.value !== '';
     }
 
+    function validateCoordinates(lat, lng) {
+        const latVal = parseFloat(lat);
+        const lngVal = parseFloat(lng);
+        return latVal !== 0 && lngVal !== 0 && !isNaN(latVal) && !isNaN(lngVal);
+    }
+
     function setState(el, ok) {
         el.classList.remove('valid','invalid');
         const val = (el.tagName === 'SELECT') ? el.value : el.value.trim();
@@ -1091,7 +1731,7 @@ cropModal.addEventListener('click', function(e) {
         // Special handling for optional middle name field
         if (el.id === 'mname' && !val) {
             el.removeAttribute('aria-invalid');
-            return; // Don't mark empty middle name as invalid
+            return;
         }
         
         if (!val) {
@@ -1110,7 +1750,7 @@ cropModal.addEventListener('click', function(e) {
     document.addEventListener('DOMContentLoaded', function() {
         const map = [
             { id: 'fname', validator: (el) => validateName(el.value), required: true },
-            { id: 'mname', validator: (el) => el.value.trim() === '' || validateName(el.value), required: false }, // Optional field
+            { id: 'mname', validator: (el) => el.value.trim() === '' || validateName(el.value), required: false },
             { id: 'surname', validator: (el) => validateName(el.value), required: true },
             { id: 'cstmr_email', validator: (el) => validateEmail(el.value), required: true },
             { id: 'cstmr_num', validator: (el) => validatePhone(el.value), required: true },
@@ -1128,13 +1768,11 @@ cropModal.addEventListener('click', function(e) {
             if (!el) return;
             el.classList.add('validate-field');
             
-            // Initial state
             setState(el, item.validator(el));
 
             const inputEvent = (e) => {
                 setState(el, item.validator(el));
                 
-                // When password changes, revalidate confirm password
                 if (item.id === 'password') {
                     const confirm = document.getElementById('confirm_password');
                     if (confirm) {
@@ -1147,7 +1785,6 @@ cropModal.addEventListener('click', function(e) {
                     }
                 }
                 
-                // Hide inline mismatch message when confirm becomes valid
                 if (item.id === 'confirm_password') {
                     const pwMismatch = document.getElementById('pwMismatch');
                     if (pwMismatch && el.classList.contains('valid')) {
@@ -1156,7 +1793,6 @@ cropModal.addEventListener('click', function(e) {
                 }
             };
 
-            // For select elements, listen to 'change'
             if (el.tagName === 'SELECT') {
                 el.addEventListener('change', inputEvent);
                 el.addEventListener('blur', inputEvent);
@@ -1166,51 +1802,12 @@ cropModal.addEventListener('click', function(e) {
             }
         });
 
-        // Form submit validation
-        const form = document.getElementById('userRegisterForm');
-        if (form) {
-            form.addEventListener('submit', function(e) {
-                const requiredIds = ['fname','surname','cstmr_email','cstmr_num','password','confirm_password','cstmr_address'];
-                let firstInvalid = null;
-                let anyInvalid = false;
-
-                requiredIds.forEach(id => {
-                    const el = document.getElementById(id);
-                    if (!el) return;
-                    const val = (el.tagName === 'SELECT') ? el.value : el.value.trim();
-                    
-                    // Mark as invalid if empty
-                    if (!val) {
-                        el.classList.add('invalid');
-                        el.classList.remove('valid');
-                        anyInvalid = true;
-                        firstInvalid = firstInvalid || el;
-                        return;
-                    }
-                    
-                    // Mark as invalid if it has the invalid class OR doesn't have valid class
-                    if (el.classList.contains('invalid') || !el.classList.contains('valid')) {
-                        el.classList.add('invalid');
-                        el.classList.remove('valid');
-                        anyInvalid = true;
-                        firstInvalid = firstInvalid || el;
-                    }
-                });
-
-                if (anyInvalid) {
-                    e.preventDefault();
-                    if (firstInvalid) firstInvalid.focus();
-                    if (typeof showErrorModal === 'function') {
-                        showErrorModal('Please fix all highlighted fields before continuing.');
-                    } else {
-                        alert('Please fix all highlighted fields before continuing.');
-                    }
-                    return false;
-                }
-            });
+        // Form submit validation - UPDATED
+        const formForValidation = document.getElementById('userRegisterForm');
+        if (formForValidation) {
+            // Validation already handled by AJAX submit handler above
+            // No need for additional validation here
         }
     });
 })();
 </script>
-
-<?php include 'includes/footer.php'; ?>

@@ -148,164 +148,82 @@ function createCustomer($data) {
 }
 
 // UPDATED updateCustomer() with compression and removal
-function updateCustomer($id, $data) {
+function updateCustomer($customerId, $userData) {
     $conn = getDbConnection();
-
-    // Check if user wants to remove profile picture
-    $removePhoto = isset($data['remove_profile_pic']) && $data['remove_profile_pic'];
-
-    // Handle profile picture update with compression
-    $hasNewPic = false;
-    $profilePic = null;
     
-    if (isset($_FILES['profile_pic']) && $_FILES['profile_pic']['error'] === UPLOAD_ERR_OK) {
-        // Compress the uploaded image
-        $imageData = file_get_contents($_FILES['profile_pic']['tmp_name']);
-        $profilePic = compressImage($imageData, 800, 800, 85);
-        $hasNewPic = true;
-        
-        error_log("Profile pic uploaded and compressed for customer update");
-    }
-
-    // Escape all string values
-    $fname = $conn->real_escape_string($data['fname']);
-    $mname = $conn->real_escape_string($data['mname'] ?? '');
-    $surname = $conn->real_escape_string($data['surname'] ?? '');
-    $cstmr_num = $conn->real_escape_string($data['cstmr_num'] ?? '');
-    $cstmr_email = $conn->real_escape_string($data['cstmr_email'] ?? '');
-    $cstmr_address = $conn->real_escape_string($data['cstmr_address'] ?? '');
-    $id = (int)$id;
-
-    // Update customers table
-    if ($removePhoto) {
-        // Remove profile picture (set to NULL)
-        $sql = "UPDATE customers 
-                SET fname = '$fname', 
-                    mname = '$mname', 
-                    surname = '$surname', 
-                    cstmr_num = '$cstmr_num', 
-                    cstmr_email = '$cstmr_email', 
-                    cstmr_address = '$cstmr_address', 
-                    profile_pic = NULL
-                WHERE customer_id = $id";
-        
-        $success1 = $conn->query($sql);
-        
-        if (!$success1) {
-            error_log("Customer update (remove photo) failed: " . $conn->error);
-        } else {
-            error_log("Profile picture removed for customer ID: $id");
-        }
-        
-    } elseif ($hasNewPic) {
-        // Update with new profile picture
-        $profilePicEscaped = $conn->real_escape_string($profilePic);
-        
-        $sql = "UPDATE customers 
-                SET fname = '$fname', 
-                    mname = '$mname', 
-                    surname = '$surname', 
-                    cstmr_num = '$cstmr_num', 
-                    cstmr_email = '$cstmr_email', 
-                    cstmr_address = '$cstmr_address', 
-                    profile_pic = '$profilePicEscaped'
-                WHERE customer_id = $id";
-        
-        $success1 = $conn->query($sql);
-        
-        if (!$success1) {
-            error_log("Customer update failed: " . $conn->error);
-        }
-        
-    } else {
-        // Update without changing profile picture
-        $stmt1 = $conn->prepare("
-            UPDATE customers 
-            SET fname = ?, mname = ?, surname = ?, cstmr_num = ?, cstmr_email = ?, cstmr_address = ?
-            WHERE customer_id = ?
-        ");
-        $stmt1->bind_param("ssssssi",
-            $data['fname'],
-            $data['mname'],
-            $data['surname'],
-            $data['cstmr_num'],
-            $data['cstmr_email'],
-            $data['cstmr_address'],
-            $id
-        );
-        $success1 = $stmt1->execute();
-        
-        if (!$success1) {
-            error_log("Customer update failed: " . $stmt1->error);
-        }
-        
-        $stmt1->close();
-    }
-
-    // Prepare variables for profiles
-    $face_shape = $data['face_shape'] ?? '';
-    $body_type = $data['body_type'] ?? '';
-    $eye_color = $data['eye_color'] ?? '';
-    $skin_tone = $data['skin_tone'] ?? '';
-    $hair_type = $data['hair_type'] ?? '';
-    $hair_color = $data['hair_color'] ?? '';
-    $current_hair_length = $data['current_hair_length'] ?? '';
-    $desired_hair_length = $data['desired_hair_length'] ?? '';
-
-    // Check if profile exists
-    $checkStmt = $conn->prepare("SELECT profile_id FROM profiles WHERE customer_id = ?");
-    $checkStmt->bind_param("i", $id);
-    $checkStmt->execute();
-    $result = $checkStmt->get_result();
-    $profileExists = $result->num_rows > 0;
-    $checkStmt->close();
-
-    if ($profileExists) {
-        // Update existing profile
-        $stmt2 = $conn->prepare("
-            UPDATE profiles 
-            SET face_shape = ?, body_type = ?, eye_color = ?, skin_tone = ?, hair_type = ?, hair_color = ?, current_hair_length = ?, desired_hair_length = ?
-            WHERE customer_id = ?
-        ");
-        $stmt2->bind_param("ssssssssi",
-            $face_shape,
-            $body_type,
-            $eye_color,
-            $skin_tone,
-            $hair_type,
-            $hair_color,
-            $current_hair_length,
-            $desired_hair_length,
-            $id
-        );
-    } else {
-        // Insert new profile
-        $stmt2 = $conn->prepare("
-            INSERT INTO profiles 
-            (customer_id, face_shape, body_type, eye_color, skin_tone, hair_type, hair_color, current_hair_length, desired_hair_length)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ");
-        $stmt2->bind_param("issssssss",
-            $id,
-            $face_shape,
-            $body_type,
-            $eye_color,
-            $skin_tone,
-            $hair_type,
-            $hair_color,
-            $current_hair_length,
-            $desired_hair_length
-        );
-    }
-
-    $success2 = $stmt2->execute();
+    // Build the update query
+    $updates = [];
+    $types = '';
+    $values = [];
     
-    if (!$success2) {
-        error_log("Profile update failed: " . $stmt2->error);
+    if (isset($userData['fname'])) {
+        $updates[] = "fname = ?";
+        $types .= 's';
+        $values[] = $userData['fname'];
+    }
+    if (isset($userData['mname'])) {
+        $updates[] = "mname = ?";
+        $types .= 's';
+        $values[] = $userData['mname'];
+    }
+    if (isset($userData['surname'])) {
+        $updates[] = "surname = ?";
+        $types .= 's';
+        $values[] = $userData['surname'];
+    }
+    if (isset($userData['cstmr_num'])) {
+        $updates[] = "cstmr_num = ?";
+        $types .= 's';
+        $values[] = $userData['cstmr_num'];
+    }
+    if (isset($userData['cstmr_address'])) {
+        $updates[] = "cstmr_address = ?";
+        $types .= 's';
+        $values[] = $userData['cstmr_address'];
     }
     
-    $stmt2->close();
-
-    return $success1 && $success2;
+    // Handle geometry update
+    if (isset($userData['latitude']) && isset($userData['longitude'])) {
+        $updates[] = "customer_location = ST_GeomFromText(?)";
+        $types .= 's';
+        $lat = floatval($userData['latitude']);
+        $lng = floatval($userData['longitude']);
+        $point = "POINT(" . $lng . " " . $lat . ")";
+        $values[] = $point;
+        error_log("Updating customer location: " . $point . " for customer ID: " . $customerId);
+    }
+    
+    if (empty($updates)) {
+        return false;
+    }
+    
+    $values[] = $customerId;
+    $types .= 'i';
+    
+    $query = "UPDATE customers SET " . implode(", ", $updates) . " WHERE customer_id = ?";
+    
+    error_log("Update query: " . $query);
+    error_log("Update types: " . $types);
+    
+    $stmt = $conn->prepare($query);
+    if (!$stmt) {
+        error_log("Prepare failed: " . $conn->error);
+        return false;
+    }
+    
+    if (!$stmt->bind_param($types, ...$values)) {
+        error_log("Bind param failed: " . $stmt->error);
+        $stmt->close();
+        return false;
+    }
+    
+    if (!$stmt->execute()) {
+        error_log("Execute failed: " . $stmt->error);
+        $stmt->close();
+        return false;
+    }
+    
+    $stmt->close();
+    return true;
 }
 ?>

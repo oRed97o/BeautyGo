@@ -156,8 +156,45 @@ include 'includes/header.php';
                         <hr class="my-4">
                         <h5 class="mb-3"><i class="bi bi-geo-alt-fill"></i> Location</h5>
                         <div class="mb-3">
-                            <label class="form-label">Street Address</label>
-                            <input type="text" class="form-control" id="address" name="address" value="<?php echo htmlspecialchars($business['business_address'] ?? ''); ?>" required>
+                            <label class="form-label">Barangay / Street Address *</label>
+                            <select class="form-select" id="address" name="address" required onchange="updateMapFromAddressBusinessProfile()">
+                                <option value="">Select your barangay/street address</option>
+                                <option value="Aga" <?php echo ($business['business_address'] ?? '') == 'Aga' ? 'selected' : ''; ?>>Aga</option>
+                                <option value="Balaytigui" <?php echo ($business['business_address'] ?? '') == 'Balaytigui' ? 'selected' : ''; ?>>Balaytigui</option>
+                                <option value="Banilad" <?php echo ($business['business_address'] ?? '') == 'Banilad' ? 'selected' : ''; ?>>Banilad</option>
+                                <option value="Bilaran" <?php echo ($business['business_address'] ?? '') == 'Bilaran' ? 'selected' : ''; ?>>Bilaran</option>
+                                <option value="Bucana" <?php echo ($business['business_address'] ?? '') == 'Bucana' ? 'selected' : ''; ?>>Bucana</option>
+                                <option value="Buhay" <?php echo ($business['business_address'] ?? '') == 'Buhay' ? 'selected' : ''; ?>>Buhay</option>
+                                <option value="Bulihan" <?php echo ($business['business_address'] ?? '') == 'Bulihan' ? 'selected' : ''; ?>>Bulihan</option>
+                                <option value="Bunducan" <?php echo ($business['business_address'] ?? '') == 'Bunducan' ? 'selected' : ''; ?>>Bunducan</option>
+                                <option value="Butucan" <?php echo ($business['business_address'] ?? '') == 'Butucan' ? 'selected' : ''; ?>>Butucan</option>
+                                <option value="Calayo" <?php echo ($business['business_address'] ?? '') == 'Calayo' ? 'selected' : ''; ?>>Calayo</option>
+                                <option value="Catandaan" <?php echo ($business['business_address'] ?? '') == 'Catandaan' ? 'selected' : ''; ?>>Catandaan</option>
+                                <option value="Caybunga" <?php echo ($business['business_address'] ?? '') == 'Caybunga' ? 'selected' : ''; ?>>Caybunga</option>
+                                <option value="Cogunan" <?php echo ($business['business_address'] ?? '') == 'Cogunan' ? 'selected' : ''; ?>>Cogunan</option>
+                                <option value="Dayap" <?php echo ($business['business_address'] ?? '') == 'Dayap' ? 'selected' : ''; ?>>Dayap</option>
+                                <option value="Kaylaway" <?php echo ($business['business_address'] ?? '') == 'Kaylaway' ? 'selected' : ''; ?>>Kaylaway</option>
+                                <option value="Latag" <?php echo ($business['business_address'] ?? '') == 'Latag' ? 'selected' : ''; ?>>Latag</option>
+                                <option value="Looc" <?php echo ($business['business_address'] ?? '') == 'Looc' ? 'selected' : ''; ?>>Looc</option>
+                                <option value="Lumbangan" <?php echo ($business['business_address'] ?? '') == 'Lumbangan' ? 'selected' : ''; ?>>Lumbangan</option>
+                                <option value="Malapad na Bato" <?php echo ($business['business_address'] ?? '') == 'Malapad na Bato' ? 'selected' : ''; ?>>Malapad na Bato</option>
+                                <option value="Mataas na Pulo" <?php echo ($business['business_address'] ?? '') == 'Mataas na Pulo' ? 'selected' : ''; ?>>Mataas na Pulo</option>
+                                <option value="Munting Indan" <?php echo ($business['business_address'] ?? '') == 'Munting Indan' ? 'selected' : ''; ?>>Munting Indan</option>
+                                <option value="Natipuan" <?php echo ($business['business_address'] ?? '') == 'Natipuan' ? 'selected' : ''; ?>>Natipuan</option>
+                                <option value="Pantalan" <?php echo ($business['business_address'] ?? '') == 'Pantalan' ? 'selected' : ''; ?>>Pantalan</option>
+                                <option value="Papaya" <?php echo ($business['business_address'] ?? '') == 'Papaya' ? 'selected' : ''; ?>>Papaya</option>
+                                <option value="Poblacion" <?php echo ($business['business_address'] ?? '') == 'Poblacion' ? 'selected' : ''; ?>>Poblacion</option>
+                                <option value="Putat" <?php echo ($business['business_address'] ?? '') == 'Putat' ? 'selected' : ''; ?>>Putat</option>
+                                <option value="Reparo" <?php echo ($business['business_address'] ?? '') == 'Reparo' ? 'selected' : ''; ?>>Reparo</option>
+                                <option value="San Diego" <?php echo ($business['business_address'] ?? '') == 'San Diego' ? 'selected' : ''; ?>>San Diego</option>
+                                <option value="San Jose" <?php echo ($business['business_address'] ?? '') == 'San Jose' ? 'selected' : ''; ?>>San Jose</option>
+                                <option value="San Juan" <?php echo ($business['business_address'] ?? '') == 'San Juan' ? 'selected' : ''; ?>>San Juan</option>
+                                <option value="Talangan" <?php echo ($business['business_address'] ?? '') == 'Talangan' ? 'selected' : ''; ?>>Talangan</option>
+                                <option value="Tumalim" <?php echo ($business['business_address'] ?? '') == 'Tumalim' ? 'selected' : ''; ?>>Tumalim</option>
+                                <option value="Utod" <?php echo ($business['business_address'] ?? '') == 'Utod' ? 'selected' : ''; ?>>Utod</option>
+                                <option value="Wawa" <?php echo ($business['business_address'] ?? '') == 'Wawa' ? 'selected' : ''; ?>>Wawa</option>
+                            </select>
+                            <small class="text-muted">Select your barangay in Nasugbu, Batangas - the map will auto-populate!</small>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">City</label>
@@ -352,7 +389,89 @@ async function reverseGeocode(lat, lng) {
     }
 }
 
-document.addEventListener('DOMContentLoaded', initMap);
+// Handle address dropdown change - auto-update map with barangay coordinates
+function updateMapFromAddressBusinessProfile() {
+    const addressDropdown = document.getElementById('address');
+    const selectedBarangay = addressDropdown.value;
+    
+    if (!selectedBarangay) {
+        return; // No selection
+    }
+    
+    // Fetch coordinates for the selected barangay
+    fetch('backend/barangay_coordinates.php?barangay=' + encodeURIComponent(selectedBarangay))
+        .then(response => response.json())
+        .then(data => {
+            const lat = data.lat;
+            const lng = data.lng;
+            
+            // Update the map and coordinates
+            if (map && marker) {
+                // Pan map to new location
+                map.setView([lat, lng], 14);
+                
+                // Update marker position
+                marker.setLatLng([lat, lng]);
+                
+                // Update coordinate displays
+                updateLocation(lat, lng);
+                
+                console.log('Map updated for barangay:', selectedBarangay, 'Lat:', lat, 'Lng:', lng);
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching barangay coordinates:', error);
+        });
+}
+
+// Function to find nearest barangay based on coordinates
+async function findNearestBarangayBusiness(lat, lng) {
+    try {
+        const response = await fetch('backend/barangay_coordinates.php');
+        const barangays = await response.json();
+        
+        let nearestBarangay = null;
+        let minDistance = Infinity;
+        
+        for (const [name, coords] of Object.entries(barangays)) {
+            // Calculate distance using simple Pythagorean theorem (good enough for nearby points)
+            const distance = Math.sqrt(
+                Math.pow(coords.lat - lat, 2) + Math.pow(coords.lng - lng, 2)
+            );
+            
+            if (distance < minDistance) {
+                minDistance = distance;
+                nearestBarangay = name;
+            }
+        }
+        
+        return nearestBarangay;
+    } catch (error) {
+        console.error('Error finding nearest barangay:', error);
+        return null;
+    }
+}
+
+// Auto-select barangay based on current coordinates when page loads
+async function autoSelectBarangayBusiness() {
+    const latValue = document.getElementById('latitude').value;
+    const lngValue = document.getElementById('longitude').value;
+    
+    if (latValue && lngValue && latValue !== '14.0697' && lngValue !== '120.6328') {
+        const barangay = await findNearestBarangayBusiness(parseFloat(latValue), parseFloat(lngValue));
+        if (barangay) {
+            const dropdown = document.getElementById('address');
+            dropdown.value = barangay;
+            console.log('Auto-selected barangay:', barangay);
+        }
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    initMap();
+    // Auto-select barangay after a slight delay to ensure coordinates are loaded
+    setTimeout(autoSelectBarangayBusiness, 500);
+});
 
 // ========== CROP MODAL FUNCTIONALITY ==========
 const cropModal = document.getElementById('cropModal');

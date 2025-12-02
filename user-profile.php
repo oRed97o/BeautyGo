@@ -36,6 +36,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
     // Validate file upload if provided
     $uploadError = null;
     $hasNewImage = false;
+    $profilePicData = null;
     
     if (isset($_FILES['profile_pic']) && $_FILES['profile_pic']['error'] !== UPLOAD_ERR_NO_FILE) {
         if ($_FILES['profile_pic']['error'] === UPLOAD_ERR_OK) {
@@ -50,7 +51,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
             } elseif ($fileSize > $maxSize) {
                 $uploadError = 'File is too large. Maximum size is 5MB.';
             } else {
-                // File is valid, mark that we have a new image
+                // File is valid, read the image data
+                $profilePicData = file_get_contents($_FILES['profile_pic']['tmp_name']);
                 $hasNewImage = true;
             }
         } else {
@@ -64,35 +66,100 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
         exit;
     }
     
-    $userData = [
-        'fname' => sanitize($_POST['fname']),
-        'mname' => sanitize($_POST['mname'] ?? ''),
-        'surname' => sanitize($_POST['surname'] ?? ''),
-        'cstmr_num' => sanitize($_POST['cstmr_num']),
-        'cstmr_email' => $user['cstmr_email'], // Keep existing email
-        'cstmr_address' => sanitize($_POST['cstmr_address'] ?? ''),
-        'face_shape' => $_POST['face_shape'] ?? '',
-        'body_type' => $_POST['body_type'] ?? '',
-        'eye_color' => $_POST['eye_color'] ?? '',
-        'skin_tone' => $_POST['skin_tone'] ?? '',
-        'hair_type' => $_POST['hair_type'] ?? '',
-        'hair_color' => $_POST['hair_color'] ?? '',
-        'current_hair_length' => $_POST['current_hair_length'] ?? '',
-        'desired_hair_length' => $_POST['desired_hair_length'] ?? '',
-        'remove_profile_pic' => $removePhoto
-    ];
+    // Get latitude and longitude from form
+    $latitude = isset($_POST['customer_latitude']) ? floatval($_POST['customer_latitude']) : null;
+    $longitude = isset($_POST['customer_longitude']) ? floatval($_POST['customer_longitude']) : null;
     
-    if (updateCustomer($customerId, $userData)) {
-        if ($removePhoto) {
-            $_SESSION['success'] = 'Profile photo removed successfully!';
-        } elseif ($hasNewImage) {
-            $_SESSION['success'] = 'Profile and photo updated successfully!';
-        } else {
-            $_SESSION['success'] = 'Profile updated successfully';
-        }
-    } else {
-        $_SESSION['error'] = 'Failed to update profile';
+    // Validate coordinates
+    if ($latitude === null || $longitude === null || $latitude == 0 || $longitude == 0) {
+        $_SESSION['error'] = 'Please set your location on the map';
+        header('Location: user-profile.php');
+        exit;
     }
+    
+    try {
+        // Start building the UPDATE query
+        $updateFields = [];
+        $params = [];
+        $types = '';
+        
+        // Basic profile fields
+        $updateFields[] = "fname = ?";
+        $params[] = sanitize($_POST['fname']);
+        $types .= 's';
+        
+        $updateFields[] = "mname = ?";
+        $params[] = sanitize($_POST['mname'] ?? '');
+        $types .= 's';
+        
+        $updateFields[] = "surname = ?";
+        $params[] = sanitize($_POST['surname'] ?? '');
+        $types .= 's';
+        
+        $updateFields[] = "cstmr_num = ?";
+        $params[] = sanitize($_POST['cstmr_num']);
+        $types .= 's';
+        
+        $updateFields[] = "cstmr_address = ?";
+        $params[] = sanitize($_POST['cstmr_address'] ?? '');
+        $types .= 's';
+        
+        // Add latitude and longitude
+        $updateFields[] = "latitude = ?";
+        $params[] = $latitude;
+        $types .= 'd';
+        
+        $updateFields[] = "longitude = ?";
+        $params[] = $longitude;
+        $types .= 'd';
+        
+        // Update customer_location POINT field
+        $updateFields[] = "customer_location = POINT(?, ?)";
+        $params[] = $longitude; // POINT takes (longitude, latitude)
+        $types .= 'd';
+        $params[] = $latitude;
+        $types .= 'd';
+        
+        // Handle profile picture
+        if ($removePhoto) {
+            // Remove profile picture
+            $updateFields[] = "profile_pic = NULL";
+        } elseif ($hasNewImage && $profilePicData) {
+            // Update with new profile picture
+            $updateFields[] = "profile_pic = ?";
+            $params[] = $profilePicData;
+            $types .= 'b'; // blob type
+        }
+        
+        // Build and execute the query
+        $sql = "UPDATE customers SET " . implode(", ", $updateFields) . " WHERE customer_id = ?";
+        $params[] = $customerId;
+        $types .= 'i';
+        
+        $stmt = $conn->prepare($sql);
+        
+        // Bind parameters
+        if ($hasNewImage && $profilePicData && !$removePhoto) {
+            // Special handling for blob data
+            $null = NULL;
+            $stmt->bind_param($types, ...$params);
+            $stmt->send_long_data(count($params) - 2, $profilePicData); // -2 because customer_id is last
+        } else {
+            $stmt->bind_param($types, ...$params);
+        }
+        
+        if ($stmt->execute()) {
+            $_SESSION['success'] = 'Profile updated successfully';
+        } else {
+            $_SESSION['error'] = 'Failed to update profile: ' . $stmt->error;
+        }
+        
+        $stmt->close();
+        
+    } catch (Exception $e) {
+        $_SESSION['error'] = 'An error occurred: ' . $e->getMessage();
+    }
+    
     header('Location: user-profile.php');
     exit;
 }
@@ -101,7 +168,8 @@ $pageTitle = 'My Profile - BeautyGo';
 include 'includes/header.php';
 ?>
 
-<link rel="stylesheet" href="css/styles.css">
+<!-- Add Leaflet CSS before closing </head> or in style section -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
 <style>
 /* Back button styling */
@@ -418,6 +486,46 @@ include 'includes/header.php';
     transform: translateY(-2px);
 }
 
+#locationMap {
+    width: 100%;
+    height: 400px;
+    border-radius: 10px;
+    margin-bottom: 15px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.location-info-box {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 10px;
+    margin-top: 10px;
+    border-left: 4px solid var(--color-burgundy);
+}
+
+.location-info-box p {
+    margin: 5px 0;
+    font-size: 0.9rem;
+    color: #555;
+}
+
+.location-info-box strong {
+    color: var(--color-burgundy);
+}
+
+.map-instructions {
+    background: #e7f3ff;
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    border-left: 4px solid #0066cc;
+    font-size: 0.9rem;
+    color: #0066cc;
+}
+
+.map-instructions i {
+    margin-right: 8px;
+}
+
 @keyframes fadeIn {
     from { opacity: 0; }
     to { opacity: 1; }
@@ -434,6 +542,14 @@ include 'includes/header.php';
     }
 }
 
+/* Custom marker style */
+.custom-marker {
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+}
 </style>
 
 <main>
@@ -543,7 +659,7 @@ include 'includes/header.php';
                                     <label for="cstmr_address" class="form-label">
                                         <i class="bi bi-geo-alt-fill text-danger"></i> Barangay *
                                     </label>
-                                    <select class="form-select" id="cstmr_address" name="cstmr_address" required>
+                                    <select class="form-select" id="cstmr_address" name="cstmr_address" required onchange="updateMapFromAddressUserProfile()">
                                         <option value="">Select your barangay</option>
                                         <option value="Aga" <?php echo ($user['cstmr_address'] ?? '') == 'Aga' ? 'selected' : ''; ?>>Aga</option>
                                         <option value="Balaytigui" <?php echo ($user['cstmr_address'] ?? '') == 'Balaytigui' ? 'selected' : ''; ?>>Balaytigui</option>
@@ -591,6 +707,27 @@ include 'includes/header.php';
                             </div>
                             
                             <hr class="my-4">
+
+                            <!-- Location Section -->
+                            <h5 class="mb-3">
+                                <i class="bi bi-geo-alt-fill text-danger"></i> Your Location
+                            </h5>
+                            
+                            <div class="map-instructions">
+                                <i class="bi bi-info-circle-fill"></i>
+                                Click on the map to set your exact location or drag the marker to adjust it.
+                            </div>
+                            
+                            <div id="locationMap"></div>
+                            
+                            <div class="location-info-box">
+                                <p><strong>Latitude:</strong> <span id="displayLatitude"><?php echo htmlspecialchars($user['latitude'] ?? '14.0697'); ?></span>°</p>
+                                <p><strong>Longitude:</strong> <span id="displayLongitude"><?php echo htmlspecialchars($user['longitude'] ?? '120.6328'); ?></span>°</p>
+                                <p><strong>Address:</strong> <span id="displayAddress"><?php echo htmlspecialchars($user['cstmr_address'] ?? 'Not set'); ?></span>, Nasugbu, Batangas</p>
+                            </div>
+                            
+                            <input type="hidden" id="customer_latitude" name="customer_latitude" value="<?php echo htmlspecialchars($user['latitude'] ?? '14.0697'); ?>">
+                            <input type="hidden" id="customer_longitude" name="customer_longitude" value="<?php echo htmlspecialchars($user['longitude'] ?? '120.6328'); ?>">
 
                             <!-- Save Button Section -->
                     
@@ -690,7 +827,11 @@ include 'includes/header.php';
 </div>
 </main>
 
+<!-- Before closing </main>, add Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
 <script>
+// Crop modal elements
 // Crop modal elements
 const profilePicInput = document.getElementById('profile_pic');
 const cropModal = document.getElementById('cropModal');
@@ -714,6 +855,8 @@ let currentFile = null;
 let originalImageSrc = '';
 let hasCroppedImage = false;
 
+// DECLARE formChanged ONCE at the top level
+let formChanged = false;
 
 // Form reset function
 function resetForm() {
@@ -722,28 +865,6 @@ function resetForm() {
         location.reload();
     }
 }
-
-// Show unsaved changes warning
-let formChanged = false;
-const form = document.getElementById('profileForm');
-const formInputs = form.querySelectorAll('input:not([type="hidden"]), select, textarea');
-
-formInputs.forEach(input => {
-    input.addEventListener('change', () => {
-        formChanged = true;
-    });
-});
-
-window.addEventListener('beforeunload', (e) => {
-    if (formChanged) {
-        e.preventDefault();
-        e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
-    }
-});
-
-form.addEventListener('submit', () => {
-    formChanged = false;
-});
 
 // When user selects a file
 profilePicInput.addEventListener('change', function(e) {
@@ -813,7 +934,7 @@ function openCropModal(imageSrc) {
     img.src = imageSrc;
 }
 
-// Zoom functionality - Modified to change actual size instead of transform
+// Zoom functionality
 function updateZoom(newZoom) {
     currentZoom = Math.max(1, Math.min(3, newZoom));
     zoomSlider.value = currentZoom;
@@ -923,12 +1044,11 @@ btnCancelCrop.addEventListener('click', closeCropModal);
 btnConfirmCrop.addEventListener('click', function() {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
-    const outputSize = 400; // Final output size
+    const outputSize = 400;
     
     canvas.width = outputSize;
     canvas.height = outputSize;
     
-    // Create circular clipping path
     ctx.beginPath();
     ctx.arc(outputSize / 2, outputSize / 2, outputSize / 2, 0, Math.PI * 2);
     ctx.closePath();
@@ -936,21 +1056,17 @@ btnConfirmCrop.addEventListener('click', function() {
     
     const img = new Image();
     img.onload = function() {
-        const previewSize = 300; // Preview container size
-        const scale = outputSize / previewSize; // Scale factor
+        const previewSize = 300;
+        const scale = outputSize / previewSize;
         
-        // Get current image dimensions and position
         const imgWidth = parseFloat(cropPreviewImage.style.width);
         const imgHeight = parseFloat(cropPreviewImage.style.height);
         
-        // Calculate the portion of the image visible in the preview circle
-        // Scale everything up to the output canvas size
         const scaledX = currentX * scale;
         const scaledY = currentY * scale;
         const scaledWidth = imgWidth * scale;
         const scaledHeight = imgHeight * scale;
         
-        // Draw the image
         ctx.drawImage(img, scaledX, scaledY, scaledWidth, scaledHeight);
         
         canvas.toBlob(function(blob) {
@@ -960,14 +1076,11 @@ btnConfirmCrop.addEventListener('click', function() {
                 const previewName = document.getElementById('imagePreviewName');
                 const removeInput = document.getElementById('remove_profile_pic');
                 
-                // Reset remove flag
                 removeInput.value = '0';
                 
-                // Show preview
                 if (preview.tagName === 'IMG') {
                     preview.src = e.target.result;
                 } else {
-                    // Replace default avatar with image
                     const imgElement = document.createElement('img');
                     imgElement.src = e.target.result;
                     imgElement.className = 'profile-image';
@@ -978,7 +1091,6 @@ btnConfirmCrop.addEventListener('click', function() {
                 
                 previewName.innerHTML = `Selected: ${currentFile.name} <button type="button" class="edit-photo-btn" id="editPhotoBtnDynamic"><i class="bi bi-pencil-fill"></i> Re-crop Photo</button>`;
                 
-                // Show remove button if it exists
                 const removeBtn = document.getElementById('removePhotoBtn');
                 if (removeBtn) {
                     removeBtn.style.display = 'inline-block';
@@ -987,7 +1099,6 @@ btnConfirmCrop.addEventListener('click', function() {
                 hasCroppedImage = true;
                 closeCropModal();
                 
-                // Add event listener to the dynamically created edit button
                 setTimeout(() => {
                     const editBtn = document.getElementById('editPhotoBtnDynamic');
                     if (editBtn) {
@@ -1012,12 +1123,10 @@ if (removePhotoBtn) {
         if (confirm('Are you sure you want to remove your profile picture?')) {
             document.getElementById('remove_profile_pic').value = '1';
             
-            // Clear file input
             profilePicInput.value = '';
             hasCroppedImage = false;
             originalImageSrc = '';
             
-            // Replace image with default avatar
             const preview = document.getElementById('profilePreview');
             const defaultAvatar = document.createElement('div');
             defaultAvatar.className = 'default-avatar';
@@ -1025,21 +1134,230 @@ if (removePhotoBtn) {
             defaultAvatar.innerHTML = '<i class="bi bi-person-circle"></i>';
             preview.parentNode.replaceChild(defaultAvatar, preview);
             
-            // Clear preview name
             document.getElementById('imagePreviewName').textContent = 'Photo will be removed when you save';
             
-            // Hide remove button
             this.style.display = 'none';
         }
     });
 }
 
-// Close modal when clicking outside
-cropModal.addEventListener('click', function(e) {
-    if (e.target === cropModal) {
-        closeCropModal();
+// Map initialization for profile edit
+let map;
+let marker;
+let currentLat = parseFloat(document.getElementById('customer_latitude').value);
+let currentLng = parseFloat(document.getElementById('customer_longitude').value);
+
+function initProfileMap() {
+    const mapContainer = document.getElementById('locationMap');
+    if (!mapContainer) {
+        console.error('Map container not found');
+        return;
+    }
+    
+    // Destroy existing map if it exists
+    if (map) {
+        map.remove();
+    }
+    
+    // Create map centered on current location
+    map = L.map('locationMap', {
+        preferCanvas: true
+    }).setView([currentLat, currentLng], 14);
+    
+    // Add OpenStreetMap tiles
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 19,
+        minZoom: 10
+    }).addTo(map);
+    
+    // Custom marker icon
+    const customIcon = L.divIcon({
+        html: '<i class="bi bi-geo-alt-fill" style="font-size: 2.5rem; color: #850E35;"></i>',
+        className: 'custom-marker',
+        iconSize: [40, 40],
+        iconAnchor: [20, 40]
+    });
+    
+    // Add marker at current location
+    marker = L.marker([currentLat, currentLng], {
+        icon: customIcon,
+        draggable: true,
+        title: 'Your Location'
+    }).addTo(map);
+    
+    // Update coordinates when marker is dragged
+    marker.on('dragend', function() {
+        const position = marker.getLatLng();
+        updateLocationCoordinates(position.lat, position.lng);
+    });
+    
+    // Update coordinates when map is clicked
+    map.on('click', function(e) {
+        marker.setLatLng(e.latlng);
+        updateLocationCoordinates(e.latlng.lat, e.latlng.lng);
+    });
+    
+    // Add Nasugbu boundary circle for reference
+    L.circle([14.0697, 120.6328], {
+        color: 'rgba(128, 0, 32, 0.2)',
+        fill: true,
+        fillColor: 'rgba(128, 0, 32, 0.1)',
+        fillOpacity: 0.2,
+        radius: 5000,
+        weight: 2,
+        dashArray: '5, 5'
+    }).addTo(map);
+    
+    // Trigger map resize
+    setTimeout(() => {
+        map.invalidateSize();
+    }, 100);
+    
+    console.log('Map initialized successfully at:', currentLat, currentLng);
+}
+
+function updateLocationCoordinates(lat, lng) {
+    currentLat = lat;
+    currentLng = lng;
+    
+    // Update hidden inputs
+    document.getElementById('customer_latitude').value = lat.toFixed(8);
+    document.getElementById('customer_longitude').value = lng.toFixed(8);
+    
+    // Update display
+    document.getElementById('displayLatitude').textContent = lat.toFixed(6);
+    document.getElementById('displayLongitude').textContent = lng.toFixed(6);
+    
+    // Mark form as changed
+    formChanged = true;
+}
+
+// Handle address dropdown change - auto-update map with barangay coordinates
+function updateMapFromAddressUserProfile() {
+    const addressDropdown = document.getElementById('cstmr_address');
+    const selectedBarangay = addressDropdown.value;
+    
+    if (!selectedBarangay) {
+        return; // No selection
+    }
+    
+    // Fetch coordinates for the selected barangay
+    fetch('backend/barangay_coordinates.php?barangay=' + encodeURIComponent(selectedBarangay))
+        .then(response => response.json())
+        .then(data => {
+            const lat = data.lat;
+            const lng = data.lng;
+            
+            // Update the map and coordinates
+            if (map && marker) {
+                // Pan map to new location
+                map.setView([lat, lng], 14);
+                
+                // Update marker position
+                marker.setLatLng([lat, lng]);
+                
+                // Update coordinate displays
+                updateLocationCoordinates(lat, lng);
+                
+                console.log('Map updated for barangay:', selectedBarangay, 'Lat:', lat, 'Lng:', lng);
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching barangay coordinates:', error);
+        });
+}
+
+// Function to find nearest barangay based on coordinates
+async function findNearestBarangayProfile(lat, lng) {
+    try {
+        const response = await fetch('backend/barangay_coordinates.php');
+        const barangays = await response.json();
+        
+        let nearestBarangay = null;
+        let minDistance = Infinity;
+        
+        for (const [name, coords] of Object.entries(barangays)) {
+            // Calculate distance using simple Pythagorean theorem (good enough for nearby points)
+            const distance = Math.sqrt(
+                Math.pow(coords.lat - lat, 2) + Math.pow(coords.lng - lng, 2)
+            );
+            
+            if (distance < minDistance) {
+                minDistance = distance;
+                nearestBarangay = name;
+            }
+        }
+        
+        return nearestBarangay;
+    } catch (error) {
+        console.error('Error finding nearest barangay:', error);
+        return null;
+    }
+}
+
+// Auto-select barangay based on current coordinates when page loads
+async function autoSelectBarangayProfile() {
+    const latValue = document.getElementById('customer_latitude').value;
+    const lngValue = document.getElementById('customer_longitude').value;
+    
+    if (latValue && lngValue && latValue !== '14.0697' && lngValue !== '120.6328') {
+        const barangay = await findNearestBarangayProfile(parseFloat(latValue), parseFloat(lngValue));
+        if (barangay) {
+            const dropdown = document.getElementById('cstmr_address');
+            dropdown.value = barangay;
+            console.log('Auto-selected barangay:', barangay);
+        }
+    }
+}
+
+// Initialize everything when DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM loaded, initializing map...');
+    
+    // Initialize map
+    if (document.getElementById('locationMap')) {
+        initProfileMap();
+        // Auto-select barangay after a slight delay to ensure coordinates are loaded
+        setTimeout(autoSelectBarangayProfile, 500);
+    }
+    
+    // Track form changes
+    const form = document.getElementById('profileForm');
+    if (form) {
+        const inputs = form.querySelectorAll('input:not([type="hidden"]):not(#profile_pic), select, textarea');
+        inputs.forEach(input => {
+            input.addEventListener('change', () => {
+                formChanged = true;
+            });
+        });
+        
+        form.addEventListener('submit', () => {
+            formChanged = false;
+        });
     }
 });
+
+// Show unsaved changes warning
+window.addEventListener('beforeunload', (e) => {
+    if (formChanged) {
+        e.preventDefault();
+        e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
+    }
+});
+
+// Custom marker style
+const style = document.createElement('style');
+style.textContent = `
+    .custom-marker {
+        text-align: center;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+    }
+`;
+document.head.appendChild(style);
 </script>
 
 <?php include 'includes/footer.php'; ?>

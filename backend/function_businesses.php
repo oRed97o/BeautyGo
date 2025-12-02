@@ -41,9 +41,14 @@ function createBusiness($data) {
     // Hash the password
     $hashedPassword = password_hash($data['business_password'], PASSWORD_DEFAULT);
     
-    // Create POINT geometry for location
-    $point = "POINT(" . $data['longitude'] . " " . $data['latitude'] . ")";
+    // Ensure coordinates are valid numbers
+    $latitude = floatval($data['latitude']);
+    $longitude = floatval($data['longitude']);
     
+    // Log for debugging
+    error_log("createBusiness - Latitude: $latitude, Longitude: $longitude");
+    
+    // First, insert business without location
     $sql = "INSERT INTO businesses (
         business_email, 
         business_password, 
@@ -54,9 +59,8 @@ function createBusiness($data) {
         business_address, 
         city, 
         opening_hour, 
-        closing_hour, 
-        location
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ST_GeomFromText(?))";
+        closing_hour
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
     
     $stmt = $conn->prepare($sql);
     
@@ -65,10 +69,9 @@ function createBusiness($data) {
         return false;
     }
     
-    // Bind parameters: 11 parameters total (10 strings + 1 POINT string)
-    // Type string: 's' for each parameter (all strings)
+    // Bind parameters: 10 parameters (without location)
     $stmt->bind_param(
-        'sssssssssss',  // 11 's' characters for 11 parameters
+        'ssssssssss',  // 10 's' characters for 10 parameters
         $data['business_email'],
         $hashedPassword,
         $data['business_name'],
@@ -78,16 +81,36 @@ function createBusiness($data) {
         $data['business_address'],
         $data['city'],
         $data['opening_hour'],
-        $data['closing_hour'],
-        $point
+        $data['closing_hour']
     );
     
     if ($stmt->execute()) {
         $businessId = $stmt->insert_id;
+        error_log("Business created - ID: $businessId, Now updating location...");
         $stmt->close();
-        return $businessId;
+        
+        // Update location using POINT() constructor AND save latitude/longitude separately
+        $lon = floatval($longitude);
+        $lat = floatval($latitude);
+        $updateSql = "UPDATE businesses SET location = POINT(" . $lon . ", " . $lat . "), latitude = " . $lat . ", longitude = " . $lon . " WHERE business_id = " . intval($businessId);
+        
+        error_log("Executing location update SQL: $updateSql");
+        
+        if ($conn->query($updateSql)) {
+            // Verify the update
+            $verifySql = "SELECT latitude, longitude, ST_X(location) as gis_lng, ST_Y(location) as gis_lat FROM businesses WHERE business_id = " . intval($businessId);
+            $verifyResult = $conn->query($verifySql);
+            if ($verifyResult) {
+                $verifyRow = $verifyResult->fetch_assoc();
+                error_log("Location updated - ID: $businessId, Saved Lat: " . $verifyRow['latitude'] . ", Lon: " . $verifyRow['longitude'] . " | GIS Lat: " . $verifyRow['gis_lat'] . ", GIS Lon: " . $verifyRow['gis_lng']);
+            }
+            return $businessId;
+        } else {
+            error_log("Location update FAILED: " . $conn->error . " | SQL: $updateSql");
+            return $businessId; // Still return ID, business is created
+        }
     } else {
-        error_log("Execute failed: " . $stmt->error);
+        error_log("Insert execute failed: " . $stmt->error);
         $stmt->close();
         return false;
     }
@@ -104,17 +127,37 @@ function updateBusiness($id, $data) {
     $city = $data['city'] ?? '';
     
     if (isset($data['latitude']) && isset($data['longitude'])) {
-        $location = "POINT(" . $data['longitude'] . " " . $data['latitude'] . ")";
-        $stmt = $conn->prepare("UPDATE businesses SET business_name = ?, business_type = ?, business_desc = ?, business_address = ?, city = ?, location = ST_GeomFromText(?) WHERE business_id = ?");
-        $stmt->bind_param("ssssssi",
+        $latitude = floatval($data['latitude']);
+        $longitude = floatval($data['longitude']);
+        
+        // Update without location first
+        $stmt = $conn->prepare("UPDATE businesses SET business_name = ?, business_type = ?, business_desc = ?, business_address = ?, city = ? WHERE business_id = ?");
+        $stmt->bind_param("sssssi",
             $businessName,
             $businessType,
             $businessDesc,
             $businessAddress,
             $city,
-            $location,
             $id
         );
+        
+        $success = $stmt->execute();
+        $stmt->close();
+        
+        if ($success) {
+            // Now update location using POINT() constructor AND save latitude/longitude separately
+            $lon = floatval($longitude);
+            $lat = floatval($latitude);
+            $updateSql = "UPDATE businesses SET location = POINT(" . $lon . ", " . $lat . "), latitude = " . $lat . ", longitude = " . $lon . " WHERE business_id = " . intval($id);
+            
+            if ($conn->query($updateSql)) {
+                error_log("Business updated with location - ID: $id, Lat: $lat, Lon: $lon");
+            } else {
+                error_log("Location update failed: " . $conn->error . " | SQL: $updateSql");
+            }
+        }
+        
+        return $success;
     } else {
         $stmt = $conn->prepare("UPDATE businesses SET business_name = ?, business_type = ?, business_desc = ?, business_address = ?, city = ? WHERE business_id = ?");
         $stmt->bind_param("sssssi",
@@ -125,11 +168,14 @@ function updateBusiness($id, $data) {
             $city,
             $id
         );
+        
+        $success = $stmt->execute();
+        if (!$success) {
+            error_log("updateBusiness failed: " . $stmt->error);
+        }
+        $stmt->close();
+        return $success;
     }
-    
-    $success = $stmt->execute();
-    $stmt->close();
-    return $success;
 }
 
 // Get businesses with distance calculation
@@ -285,4 +331,104 @@ function getBusinessesByCategory($category) {
     $stmt->close();
     return $data;
 }
+
+// Get businesses by address
+function getBusinessesByAddress($customerAddress, $limit = 8) {
+    $conn = getDbConnection();
+    
+    if (!$conn || empty($customerAddress)) {
+        error_log("getBusinessesByAddress: Missing connection or address");
+        return [];
+    }
+    
+    // Extract city/barangay from address
+    $addressParts = explode(',', $customerAddress);
+    $searchLocation = trim($addressParts[0]);
+    
+    // Search for businesses in the same city/barangay
+    $query = "SELECT *, 
+              ST_X(location) AS longitude, 
+              ST_Y(location) AS latitude
+              FROM businesses 
+              WHERE (business_address LIKE ? OR city LIKE ?)
+              ORDER BY business_id DESC
+              LIMIT ?";
+    
+    $stmt = $conn->prepare($query);
+    
+    if (!$stmt) {
+        error_log("Prepare failed in getBusinessesByAddress: " . $conn->error);
+        return [];
+    }
+    
+    $searchTerm = '%' . $searchLocation . '%';
+    $limit = intval($limit);
+    $stmt->bind_param('ssi', $searchTerm, $searchTerm, $limit);
+    
+    if (!$stmt->execute()) {
+        error_log("Execute failed in getBusinessesByAddress: " . $stmt->error);
+        $stmt->close();
+        return [];
+    }
+    
+    $result = $stmt->get_result();
+    $businesses = $result->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+    
+    error_log("getBusinessesByAddress: Found " . count($businesses) . " businesses for address: " . $searchLocation);
+    
+    return $businesses ?? [];
+}
+
+// Get businesses by coordinates (latitude and longitude)
+function getBusinessesByCoordinates($latitude, $longitude, $radiusKm = 10, $limit = 8) {
+    $conn = getDbConnection();
+    
+    if (!$conn || !$latitude || !$longitude) {
+        error_log("getBusinessesByCoordinates: Missing connection or coordinates");
+        return [];
+    }
+    
+    // Haversine formula to find businesses within radius
+    $query = "SELECT b.*, 
+                     ST_X(b.location) AS longitude,
+                     ST_Y(b.location) AS latitude,
+                     (6371 * acos(cos(radians(?)) * cos(radians(ST_Y(b.location))) * 
+                     cos(radians(ST_X(b.location)) - radians(?)) + 
+                     sin(radians(?)) * sin(radians(ST_Y(b.location))))) AS distance
+              FROM businesses b
+              WHERE b.location IS NOT NULL 
+              HAVING distance <= ?
+              ORDER BY distance ASC
+              LIMIT ?";
+    
+    $stmt = $conn->prepare($query);
+    
+    if (!$stmt) {
+        error_log("Prepare failed in getBusinessesByCoordinates: " . $conn->error);
+        return [];
+    }
+    
+    $latitude = floatval($latitude);
+    $longitude = floatval($longitude);
+    $radiusKm = intval($radiusKm);
+    $limit = intval($limit);
+    
+    $stmt->bind_param('dddii', $latitude, $longitude, $latitude, $radiusKm, $limit);
+    
+    if (!$stmt->execute()) {
+        error_log("Execute failed in getBusinessesByCoordinates: " . $stmt->error);
+        $stmt->close();
+        return [];
+    }
+    
+    $result = $stmt->get_result();
+    $businesses = $result->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+    
+    error_log("getBusinessesByCoordinates: Found " . count($businesses) . " businesses");
+    
+    return $businesses ?? [];
+}
 ?>
+

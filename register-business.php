@@ -155,8 +155,45 @@ include 'includes/header.php';
                             <!-- Location -->
                             <h5 class="mb-3">Business Location *</h5>
                             <div class="mb-3">
-                                <label for="business_address" class="form-label">Street Address *</label>
-                                <input type="text" class="form-control" id="business_address" name="business_address" required placeholder="Street, Barangay">
+                                <label for="business_address" class="form-label">Barangay / Street Address *</label>
+                                <select class="form-select" id="business_address" name="business_address" required onchange="updateMapFromAddress()">
+                                    <option value="">Select your barangay/street address</option>
+                                    <option value="Aga">Aga</option>
+                                    <option value="Balaytigui">Balaytigui</option>
+                                    <option value="Banilad">Banilad</option>
+                                    <option value="Bilaran">Bilaran</option>
+                                    <option value="Bucana">Bucana</option>
+                                    <option value="Buhay">Buhay</option>
+                                    <option value="Bulihan">Bulihan</option>
+                                    <option value="Bunducan">Bunducan</option>
+                                    <option value="Butucan">Butucan</option>
+                                    <option value="Calayo">Calayo</option>
+                                    <option value="Catandaan">Catandaan</option>
+                                    <option value="Caybunga">Caybunga</option>
+                                    <option value="Cogunan">Cogunan</option>
+                                    <option value="Dayap">Dayap</option>
+                                    <option value="Kaylaway">Kaylaway</option>
+                                    <option value="Latag">Latag</option>
+                                    <option value="Looc">Looc</option>
+                                    <option value="Lumbangan">Lumbangan</option>
+                                    <option value="Malapad na Bato">Malapad na Bato</option>
+                                    <option value="Mataas na Pulo">Mataas na Pulo</option>
+                                    <option value="Munting Indan">Munting Indan</option>
+                                    <option value="Natipuan">Natipuan</option>
+                                    <option value="Pantalan">Pantalan</option>
+                                    <option value="Papaya">Papaya</option>
+                                    <option value="Poblacion">Poblacion</option>
+                                    <option value="Putat">Putat</option>
+                                    <option value="Reparo">Reparo</option>
+                                    <option value="San Diego">San Diego</option>
+                                    <option value="San Jose">San Jose</option>
+                                    <option value="San Juan">San Juan</option>
+                                    <option value="Talangan">Talangan</option>
+                                    <option value="Tumalim">Tumalim</option>
+                                    <option value="Utod">Utod</option>
+                                    <option value="Wawa">Wawa</option>
+                                </select>
+                                <small class="text-muted">Select your barangay in Nasugbu, Batangas - the map will auto-populate!</small>
                             </div>
                             
                             <div class="mb-3">
@@ -170,12 +207,25 @@ include 'includes/header.php';
                                 </label>
                                 <div class="map-info-box">
                                     <i class="bi bi-info-circle"></i>
-                                    <small>Click anywhere on the map to set your business location. The address will be automatically filled based on your selection.</small>
+                                    <small><strong>Click anywhere on the map or drag the marker</strong> to set your exact business location. This is important so customers can find you!</small>
                                 </div>
-                                <div id="locationMap"></div>
-                                <div class="coordinates-display">
-                                    <strong>Selected Coordinates:</strong><br>
-                                    Latitude: <span id="displayLat">14.0697</span> | Longitude: <span id="displayLng">120.6328</span>
+                                <div id="locationMap" style="height: 400px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);"></div>
+                                <div class="coordinates-display mt-3">
+                                    <strong><i class="bi bi-pin-map-fill" style="color: #850E35;"></i> Selected Coordinates:</strong><br>
+                                    <div class="d-flex justify-content-between mt-2">
+                                        <div>
+                                            <small class="text-muted">Latitude:</small><br>
+                                            <code><span id="displayLat">14.0697</span></code>
+                                        </div>
+                                        <div>
+                                            <small class="text-muted">Longitude:</small><br>
+                                            <code><span id="displayLng">120.6328</span></code>
+                                        </div>
+                                    </div>
+                                    <div class="mt-2">
+                                        <small class="text-muted">Status:</small><br>
+                                        <span id="mapStatus" class="badge bg-warning"><i class="bi bi-exclamation-circle"></i> Click map to set location</span>
+                                    </div>
                                 </div>
                             </div>
                             
@@ -348,11 +398,19 @@ function togglePassword(inputId, eyeId) {
 // ========================================
 let map;
 let marker;
+let locationUpdated = false;  // Track if user has interacted with map
 const defaultLat = 14.0697;
 const defaultLng = 120.6328;
 
 // Initialize map
 function initMap() {
+    const mapContainer = document.getElementById('locationMap');
+    
+    // Ensure map has proper height
+    if (mapContainer) {
+        mapContainer.style.height = '400px';
+    }
+    
     map = L.map('locationMap').setView([defaultLat, defaultLng], 14);
     
     // Add OpenStreetMap tiles
@@ -375,6 +433,9 @@ function initMap() {
         draggable: true 
     }).addTo(map);
     
+    // Add marker popup
+    marker.bindPopup('Your business location');
+    
     // Click to set location
     map.on('click', function(e) {
         const lat = e.latlng.lat;
@@ -388,14 +449,36 @@ function initMap() {
         const lng = e.target.getLatLng().lng;
         updateLocation(lat, lng);
     });
+    
+    // Invalidate size after map loads (important for proper display)
+    setTimeout(function() {
+        if (map) {
+            map.invalidateSize();
+        }
+    }, 100);
 }
 
 function updateLocation(lat, lng) {
+    // Validate coordinates
+    if (isNaN(lat) || isNaN(lng) || lat === 0 || lng === 0) {
+        showErrorModal('Invalid coordinates. Please try again.');
+        return;
+    }
+    
+    locationUpdated = true;  // Mark that user has set location
     marker.setLatLng([lat, lng]);
     document.getElementById('latitude').value = lat.toFixed(6);
     document.getElementById('longitude').value = lng.toFixed(6);
     document.getElementById('displayLat').textContent = lat.toFixed(6);
     document.getElementById('displayLng').textContent = lng.toFixed(6);
+    
+    // Console logging for debugging
+    console.log('Location updated - Latitude:', lat.toFixed(6), 'Longitude:', lng.toFixed(6));
+    
+    // Update status badge
+    const mapStatus = document.getElementById('mapStatus');
+    mapStatus.className = 'badge bg-success';
+    mapStatus.innerHTML = '<i class="bi bi-check-circle"></i> Location set';
     
     // Reverse geocode to get address
     reverseGeocode(lat, lng);
@@ -501,6 +584,104 @@ function showAddressNotification(message) {
 
 // Initialize map when page loads
 document.addEventListener('DOMContentLoaded', function() {
+    // Set initial status
+    const mapStatus = document.getElementById('mapStatus');
+    if (mapStatus) {
+        mapStatus.className = 'badge bg-warning';
+        mapStatus.innerHTML = '<i class="bi bi-exclamation-circle"></i> Click map to set location';
+    }
+    
+    initMap();
+});
+
+// Handle address dropdown change - auto-update map with barangay coordinates
+function updateMapFromAddress() {
+    const addressDropdown = document.getElementById('business_address');
+    const selectedBarangay = addressDropdown.value;
+    
+    if (!selectedBarangay) {
+        return; // No selection
+    }
+    
+    // Fetch coordinates for the selected barangay
+    fetch('backend/barangay_coordinates.php?barangay=' + encodeURIComponent(selectedBarangay))
+        .then(response => response.json())
+        .then(data => {
+            const lat = data.lat;
+            const lng = data.lng;
+            
+            // Update the map and coordinates
+            if (map && marker) {
+                // Pan map to new location
+                map.setView([lat, lng], 14);
+                
+                // Update marker position
+                marker.setLatLng([lat, lng]);
+                
+                // Update coordinate displays and hidden fields
+                updateLocation(lat, lng);
+                
+                console.log('Map updated for barangay:', selectedBarangay, 'Lat:', lat, 'Lng:', lng);
+                showAddressNotification('Map updated for ' + selectedBarangay);
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching barangay coordinates:', error);
+        });
+}
+
+// Function to find nearest barangay based on coordinates
+async function findNearestBarangay(lat, lng) {
+    try {
+        const response = await fetch('backend/barangay_coordinates.php');
+        const barangays = await response.json();
+        
+        let nearestBarangay = null;
+        let minDistance = Infinity;
+        
+        for (const [name, coords] of Object.entries(barangays)) {
+            // Calculate distance using simple Pythagorean theorem (good enough for nearby points)
+            const distance = Math.sqrt(
+                Math.pow(coords.lat - lat, 2) + Math.pow(coords.lng - lng, 2)
+            );
+            
+            if (distance < minDistance) {
+                minDistance = distance;
+                nearestBarangay = name;
+            }
+        }
+        
+        return nearestBarangay;
+    } catch (error) {
+        console.error('Error finding nearest barangay:', error);
+        return null;
+    }
+}
+
+// Auto-select barangay based on current coordinates
+async function autoSelectBarangayFromCoordinates() {
+    const latValue = document.getElementById('latitude').value;
+    const lngValue = document.getElementById('longitude').value;
+    
+    if (latValue && lngValue && latValue !== '14.0697' && lngValue !== '120.6328') {
+        const barangay = await findNearestBarangay(parseFloat(latValue), parseFloat(lngValue));
+        if (barangay) {
+            const dropdown = document.getElementById('business_address');
+            dropdown.value = barangay;
+            console.log('Auto-selected barangay:', barangay);
+        }
+    }
+}
+
+// Initialize map when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    // Set initial status
+    const mapStatus = document.getElementById('mapStatus');
+    if (mapStatus) {
+        mapStatus.className = 'badge bg-warning';
+        mapStatus.innerHTML = '<i class="bi bi-exclamation-circle"></i> Click map to set location';
+    }
+    
     initMap();
 });
 
@@ -921,6 +1102,19 @@ cropModal.addEventListener('click', function(e) {
                     }
                     return false;
                 }
+                
+                // Check if location was updated by user
+                if (!locationUpdated) {
+                    e.preventDefault();
+                    showErrorModal('Please click on the map to set your business location before submitting.');
+                    document.getElementById('locationMap').scrollIntoView({ behavior: 'smooth' });
+                    return false;
+                }
+                
+                // Log coordinates before submission for debugging
+                const lat = document.getElementById('latitude').value;
+                const lng = document.getElementById('longitude').value;
+                console.log('Form submission - Latitude:', lat, 'Longitude:', lng);
             });
         }
     });

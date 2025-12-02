@@ -315,6 +315,27 @@
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
+/* Suggested badge */
+.suggested-badge {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    background: linear-gradient(135deg, #2196F3, #00BCD4);
+    color: white;
+    padding: 5px 10px;
+    border-radius: 16px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.suggested-badge i {
+    font-size: 0.75rem;
+}
+
 /* Heart Button */
 .airbnb-favorite-btn {
     position: absolute;

@@ -1,4 +1,6 @@
 <?php
+// Replace the top section of index.php with this fixed version
+
 header("Cache-Control: no-cache, no-store, must-revalidate");
 header("Pragma: no-cache");
 header("Expires: 0");
@@ -14,9 +16,37 @@ require_once 'backend/function_notifications.php';
 
 $pageTitle = 'BeautyGo - Beauty Services in Nasugbu, Batangas';
 
-// Get user location if available
-$userLat = $_SESSION['user_latitude'] ?? null;
-$userLon = $_SESSION['user_longitude'] ?? null;
+// Initialize suggested businesses
+$suggestedBusinesses = [];
+$showSuggestedSection = false;
+
+// Get suggested businesses for logged-in customers
+if (isCustomerLoggedIn()) {
+    $customer = getCurrentCustomer();
+    
+    error_log("=== SUGGESTED BUSINESSES DEBUG ===");
+    error_log("Customer ID: " . ($customer['customer_id'] ?? 'NULL'));
+    error_log("Customer Address: " . ($customer['cstmr_address'] ?? 'NULL'));
+    
+    // Try to get by coordinates first (more accurate)
+    $userLat = $_SESSION['user_latitude'] ?? $customer['latitude'] ?? null;
+    $userLon = $_SESSION['user_longitude'] ?? $customer['longitude'] ?? null;
+    
+    if ($userLat && $userLon) {
+        error_log("Using coordinates: $userLat, $userLon");
+        $suggestedBusinesses = getBusinessesByCoordinates($userLat, $userLon, 10, 8);
+    }
+    
+    // Fallback to address-based matching if no coordinates or no results
+    if (empty($suggestedBusinesses) && !empty($customer['cstmr_address'])) {
+        error_log("Fallback to address matching: " . $customer['cstmr_address']);
+        $suggestedBusinesses = getBusinessesByAddress($customer['cstmr_address'], 8);
+    }
+    
+    error_log("Total suggested businesses found: " . count($suggestedBusinesses));
+    
+    $showSuggestedSection = !empty($suggestedBusinesses);
+}
 
 // Get categorized businesses
 $topRatedBusinesses = getTopRatedBusinesses(4);
@@ -28,6 +58,7 @@ $featuredIds = [];
 foreach ($topRatedBusinesses as $b) $featuredIds[] = $b['business_id'];
 foreach ($newBusinesses as $b) $featuredIds[] = $b['business_id'];
 foreach ($popularBusinesses as $b) $featuredIds[] = $b['business_id'];
+foreach ($suggestedBusinesses as $b) $featuredIds[] = $b['business_id'];
 $featuredIds = array_unique($featuredIds);
 
 // Get remaining businesses
@@ -182,6 +213,38 @@ include 'includes/header.php';
 
     <div class="section-divider"></div>
 
+   <!-- Suggested Businesses Nearby Section -->
+<?php if ($showSuggestedSection): ?>
+<section class="featured-section" id="suggested-section" style="background-color: #f9fafb;">
+    <div class="container">
+        <div class="section-header">
+            <h2 class="section-title">
+                <i class="bi bi-geo-alt-fill" style="color: var(--color-rose);"></i> 
+                Suggested Nearby
+            </h2>
+            <p class="section-subtitle">Beauty services in your area</p>
+        </div>
+        
+        <div class="business-row collapsed" id="suggestedRow">
+            <?php foreach ($suggestedBusinesses as $business): ?>
+                <?php echo renderBusinessCard($business, 'suggested'); ?>
+            <?php endforeach; ?>
+        </div>
+        
+        <?php if (count($suggestedBusinesses) > 4): ?>
+        <div class="show-more-container">
+            <button class="show-more-btn" onclick="toggleSection('suggestedRow', this)">
+                <span class="btn-text">Show More</span>
+                <i class="bi bi-chevron-down"></i>
+            </button>
+        </div>
+        <?php endif; ?>
+    </div>
+</section>
+
+<div class="section-divider"></div>
+<?php endif; ?>
+
     <!-- Top Rated Section -->
     <?php if (!empty($topRatedBusinesses)): ?>
     <section class="featured-section" id="featured-section">
@@ -314,7 +377,7 @@ include 'includes/header.php';
 </main>
 
 <?php
-// Updated renderBusinessCard function - replace the existing one in index.php
+// Updated renderBusinessCard function
 function renderBusinessCard($business, $type = 'regular') {
     $album = getBusinessAlbum($business['business_id']);
     $businessImage = null;
@@ -356,7 +419,9 @@ function renderBusinessCard($business, $type = 'regular') {
     
     // Determine badge based on type
     $badge = '';
-    if ($type === 'top-rated' && $avgRating >= 4.5) {
+    if ($type === 'suggested') {
+        $badge = '<span class="suggested-badge"><i class="bi bi-geo-alt-fill"></i> Nearby</span>';
+    } elseif ($type === 'top-rated' && $avgRating >= 4.5) {
         $badge = '<span class="airbnb-badge"><i class="bi bi-award-fill"></i> Top Rated</span>';
     } elseif ($type === 'popular') {
         $badge = '<span class="popular-badge"><i class="bi bi-fire"></i> Popular</span>';
@@ -366,7 +431,7 @@ function renderBusinessCard($business, $type = 'regular') {
     
     $distanceBadge = '';
     if (isset($business['distance']) && $business['distance'] < 999) {
-        $distanceBadge = '<span class="distance-badge"><i class="bi bi-geo-alt-fill"></i> ' . $business['distance'] . ' km</span>';
+        $distanceBadge = '<span class="distance-badge"><i class="bi bi-geo-alt-fill"></i> ' . number_format($business['distance'], 1) . ' km</span>';
     }
     
     ob_start();
@@ -524,7 +589,26 @@ function filterByCategory(category, clickedCard) {
     });
 }
 
-// Back to Top functionality
+// Back to Top Button Functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const backToTopBtn = document.getElementById('backToTop');
+    
+    if (!backToTopBtn) {
+        console.warn('Back to Top button not found');
+        return;
+    }
+    
+    // Show/hide button on scroll
+    window.addEventListener('scroll', function() {
+        if (window.pageYOffset > 300) {
+            backToTopBtn.classList.add('show');
+        } else {
+            backToTopBtn.classList.remove('show');
+        }
+    });
+});
+
+// Smooth scroll to top function
 function scrollToTop() {
     window.scrollTo({
         top: 0,
@@ -1337,24 +1421,32 @@ document.addEventListener('click', function(e) {
 });
 
 // Back to Top Button Functionality
-const backToTopBtn = document.getElementById('backToTop');
-
-// Show/hide button on scroll
-window.addEventListener('scroll', function() {
-    if (window.pageYOffset > 300) {
-        backToTopBtn.classList.add('show');
-    } else {
-        backToTopBtn.classList.remove('show');
+document.addEventListener('DOMContentLoaded', function() {
+    const backToTopBtn = document.getElementById('backToTop');
+    
+    if (!backToTopBtn) {
+        console.warn('Back to Top button not found');
+        return;
     }
+    
+    // Show/hide button on scroll
+    window.addEventListener('scroll', function() {
+        if (window.pageYOffset > 300) {
+            backToTopBtn.classList.add('show');
+        } else {
+            backToTopBtn.classList.remove('show');
+        }
+    });
 });
 
-// Smooth scroll to top
+// Smooth scroll to top function
 function scrollToTop() {
     window.scrollTo({
         top: 0,
         behavior: 'smooth'
     });
 }
+
 // Handle search input
 function handleSearchInput(event) {
     if (event.key === 'Enter') {
