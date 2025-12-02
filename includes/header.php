@@ -508,7 +508,7 @@
                             <li class="nav-item me-3 d-flex align-items-center">
                                 <a class="style-recommendations-btn" href="FaceShapeAI/index.html" target="_blank" title="Style Recommendations">
                                     <i class="bi bi-stars"></i>
-                                    <span>Face Shape Detector</span>
+                                    <span>Style Analyzer</span>
                                 </a>
                             </li>
                         <?php endif; ?>
