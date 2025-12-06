@@ -90,8 +90,8 @@ include 'includes/header.php';
                             </div>
                             
                             <div class="mb-3">
-                                <label for="business_desc" class="form-label">Business Description *</label>
-                                <textarea class="form-control" id="business_desc" name="business_desc" rows="3" required placeholder="Describe your business, services, and what makes you unique..."></textarea>
+                                <label for="business_desc" class="form-label">Business Description</label>
+                                <textarea class="form-control" id="business_desc" name="business_desc" rows="3" placeholder="Describe your business, services, and what makes you unique..."></textarea>
                             </div>
                             
                             <hr class="my-4">
@@ -156,44 +156,8 @@ include 'includes/header.php';
                             <h5 class="mb-3">Business Location *</h5>
                             <div class="mb-3">
                                 <label for="business_address" class="form-label">Barangay / Street Address *</label>
-                                <select class="form-select" id="business_address" name="business_address" required onchange="updateMapFromAddress()">
-                                    <option value="">Select your barangay/street address</option>
-                                    <option value="Aga">Aga</option>
-                                    <option value="Balaytigui">Balaytigui</option>
-                                    <option value="Banilad">Banilad</option>
-                                    <option value="Bilaran">Bilaran</option>
-                                    <option value="Bucana">Bucana</option>
-                                    <option value="Buhay">Buhay</option>
-                                    <option value="Bulihan">Bulihan</option>
-                                    <option value="Bunducan">Bunducan</option>
-                                    <option value="Butucan">Butucan</option>
-                                    <option value="Calayo">Calayo</option>
-                                    <option value="Catandaan">Catandaan</option>
-                                    <option value="Caybunga">Caybunga</option>
-                                    <option value="Cogunan">Cogunan</option>
-                                    <option value="Dayap">Dayap</option>
-                                    <option value="Kaylaway">Kaylaway</option>
-                                    <option value="Latag">Latag</option>
-                                    <option value="Looc">Looc</option>
-                                    <option value="Lumbangan">Lumbangan</option>
-                                    <option value="Malapad na Bato">Malapad na Bato</option>
-                                    <option value="Mataas na Pulo">Mataas na Pulo</option>
-                                    <option value="Munting Indan">Munting Indan</option>
-                                    <option value="Natipuan">Natipuan</option>
-                                    <option value="Pantalan">Pantalan</option>
-                                    <option value="Papaya">Papaya</option>
-                                    <option value="Poblacion">Poblacion</option>
-                                    <option value="Putat">Putat</option>
-                                    <option value="Reparo">Reparo</option>
-                                    <option value="San Diego">San Diego</option>
-                                    <option value="San Jose">San Jose</option>
-                                    <option value="San Juan">San Juan</option>
-                                    <option value="Talangan">Talangan</option>
-                                    <option value="Tumalim">Tumalim</option>
-                                    <option value="Utod">Utod</option>
-                                    <option value="Wawa">Wawa</option>
-                                </select>
-                                <small class="text-muted">Select your barangay in Nasugbu, Batangas - the map will auto-populate!</small>
+                                <input type="text" class="form-control" id="business_address" name="business_address" required placeholder="Street, Barangay">
+                                <small class="text-muted">Click on the map below to automatically fill this field</small>
                             </div>
                             
                             <div class="mb-3">
@@ -594,84 +558,6 @@ document.addEventListener('DOMContentLoaded', function() {
     initMap();
 });
 
-// Handle address dropdown change - auto-update map with barangay coordinates
-function updateMapFromAddress() {
-    const addressDropdown = document.getElementById('business_address');
-    const selectedBarangay = addressDropdown.value;
-    
-    if (!selectedBarangay) {
-        return; // No selection
-    }
-    
-    // Fetch coordinates for the selected barangay
-    fetch('backend/barangay_coordinates.php?barangay=' + encodeURIComponent(selectedBarangay))
-        .then(response => response.json())
-        .then(data => {
-            const lat = data.lat;
-            const lng = data.lng;
-            
-            // Update the map and coordinates
-            if (map && marker) {
-                // Pan map to new location
-                map.setView([lat, lng], 14);
-                
-                // Update marker position
-                marker.setLatLng([lat, lng]);
-                
-                // Update coordinate displays and hidden fields
-                updateLocation(lat, lng);
-                
-                console.log('Map updated for barangay:', selectedBarangay, 'Lat:', lat, 'Lng:', lng);
-                showAddressNotification('Map updated for ' + selectedBarangay);
-            }
-        })
-        .catch(error => {
-            console.error('Error fetching barangay coordinates:', error);
-        });
-}
-
-// Function to find nearest barangay based on coordinates
-async function findNearestBarangay(lat, lng) {
-    try {
-        const response = await fetch('backend/barangay_coordinates.php');
-        const barangays = await response.json();
-        
-        let nearestBarangay = null;
-        let minDistance = Infinity;
-        
-        for (const [name, coords] of Object.entries(barangays)) {
-            // Calculate distance using simple Pythagorean theorem (good enough for nearby points)
-            const distance = Math.sqrt(
-                Math.pow(coords.lat - lat, 2) + Math.pow(coords.lng - lng, 2)
-            );
-            
-            if (distance < minDistance) {
-                minDistance = distance;
-                nearestBarangay = name;
-            }
-        }
-        
-        return nearestBarangay;
-    } catch (error) {
-        console.error('Error finding nearest barangay:', error);
-        return null;
-    }
-}
-
-// Auto-select barangay based on current coordinates
-async function autoSelectBarangayFromCoordinates() {
-    const latValue = document.getElementById('latitude').value;
-    const lngValue = document.getElementById('longitude').value;
-    
-    if (latValue && lngValue && latValue !== '14.0697' && lngValue !== '120.6328') {
-        const barangay = await findNearestBarangay(parseFloat(latValue), parseFloat(lngValue));
-        if (barangay) {
-            const dropdown = document.getElementById('business_address');
-            dropdown.value = barangay;
-            console.log('Auto-selected barangay:', barangay);
-        }
-    }
-}
 
 // Initialize map when page loads
 document.addEventListener('DOMContentLoaded', function() {
@@ -1060,7 +946,7 @@ cropModal.addEventListener('click', function(e) {
         if (form) {
             form.addEventListener('submit', function(e) {
                 const requiredIds = [
-                    'business_name', 'business_type', 'business_desc',
+                    'business_name', 'business_type',
                     'opening_hour', 'closing_hour',
                     'business_email', 'business_num',
                     'business_password', 'confirm_password',
@@ -1072,7 +958,7 @@ cropModal.addEventListener('click', function(e) {
                 requiredIds.forEach(id => {
                     const el = document.getElementById(id);
                     if (!el) return;
-                    const val = (el.tagName === 'SELECT') ? el.value : el.value.trim();
+                    const val = el.value.trim();
                     
                     // Mark as invalid if empty
                     if (!val) {

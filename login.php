@@ -1,6 +1,4 @@
 <?php
-
-
 require_once 'db_connection/config.php';
 require_once 'backend/function_utilities.php';      // for isLoggedIn(), isBusinessLoggedIn()
 require_once 'backend/function_customers.php';      // for header.php getCurrentCustomer()
